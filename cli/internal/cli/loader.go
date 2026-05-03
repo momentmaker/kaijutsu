@@ -207,16 +207,7 @@ func loadIndex(ctx context.Context, fetcher *fetch.Fetcher, src *source.Source) 
 		}
 		return nil, err
 	}
-	tmp, err := os.CreateTemp("", "kaijutsu-index-*.json")
-	if err != nil {
-		return nil, err
-	}
-	defer os.Remove(tmp.Name())
-	if _, err := tmp.Write(body); err != nil {
-		return nil, err
-	}
-	tmp.Close()
-	return registry.Load(tmp.Name())
+	return registry.LoadFromBytes(body)
 }
 
 // resolveRef picks the commit SHA to install based on a semver constraint
@@ -262,11 +253,10 @@ func resolveRef(ctx context.Context, fetcher *fetch.Fetcher, src *source.Source,
 	if err != nil {
 		return "", "", err
 	}
+	// `chosen` was selected from ListTags, which only returns semver-parseable
+	// tags, so this parse is guaranteed to succeed.
 	v, _ := semver.NewVersion(chosen)
-	if v != nil {
-		return sha, v.String(), nil
-	}
-	return sha, chosen, nil
+	return sha, v.String(), nil
 }
 
 // parseSpec splits "name" or "name@constraint" into its parts.

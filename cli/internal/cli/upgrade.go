@@ -75,6 +75,7 @@ that exceed the constraint.`,
 				return nil
 			}
 
+			lf.Agents = m.Agents
 			for _, c := range candidates {
 				l, err := loadByLockEntry(cmd.Context(), fetcher, c.name, c.source, c.newRef, c.path, "")
 				if err != nil {
@@ -93,10 +94,14 @@ that exceed the constraint.`,
 					Integrity: l.hash,
 				}
 				l.cleanup()
+				// Persist after every successful upgrade so a partial failure
+				// leaves the on-disk filesystem and the lockfile in sync.
+				if err := lf.Save(lockPath); err != nil {
+					return err
+				}
 				fmt.Fprintf(out, "Upgraded %s: %s -> %s\n", c.name, c.oldVersion, c.newVersion)
 			}
-			lf.Agents = m.Agents
-			return lf.Save(lockPath)
+			return nil
 		},
 	}
 	cmd.Flags().BoolVarP(&global, "global", "g", false, "upgrade global installation")
@@ -139,7 +144,12 @@ func planUpgrades(cmd *cobra.Command, fetcher *fetch.Fetcher, m *manifest.Manife
 			constraint *semver.Constraints
 		)
 		if rangeSpec, ok := m.Dependencies[name]; ok && !major {
-			constraint, _ = semver.NewConstraint(rangeSpec)
+			c, perr := semver.NewConstraint(rangeSpec)
+			if perr != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "warning: ignoring malformed constraint %q for %s: %v\n", rangeSpec, name, perr)
+			} else {
+				constraint = c
+			}
 		}
 		for _, t := range tags {
 			v, err := semver.NewVersion(t)
@@ -195,7 +205,7 @@ func confirmInteractive(cmd *cobra.Command, candidates []upgradeCandidate) bool 
 		fmt.Fprintf(out, "  %s: %s -> %s\n", c.name, c.oldVersion, c.newVersion)
 	}
 	fmt.Fprint(out, "Apply? [y/N]: ")
-	r := bufio.NewReader(os.Stdin)
+	r := bufio.NewReader(cmd.InOrStdin())
 	line, err := r.ReadString('\n')
 	if err != nil {
 		return false

@@ -35,9 +35,14 @@ func Load(path string) (*Index, error) {
 	if err != nil {
 		return nil, err
 	}
+	return LoadFromBytes(data)
+}
+
+// LoadFromBytes parses the registry index from raw JSON bytes.
+func LoadFromBytes(data []byte) (*Index, error) {
 	var idx Index
 	if err := json.Unmarshal(data, &idx); err != nil {
-		return nil, fmt.Errorf("parse %s: %w", path, err)
+		return nil, fmt.Errorf("parse registry index: %w", err)
 	}
 	if idx.Version != SchemaVersion {
 		return nil, fmt.Errorf("unsupported registry version %d", idx.Version)

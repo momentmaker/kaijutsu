@@ -9,6 +9,7 @@ package fetch
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"context"
 	"crypto/sha256"
@@ -35,13 +36,15 @@ const (
 	// MaxExtractedBytes caps the total uncompressed size we extract to
 	// guard against zip bombs.
 	MaxExtractedBytes = 200 * 1024 * 1024 // 200 MiB
+	// MaxFileBytes caps any single file fetched via GetFile (e.g.
+	// registry/index.json) to keep that endpoint cheap.
+	MaxFileBytes = 5 * 1024 * 1024 // 5 MiB
 )
 
 // Fetcher performs HTTP requests against GitHub. Construct with New().
 type Fetcher struct {
-	HTTP    *http.Client
-	Token   string
-	BaseAPI string // override for tests; defaults to github.com
+	HTTP  *http.Client
+	Token string
 }
 
 func New() *Fetcher {
@@ -172,7 +175,7 @@ func (f *Fetcher) Tarball(ctx context.Context, src *source.Source, ref string) (
 // name created during extraction (GitHub tarballs have a single top-level
 // dir like `<owner>-<repo>-<short_sha>`).
 func Extract(tarGzData []byte, dst string) (string, error) {
-	gz, err := gzip.NewReader(strings.NewReader(string(tarGzData)))
+	gz, err := gzip.NewReader(bytes.NewReader(tarGzData))
 	if err != nil {
 		return "", err
 	}
@@ -261,7 +264,15 @@ func (f *Fetcher) GetFile(ctx context.Context, src *source.Source, ref, path str
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		return nil, fmt.Errorf("GET %s: HTTP %d: %s", url, resp.StatusCode, strings.TrimSpace(string(body)))
 	}
-	return io.ReadAll(resp.Body)
+	limited := io.LimitReader(resp.Body, MaxFileBytes+1)
+	body, err := io.ReadAll(limited)
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(body)) > MaxFileBytes {
+		return nil, fmt.Errorf("file at %s exceeds %d bytes", path, MaxFileBytes)
+	}
+	return body, nil
 }
 
 func (f *Fetcher) getJSON(ctx context.Context, url string, out interface{}) error {

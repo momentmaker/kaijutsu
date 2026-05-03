@@ -130,9 +130,18 @@ func runSyncFromLockfile(cmd *cobra.Command, installRoot, manifestPath, lockPath
 			return err
 		}
 		l.cleanup()
-		fmt.Fprintf(cmd.OutOrStdout(), "Synced %s@%s\n", name, *entry.Version)
+		fmt.Fprintf(cmd.OutOrStdout(), "Synced %s@%s\n", name, displayVersion(entry.Version, entry.Ref))
 	}
 	return nil
+}
+
+// displayVersion formats the version for log output, falling back to a
+// short ref when no semver was recorded (SHA-pinned skills).
+func displayVersion(version *string, ref string) string {
+	if version != nil {
+		return *version
+	}
+	return shortRef(ref)
 }
 
 // recordInstall mutates manifest dependencies + lockfile entry to reflect
