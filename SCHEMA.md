@@ -97,7 +97,10 @@ trust:                                   # optional
 - **`license`** must be MIT or in the configured allowlist (BSD-2/3, ISC, Apache-2.0).
 - **`layout`**: `flat` (default) or `rich` (with `references/`, `runbooks/`, `scripts/`, `assets/`, `subagents/`).
 - **`agents`**: only agents listed here will be installed when a user runs `jutsu install`. The intersection of `kaijutsu.json:agents` and `skill.yaml:agents` determines actual install targets.
-- **`permissions`**: declared upfront so the CLI can prompt before install. `fs-write: scoped` means the skill writes only inside its own skill directory; `full` means anywhere.
+- **`permissions`**: declared upfront so the CLI can prompt before install.
+  - `fs-write: false` — read-only.
+  - `fs-write: scoped` — writes are limited to the user's project tree and the agent state directories (`~/.claude/`, `~/.codex/`, `~/.gemini/`, `~/.agents/`), but not arbitrary system paths.
+  - `fs-write: full` — unrestricted writes anywhere on disk.
 
 There is no `entry:` field. The CLI installs the entire skill directory and the agent picks up `SKILL.md` automatically. Use `overrides/<agent>/` for rare per-agent splits.
 

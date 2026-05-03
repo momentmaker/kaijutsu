@@ -63,9 +63,16 @@
       "required": ["bash", "network", "fs-write"],
       "additionalProperties": false,
       "properties": {
-        "bash": { "type": "boolean" },
-        "network": { "type": "boolean" },
+        "bash": {
+          "type": "boolean",
+          "description": "Whether the skill executes shell commands."
+        },
+        "network": {
+          "type": "boolean",
+          "description": "Whether the skill makes network requests."
+        },
         "fs-write": {
+          "description": "false = read-only; 'scoped' = writes limited to the user's project tree and agent state dirs (.claude/, .codex/, .gemini/, .agents/); 'full' = unrestricted writes anywhere on disk.",
           "oneOf": [
             { "type": "boolean", "const": false },
             { "enum": ["scoped", "full"] }

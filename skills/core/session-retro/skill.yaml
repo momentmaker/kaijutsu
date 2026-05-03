@@ -10,4 +10,4 @@ agents: [claude, codex, gemini]
 permissions:
   bash: true
   network: false
-  fs-write: full
+  fs-write: scoped
