@@ -17,10 +17,10 @@ jobs:
     name: Validate JSON Schemas are well-formed
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20'
 
@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: validate-schemas
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Skip until jutsu CLI lands
         run: |
