@@ -1,0 +1,59 @@
+name: Lint skills
+
+on:
+  pull_request:
+    paths:
+      - 'skills/**'
+      - 'schemas/**'
+      - '.github/workflows/lint-skills.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'skills/**'
+      - 'schemas/**'
+
+jobs:
+  validate-schemas:
+    name: Validate JSON Schemas are well-formed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install ajv-cli
+        run: npm install -g ajv-cli ajv-formats
+
+      - name: Validate schema files compile
+        run: |
+          for schema in schemas/*.schema.json; do
+            echo "Compiling $schema"
+            ajv compile -s "$schema" -c ajv-formats
+          done
+
+  lint-skills:
+    name: Lint skill manifests
+    runs-on: ubuntu-latest
+    needs: validate-schemas
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Skip until jutsu CLI lands
+        run: |
+          echo "TODO(stage-5): replace this with 'jutsu lint skills/'"
+          echo "For now, validating skill.yaml files have a sibling SKILL.md."
+          set -e
+          shopt -s nullglob
+          for skill_yaml in skills/core/*/skill.yaml skills/community/*/skill.yaml; do
+            if [ -f "$skill_yaml" ]; then
+              skill_dir=$(dirname "$skill_yaml")
+              if [ ! -f "$skill_dir/SKILL.md" ]; then
+                echo "::error file=$skill_yaml::missing SKILL.md in $skill_dir"
+                exit 1
+              fi
+            fi
+          done
+          echo "OK"

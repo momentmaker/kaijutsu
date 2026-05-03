@@ -1,0 +1,101 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://kaijutsu.dev/schemas/skill.schema.json",
+  "title": "kaijutsu Skill Manifest",
+  "description": "Schema for skill.yaml — the per-skill metadata file consumed by the jutsu CLI.",
+  "type": "object",
+  "required": [
+    "name",
+    "version",
+    "license",
+    "layout",
+    "description",
+    "agents",
+    "permissions"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$",
+      "description": "Lowercase-kebab-case skill identifier; must match the SKILL.md frontmatter name."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
+      "description": "Semver-compliant version string."
+    },
+    "license": {
+      "type": "string",
+      "description": "SPDX license identifier. Must be MIT or in the configured allowlist (BSD-2-Clause, BSD-3-Clause, ISC, Apache-2.0)."
+    },
+    "layout": {
+      "enum": ["flat", "rich"],
+      "description": "flat = SKILL.md + scripts/. rich = Anthropic progressive-disclosure layout with references/, runbooks/, scripts/, assets/, subagents/."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Single-sentence summary used by jutsu search and info."
+    },
+    "author": { "type": "string" },
+    "homepage": { "type": "string", "format": "uri" },
+    "repository": { "type": "string", "format": "uri" },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "agents": {
+      "type": "array",
+      "items": { "enum": ["claude", "codex", "gemini"] },
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "Which agents this skill has been authored / tested for."
+    },
+    "shared": {
+      "type": "array",
+      "items": { "enum": ["references", "runbooks", "scripts", "assets"] },
+      "uniqueItems": true,
+      "description": "Rich layout only: top-level dirs that are agent-agnostic and shared across install targets."
+    },
+    "permissions": {
+      "type": "object",
+      "required": ["bash", "network", "fs-write"],
+      "additionalProperties": false,
+      "properties": {
+        "bash": { "type": "boolean" },
+        "network": { "type": "boolean" },
+        "fs-write": {
+          "oneOf": [
+            { "type": "boolean", "const": false },
+            { "enum": ["scoped", "full"] }
+          ]
+        }
+      }
+    },
+    "deps": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "skills": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*[a-z0-9]@.+$",
+            "description": "Format: <skill-name>@<semver-range>"
+          }
+        }
+      }
+    },
+    "trust": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "expected-signer": {
+          "type": "string",
+          "description": "GitHub identity (e.g. kaijutsu-core@github) the CLI will verify the Sigstore bundle against. Authors do NOT self-assert signed=true; the CLI derives it from successful cosign verify-blob."
+        }
+      }
+    }
+  }
+}

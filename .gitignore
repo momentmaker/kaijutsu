@@ -1,0 +1,31 @@
+# Build artifacts
+/dist/
+/cli/jutsu
+/cli/bin/
+*.exe
+*.test
+*.out
+
+# Go
+/cli/vendor/
+
+# Test workspaces
+/.claude/
+/.codex/
+/.gemini/
+kaijutsu.lock.json
+kaijutsu.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local secrets
+.env
+.env.local

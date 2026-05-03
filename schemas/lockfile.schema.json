@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://kaijutsu.dev/schemas/lockfile.schema.json",
+  "title": "kaijutsu Lockfile",
+  "description": "Schema for kaijutsu.lock.json — pinned, reproducible resolution of kaijutsu.json. Updated by `jutsu install` and `jutsu upgrade`.",
+  "type": "object",
+  "required": ["version", "agents", "skills"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "agents": {
+      "type": "array",
+      "items": { "enum": ["claude", "codex", "gemini"] },
+      "uniqueItems": true
+    },
+    "skills": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["source", "ref", "integrity"],
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "type": ["string", "null"],
+            "description": "Semver string if the upstream source has a tag; null if pinned to commit SHA."
+          },
+          "source": {
+            "type": "string",
+            "description": "Owner/repo identifier (e.g. momentmaker/kaijutsu) or full URL for non-GitHub sources."
+          },
+          "ref": {
+            "type": "string",
+            "minLength": 7,
+            "description": "Git commit SHA the lockfile pins to."
+          },
+          "integrity": {
+            "type": "string",
+            "pattern": "^sha256-[A-Za-z0-9+/=]+$",
+            "description": "SHA-256 of the fetched tarball, prefixed sha256-."
+          }
+        }
+      }
+    }
+  }
+}

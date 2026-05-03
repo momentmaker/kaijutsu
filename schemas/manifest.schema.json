@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://kaijutsu.dev/schemas/manifest.schema.json",
+  "title": "kaijutsu Project Manifest",
+  "description": "Schema for kaijutsu.json — declares which skills a project depends on. Created by `jutsu init`.",
+  "type": "object",
+  "required": ["version", "agents", "dependencies"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "agents": {
+      "type": "array",
+      "items": { "enum": ["claude", "codex", "gemini"] },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "dependencies": {
+      "type": "object",
+      "description": "Map of skill name to semver range.",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "registry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "default": { "type": "string", "format": "uri" },
+        "extra": {
+          "type": "array",
+          "items": { "type": "string", "format": "uri" }
+        }
+      }
+    }
+  }
+}
