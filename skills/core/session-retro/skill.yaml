@@ -1,0 +1,13 @@
+name: session-retro
+version: 0.1.0
+license: MIT
+layout: flat
+description: "End-of-session retrospective that mines the current conversation for learnings — memory entries, skill opportunities, hooks."
+homepage: https://kaijutsu.dev/skills/session-retro
+repository: https://github.com/momentmaker/kaijutsu
+tags: [retrospective, memory, learning]
+agents: [claude, codex, gemini]
+permissions:
+  bash: true
+  network: false
+  fs-write: full

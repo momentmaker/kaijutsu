@@ -1,0 +1,13 @@
+name: scope-check
+version: 0.1.0
+license: MIT
+layout: flat
+description: "Mid-task scope mirror — compare original task intent to actual work done. Present data, not judgment."
+homepage: https://kaijutsu.dev/skills/scope-check
+repository: https://github.com/momentmaker/kaijutsu
+tags: [workflow, focus, planning]
+agents: [claude, codex, gemini]
+permissions:
+  bash: true
+  network: false
+  fs-write: false

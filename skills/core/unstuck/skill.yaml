@@ -1,0 +1,13 @@
+name: unstuck
+version: 0.1.0
+license: MIT
+layout: flat
+description: "Guided problem articulation when you're stuck — break unproductive loops by forcing clarity before the next attempt."
+homepage: https://kaijutsu.dev/skills/unstuck
+repository: https://github.com/momentmaker/kaijutsu
+tags: [debugging, problem-solving, workflow]
+agents: [claude, codex, gemini]
+permissions:
+  bash: true
+  network: true
+  fs-write: scoped

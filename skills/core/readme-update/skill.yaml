@@ -1,0 +1,13 @@
+name: readme-update
+version: 0.1.0
+license: MIT
+layout: flat
+description: "Detect README staleness, identify which sections are likely out of date based on commits since the last README touch, and propose a targeted diff."
+homepage: https://kaijutsu.dev/skills/readme-update
+repository: https://github.com/momentmaker/kaijutsu
+tags: [docs, readme, maintenance]
+agents: [claude, codex, gemini]
+permissions:
+  bash: true
+  network: false
+  fs-write: scoped

@@ -1,0 +1,13 @@
+name: journal
+version: 0.1.0
+license: MIT
+layout: flat
+description: "Monthly development journal — read git log, merged PRs, decisions, and memory; produce a structured narrative of what happened in the project."
+homepage: https://kaijutsu.dev/skills/journal
+repository: https://github.com/momentmaker/kaijutsu
+tags: [journal, retrospective, reporting]
+agents: [claude, codex, gemini]
+permissions:
+  bash: true
+  network: true
+  fs-write: scoped

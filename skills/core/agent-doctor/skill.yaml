@@ -1,0 +1,13 @@
+name: agent-doctor
+version: 0.1.0
+license: MIT
+layout: flat
+description: "Diagnostic + cleanup tool for AI agent state directories. Audits ~/.claude, ~/.codex, ~/.gemini, ~/.agents; surfaces stale sessions, orphaned cache, broken hook refs; reclaims space safely (trash-not-delete, 30-day recovery)."
+homepage: https://kaijutsu.dev/skills/agent-doctor
+repository: https://github.com/momentmaker/kaijutsu
+tags: [maintenance, cleanup, disk-space]
+agents: [claude, codex, gemini]
+permissions:
+  bash: true
+  network: false
+  fs-write: full

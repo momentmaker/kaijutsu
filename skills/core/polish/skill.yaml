@@ -1,0 +1,13 @@
+name: polish
+version: 0.1.0
+license: MIT
+layout: flat
+description: "Automated post-implementation review-and-fix loop. Runs up to 4 review passes, fixes every issue found each pass, stops early when clean."
+homepage: https://kaijutsu.dev/skills/polish
+repository: https://github.com/momentmaker/kaijutsu
+tags: [review, refactor, workflow]
+agents: [claude, codex, gemini]
+permissions:
+  bash: true
+  network: true
+  fs-write: full

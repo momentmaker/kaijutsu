@@ -1,0 +1,13 @@
+name: decide
+version: 0.1.0
+license: MIT
+layout: flat
+description: "Decision journal — record architectural decisions with reasoning + tripwires; surface them when about to contradict one."
+homepage: https://kaijutsu.dev/skills/decide
+repository: https://github.com/momentmaker/kaijutsu
+tags: [decisions, architecture, journal]
+agents: [claude, codex, gemini]
+permissions:
+  bash: true
+  network: false
+  fs-write: scoped
