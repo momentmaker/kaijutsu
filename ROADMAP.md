@@ -8,12 +8,15 @@ Working consume-and-author loop. No bells, no eval gate, no static site.
 - [x] JSON schemas: skill, lockfile, project manifest
 - [x] Domain placeholders for `kaijutsu.dev` and `kaijutsu.org`
 - [ ] `docs/multi-agent.md` — confirmed install paths for Claude, Codex, Gemini
-- [ ] `jutsu` CLI MVP: `init`, `install`, `list`, `remove` (local monorepo only)
-- [ ] Lockfile + `upgrade` + remote source resolution via GitHub tarball API
-- [ ] 9 seed skills under `skills/core/`: `pr-review`, `readme-update`, `decide`, `journal`, `polish`, `unstuck`, `scope-check`, `session-retro`, `agent-doctor`
-- [ ] `publish`, `lint`, `search`, `info` commands
-- [ ] Sigstore signing for `skills/core/` on release
-- [ ] `momentmaker/homebrew-tap` + `https://kaijutsu.dev/install.sh`
+- [x] `jutsu` CLI MVP: `init`, `install`, `list`, `remove` (local monorepo only)
+- [x] Lockfile + `upgrade` + remote source resolution via GitHub tarball API
+- [x] 9 seed skills under `skills/core/`: `pr-review`, `readme-update`, `decide`, `journal`, `polish`, `unstuck`, `scope-check`, `session-retro`, `agent-doctor`
+- [x] `publish`, `lint`, `search`, `info` commands
+- [x] Sigstore signing workflow for `skills/core/` on release tag (sign-core.yml)
+- [x] Goreleaser pipeline for jutsu binaries + Homebrew tap on release tag (release-jutsu.yml)
+- [x] `https://kaijutsu.dev/install.sh` published from /docs (GitHub Pages)
+- [ ] First v0.1.0 tag pushed (triggers the release + sign workflows for the first time)
+- [ ] `momentmaker/homebrew-tap` repo created (one-time, by maintainer)
 
 ## v0.1 — Trust + Discovery
 

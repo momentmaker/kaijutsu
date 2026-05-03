@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>kaijutsu — open skills for AI coding agents</title>
+  <meta name="description" content="MIT-licensed, agent-agnostic registry and CLI for AI coding agent skills. One source of truth for Claude, Codex, and Gemini.">
+  <link rel="icon" href="./assets/favicon.ico">
+  <style>
+    :root {
+      --mint: #3DDC97;
+      --rust: #C18450;
+      --ink: #1A1A1A;
+      --paper: #F5EDE0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", sans-serif;
+      background: #fff;
+      color: var(--ink);
+      line-height: 1.5;
+    }
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 4rem 1.5rem;
+      text-align: center;
+    }
+    img.logo {
+      width: 180px;
+      height: 180px;
+    }
+    h1 {
+      font-size: 3rem;
+      margin: 1rem 0 0.5rem;
+      letter-spacing: -0.02em;
+    }
+    p.tagline {
+      font-size: 1.25rem;
+      color: #555;
+      margin-top: 0;
+    }
+    .install {
+      background: var(--paper);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin: 2rem 0;
+      text-align: left;
+      font-family: ui-monospace, "SF Mono", monospace;
+      font-size: 0.95rem;
+      overflow-x: auto;
+    }
+    .links {
+      margin: 2rem 0;
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .links a {
+      color: var(--ink);
+      text-decoration: none;
+      border-bottom: 2px solid var(--mint);
+      padding-bottom: 2px;
+    }
+    .links a:hover {
+      border-bottom-color: var(--rust);
+    }
+    .status {
+      display: inline-block;
+      background: var(--rust);
+      color: #fff;
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    footer {
+      color: #888;
+      font-size: 0.85rem;
+      padding: 2rem 1rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <img src="./assets/logo-256.png" alt="kaijutsu mascot" class="logo">
+    <h1>kaijutsu</h1>
+    <p class="tagline">open skills for AI coding agents</p>
+    <p><span class="status">pre-alpha</span></p>
+
+    <div class="install">
+      <code>curl -fsSL https://kaijutsu.dev/install.sh | sh</code>
+    </div>
+
+    <div class="links">
+      <a href="https://github.com/momentmaker/kaijutsu">GitHub</a>
+      <a href="https://github.com/momentmaker/kaijutsu/blob/main/README.md">README</a>
+      <a href="https://github.com/momentmaker/kaijutsu/blob/main/SCHEMA.md">Schema</a>
+      <a href="https://github.com/momentmaker/kaijutsu/blob/main/ROADMAP.md">Roadmap</a>
+      <a href="https://github.com/momentmaker/kaijutsu/blob/main/CONTRIBUTING.md">Contributing</a>
+    </div>
+
+    <p>
+      One source of truth for Claude Code, OpenAI Codex CLI, and Google Gemini CLI.
+      One CLI <code>jutsu</code>, two install paths
+      (<code>.claude/skills/</code> for Claude; <code>.agents/skills/</code> for Codex + Gemini),
+      three agents covered.
+    </p>
+  </main>
+  <footer>
+    MIT-licensed · maintained by <a href="https://github.com/momentmaker">momentmaker</a>
+  </footer>
+</body>
+</html>

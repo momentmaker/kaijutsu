@@ -11,6 +11,8 @@ import (
 	"github.com/momentmaker/kaijutsu/cli/internal/install"
 	"github.com/momentmaker/kaijutsu/cli/internal/manifest"
 	"github.com/momentmaker/kaijutsu/cli/internal/paths"
+	"github.com/momentmaker/kaijutsu/cli/internal/sign"
+	"github.com/momentmaker/kaijutsu/cli/internal/skill"
 	"github.com/spf13/cobra"
 )
 
@@ -72,6 +74,8 @@ recorded sha256 integrity.`,
 				return err
 			}
 			defer l.cleanup()
+
+			advisorySignerNotice(cmd, l.skill)
 
 			if err := install.Install(l.dir, installRoot, m.Agents, l.skill); err != nil {
 				return err
@@ -243,4 +247,22 @@ func shortRef(ref string) string {
 	}
 	return ref
 }
+
+// advisorySignerNotice emits a warning line when a skill declares an
+// expected-signer but the install path can't (yet) verify the signature.
+// v0 placeholder — once sign-core.yml is publishing signature bundles
+// and skills/core/* declare an expected-signer, this should call
+// sign.VerifyBlob and hard-fail on mismatch.
+func advisorySignerNotice(cmd *cobra.Command, sk *skill.Skill) {
+	if sk.Trust == nil || sk.Trust.ExpectedSigner == "" {
+		return
+	}
+	stderr := cmd.ErrOrStderr()
+	if !sign.Available() {
+		fmt.Fprintf(stderr, "note: %s declares expected-signer %q but cosign is not on PATH; skipping verification.\n", sk.Name, sk.Trust.ExpectedSigner)
+		return
+	}
+	fmt.Fprintf(stderr, "note: %s declares expected-signer %q; v0 verify is a stub (signed releases not yet published).\n", sk.Name, sk.Trust.ExpectedSigner)
+}
+
 

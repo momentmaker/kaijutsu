@@ -1,0 +1,80 @@
+version: 2
+
+project_name: jutsu
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: jutsu
+    main: ./cmd/jutsu
+    binary: jutsu
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/momentmaker/kaijutsu/cli/internal/cli.Version={{ .Version }}
+
+archives:
+  - id: default
+    formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    files:
+      - LICENSE*
+      - README*
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^chore:'
+      - '^test:'
+
+release:
+  github:
+    owner: momentmaker
+    name: kaijutsu
+  draft: false
+  prerelease: auto
+  name_template: "jutsu {{ .Version }}"
+  header: |
+    `jutsu` CLI release {{ .Tag }}.
+
+    Install via Homebrew:
+    ```
+    brew install momentmaker/tap/jutsu
+    ```
+
+    Install via curl:
+    ```
+    curl -fsSL https://kaijutsu.dev/install.sh | sh
+    ```
+
+brews:
+  - name: jutsu
+    repository:
+      owner: momentmaker
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    homepage: https://kaijutsu.dev
+    description: "Open skills for AI coding agents — install, list, and manage skills across Claude, Codex, and Gemini."
+    license: MIT
+    test: |
+      system "#{bin}/jutsu --version"
+    install: |
+      bin.install "jutsu"
