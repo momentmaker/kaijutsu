@@ -33,6 +33,11 @@ brew install momentmaker/tap/jutsu
 # or
 curl -fsSL https://kaijutsu.dev/install.sh | sh
 
+# Uninstall jutsu
+brew uninstall jutsu
+# or
+curl -fsSL https://kaijutsu.dev/uninstall.sh | sh
+
 # In any project
 jutsu init                  # detects which agents you have installed
 jutsu install pr-review     # writes to .claude/skills/ and/or .agents/skills/
