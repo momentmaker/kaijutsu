@@ -15,9 +15,15 @@
   <a href="./CONTRIBUTING.md">Contributing</a>
 </p>
 
+<p align="center">
+  <a href="https://github.com/momentmaker/kaijutsu/releases/latest"><img src="https://img.shields.io/github/v/release/momentmaker/kaijutsu?display_name=tag&color=3DDC97" alt="Latest release"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-3DDC97.svg" alt="License: MIT"></a>
+  <a href="https://github.com/momentmaker/kaijutsu/actions/workflows/lint-skills.yml"><img src="https://github.com/momentmaker/kaijutsu/actions/workflows/lint-skills.yml/badge.svg" alt="Lint skills"></a>
+</p>
+
 ---
 
-> **Status: pre-alpha.** Public scaffolding only. The `jutsu` CLI does not work yet. Star the repo to follow along.
+> **Status: alpha.** v0.1.0 ships the `jutsu` CLI and 9 seed skills. The install paths, skill schema, and command surface are stable for v0.x. Signature verification enforcement and the static catalog at [kaijutsu.dev](https://kaijutsu.dev) are still maturing — see [`ROADMAP.md`](./ROADMAP.md).
 
 ## Why
 
@@ -25,7 +31,7 @@ Skills (markdown + scripts that extend AI coding agents) are exploding across Cl
 
 **kaijutsu** is an MIT-licensed, agent-agnostic registry and CLI for AI agent skills. The CLI is named `jutsu`. One author manifest, two install paths (`.claude/skills/` for Claude, `.agents/skills/` for Codex + Gemini), three agents covered.
 
-## How it will work (v0)
+## Quickstart
 
 ```bash
 # Install jutsu
