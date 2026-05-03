@@ -22,6 +22,9 @@ func TestExtractStripsPathTraversal(t *testing.T) {
 
 func TestExtractRoundTrip(t *testing.T) {
 	tgz := makeTarball(t, []tarEntry{
+		// GitHub tarballs lead with a PAX global header that must be
+		// skipped, otherwise it gets treated as the top-level dir.
+		{name: "pax_global_header", paxGlobal: true},
 		{name: "owner-repo-abc/", isDir: true},
 		{name: "owner-repo-abc/skills/", isDir: true},
 		{name: "owner-repo-abc/skills/decide/", isDir: true},
@@ -45,9 +48,10 @@ func TestExtractRoundTrip(t *testing.T) {
 }
 
 type tarEntry struct {
-	name  string
-	body  string
-	isDir bool
+	name      string
+	body      string
+	isDir     bool
+	paxGlobal bool
 }
 
 func makeTarball(t *testing.T, entries []tarEntry) []byte {
@@ -56,18 +60,27 @@ func makeTarball(t *testing.T, entries []tarEntry) []byte {
 	gz := gzip.NewWriter(&buf)
 	tw := tar.NewWriter(gz)
 	for _, e := range entries {
-		h := &tar.Header{Name: e.name, Mode: 0644, Size: int64(len(e.body))}
-		if e.isDir {
+		var h *tar.Header
+		switch {
+		case e.paxGlobal:
+			h = &tar.Header{Typeflag: tar.TypeXGlobalHeader, PAXRecords: map[string]string{"comment": "global"}}
+		default:
+			h = &tar.Header{Name: e.name, Mode: 0644, Size: int64(len(e.body))}
+		}
+		switch {
+		case e.paxGlobal:
+			// already configured above
+		case e.isDir:
 			h.Typeflag = tar.TypeDir
 			h.Size = 0
 			h.Mode = 0755
-		} else {
+		default:
 			h.Typeflag = tar.TypeReg
 		}
 		if err := tw.WriteHeader(h); err != nil {
 			t.Fatal(err)
 		}
-		if !e.isDir {
+		if !e.isDir && !e.paxGlobal {
 			if _, err := tw.Write([]byte(e.body)); err != nil {
 				t.Fatal(err)
 			}

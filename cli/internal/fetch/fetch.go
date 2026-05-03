@@ -196,12 +196,18 @@ func Extract(tarGzData []byte, dst string) (string, error) {
 		if err != nil {
 			return "", err
 		}
+		// Skip PAX metadata entries; they aren't files and would corrupt
+		// top-level-dir detection if treated as content.
+		if h.Typeflag == tar.TypeXGlobalHeader || h.Typeflag == tar.TypeXHeader {
+			continue
+		}
 		// Path-traversal guard: reject absolute paths and any with "..".
 		clean := filepath.Clean(h.Name)
 		if filepath.IsAbs(clean) || strings.HasPrefix(clean, "..") || strings.Contains(clean, "/../") {
 			return "", fmt.Errorf("tar entry escapes archive root: %q", h.Name)
 		}
-		// Identify top-level dir as the first path segment of the first entry.
+		// Identify top-level dir as the first path segment of the first
+		// real content entry.
 		if top == "" {
 			parts := strings.SplitN(clean, string(filepath.Separator), 2)
 			top = parts[0]
