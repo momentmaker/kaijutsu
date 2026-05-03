@@ -10,9 +10,14 @@ import (
 )
 
 // Active returns the list of agent names whose user-config dirs exist
-// under home. Returns names in stable order: claude, codex, gemini.
+// under $HOME. Returns names in stable order: claude, codex, gemini.
+// If $HOME cannot be determined, returns an empty slice.
 func Active() []string {
-	return ActiveAt(paths.HomeDir())
+	home, err := paths.HomeDir()
+	if err != nil {
+		return nil
+	}
+	return ActiveAt(home)
 }
 
 // ActiveAt is Active scoped to a specific home directory (testable).

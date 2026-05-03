@@ -58,7 +58,11 @@ func newListCmd() *cobra.Command {
 
 func lockfilePathFor(global bool) (string, error) {
 	if global {
-		return filepath.Join(paths.HomeDir(), paths.GlobalConfigDirName, paths.GlobalLockfileFile), nil
+		home, err := paths.HomeDir()
+		if err != nil {
+			return "", err
+		}
+		return filepath.Join(home, paths.GlobalConfigDirName, paths.GlobalLockfileFile), nil
 	}
 	cwd, err := os.Getwd()
 	if err != nil {

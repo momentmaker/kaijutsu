@@ -23,7 +23,10 @@ func newRemoveCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			installRoot, manifestPath, lockPath := resolveTargets(global, cwd)
+			installRoot, manifestPath, lockPath, err := resolveTargets(global, cwd)
+			if err != nil {
+				return err
+			}
 
 			lf, err := manifest.LoadLockfile(lockPath)
 			if err != nil {

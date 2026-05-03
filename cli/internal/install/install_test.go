@@ -40,17 +40,17 @@ func TestInstallCopiesSkillDirToBothFamilies(t *testing.T) {
 
 func TestInstallSingleAgentWritesOneDir(t *testing.T) {
 	tmp := t.TempDir()
-	src := filepath.Join(tmp, "src", "x")
+	src := filepath.Join(tmp, "src", "demo")
 	os.MkdirAll(src, 0755)
 	mustWrite(t, filepath.Join(src, "SKILL.md"), "body")
 
-	sk := &skill.Skill{Name: "x", Agents: []string{"codex", "gemini"}}
+	sk := &skill.Skill{Name: "demo", Agents: []string{"codex", "gemini"}}
 	root := filepath.Join(tmp, "proj")
 	if err := Install(src, root, []string{"codex"}, sk); err != nil {
 		t.Fatal(err)
 	}
 
-	if _, err := os.Stat(filepath.Join(root, ".agents", "skills", "x", "SKILL.md")); err != nil {
+	if _, err := os.Stat(filepath.Join(root, ".agents", "skills", "demo", "SKILL.md")); err != nil {
 		t.Errorf("expected codex install: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".claude")); !os.IsNotExist(err) {
@@ -62,33 +62,50 @@ func TestInstallNoOverlapErrors(t *testing.T) {
 	tmp := t.TempDir()
 	src := filepath.Join(tmp, "skill")
 	os.MkdirAll(src, 0755)
-	sk := &skill.Skill{Name: "x", Agents: []string{"gemini"}}
+	sk := &skill.Skill{Name: "demo", Agents: []string{"gemini"}}
 	if err := Install(src, tmp, []string{"claude"}, sk); err == nil {
 		t.Error("expected error for no overlap, got nil")
 	}
 }
 
+func TestInstallRejectsTraversalName(t *testing.T) {
+	tmp := t.TempDir()
+	src := filepath.Join(tmp, "src")
+	os.MkdirAll(src, 0755)
+	sk := &skill.Skill{Name: "../evil", Agents: []string{"claude"}}
+	if err := Install(src, tmp, []string{"claude"}, sk); err == nil {
+		t.Error("expected validation error for traversal name, got nil")
+	}
+}
+
 func TestRemove(t *testing.T) {
 	tmp := t.TempDir()
-	src := filepath.Join(tmp, "src", "x")
+	src := filepath.Join(tmp, "src", "demo")
 	os.MkdirAll(src, 0755)
 	mustWrite(t, filepath.Join(src, "SKILL.md"), "body")
 
-	sk := &skill.Skill{Name: "x", Agents: []string{"claude", "codex"}}
+	sk := &skill.Skill{Name: "demo", Agents: []string{"claude", "codex"}}
 	root := filepath.Join(tmp, "proj")
 	if err := Install(src, root, []string{"claude", "codex"}, sk); err != nil {
 		t.Fatal(err)
 	}
-	if err := Remove(root, "x", []string{"claude", "codex"}); err != nil {
+	if err := Remove(root, "demo", []string{"claude", "codex"}); err != nil {
 		t.Fatal(err)
 	}
 	for _, p := range []string{
-		filepath.Join(root, ".claude", "skills", "x"),
-		filepath.Join(root, ".agents", "skills", "x"),
+		filepath.Join(root, ".claude", "skills", "demo"),
+		filepath.Join(root, ".agents", "skills", "demo"),
 	} {
 		if _, err := os.Stat(p); !os.IsNotExist(err) {
 			t.Errorf("%s should be removed, got %v", p, err)
 		}
+	}
+}
+
+func TestRemoveRejectsTraversalName(t *testing.T) {
+	tmp := t.TempDir()
+	if err := Remove(tmp, "../evil", []string{"claude"}); err == nil {
+		t.Error("expected validation error, got nil")
 	}
 }
 

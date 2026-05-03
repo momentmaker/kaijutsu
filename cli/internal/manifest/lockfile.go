@@ -2,6 +2,7 @@ package manifest
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 )
@@ -45,6 +46,22 @@ func LoadLockfile(path string) (*Lockfile, error) {
 		lf.Skills = map[string]LockEntry{}
 	}
 	return &lf, nil
+}
+
+// Validate returns an error if the lockfile is structurally invalid.
+func (lf *Lockfile) Validate() error {
+	if lf.Version != SchemaVersion {
+		return errors.New("invalid version")
+	}
+	for name, entry := range lf.Skills {
+		if entry.Source == "" {
+			return fmt.Errorf("skill %q: source is required", name)
+		}
+		if entry.Ref == "" {
+			return fmt.Errorf("skill %q: ref is required", name)
+		}
+	}
+	return nil
 }
 
 func (lf *Lockfile) Save(path string) error {

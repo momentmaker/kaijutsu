@@ -59,3 +59,19 @@ func TestManifestValidate(t *testing.T) {
 		t.Errorf("expected invalid (no agents), got nil")
 	}
 }
+
+func TestLockfileValidate(t *testing.T) {
+	lf := NewLockfile([]string{"claude"})
+	if err := lf.Validate(); err != nil {
+		t.Errorf("empty lockfile should validate, got %v", err)
+	}
+	v := "1.0.0"
+	lf.Skills["foo"] = LockEntry{Version: &v} // missing source + ref
+	if err := lf.Validate(); err == nil {
+		t.Errorf("expected error for missing source/ref")
+	}
+	bad := &Lockfile{Version: 99}
+	if err := bad.Validate(); err == nil {
+		t.Errorf("expected error for bad version")
+	}
+}

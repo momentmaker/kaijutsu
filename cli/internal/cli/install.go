@@ -49,7 +49,10 @@ the KAIJUTSU_REGISTRY env var, or run from inside a kaijutsu monorepo
 				return err
 			}
 
-			installRoot, manifestPath, lockPath := resolveTargets(global, cwd)
+			installRoot, manifestPath, lockPath, err := resolveTargets(global, cwd)
+			if err != nil {
+				return err
+			}
 
 			m, err := loadOrInitManifest(manifestPath, global)
 			if err != nil {
@@ -65,6 +68,9 @@ the KAIJUTSU_REGISTRY env var, or run from inside a kaijutsu monorepo
 				return err
 			}
 
+			// Keep lockfile.Agents in sync with the manifest so subsequent
+			// `jutsu remove` cleans every directory the install touched.
+			lf.Agents = m.Agents
 			m.Dependencies[sk.Name] = "^" + sk.Version
 			v := sk.Version
 			lf.Skills[sk.Name] = manifest.LockEntry{
@@ -103,11 +109,16 @@ func resolveRegistry(flag, cwd string) (string, error) {
 	return "", errors.New("no registry source: pass --registry, set KAIJUTSU_REGISTRY, or run from inside a kaijutsu monorepo")
 }
 
-func resolveTargets(global bool, cwd string) (installRoot, manifestPath, lockPath string) {
+func resolveTargets(global bool, cwd string) (installRoot, manifestPath, lockPath string, err error) {
 	if global {
-		installRoot = paths.HomeDir()
+		installRoot, err = paths.HomeDir()
+		if err != nil {
+			return "", "", "", err
+		}
 		dir := filepath.Join(installRoot, paths.GlobalConfigDirName)
-		_ = os.MkdirAll(dir, 0755)
+		if err = os.MkdirAll(dir, 0755); err != nil {
+			return "", "", "", err
+		}
 		manifestPath = filepath.Join(dir, paths.GlobalManifestFile)
 		lockPath = filepath.Join(dir, paths.GlobalLockfileFile)
 		return

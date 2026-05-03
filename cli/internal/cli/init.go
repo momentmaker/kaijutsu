@@ -29,9 +29,8 @@ func newInitCmd() *cobra.Command {
 			}
 
 			active := detect.Active()
-			out := cmd.OutOrStdout()
 			if len(active) == 0 {
-				fmt.Fprintln(out, "warning: no AI agent config dirs detected (~/.claude, ~/.codex, ~/.gemini); defaulting to [claude]")
+				fmt.Fprintln(cmd.ErrOrStderr(), "warning: no AI agent config dirs detected (~/.claude, ~/.codex, ~/.gemini); defaulting to [claude]")
 				active = []string{"claude"}
 			}
 
@@ -43,7 +42,7 @@ func newInitCmd() *cobra.Command {
 			if err := lf.Save(lockPath); err != nil {
 				return err
 			}
-			fmt.Fprintf(out, "Created kaijutsu.json with agents: %v\n", active)
+			fmt.Fprintf(cmd.OutOrStdout(), "Created kaijutsu.json with agents: %v\n", active)
 			return nil
 		},
 	}

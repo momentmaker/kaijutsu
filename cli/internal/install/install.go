@@ -17,6 +17,9 @@ import (
 // install destination implied by activeAgents ∩ skill.agents, beneath
 // installRoot. Existing destinations are replaced.
 func Install(srcDir, installRoot string, activeAgents []string, sk *skill.Skill) error {
+	if err := skill.ValidateName(sk.Name); err != nil {
+		return err
+	}
 	targets := intersect(activeAgents, sk.Agents)
 	if len(targets) == 0 {
 		return fmt.Errorf("no overlap between active agents %v and skill's supported agents %v", activeAgents, sk.Agents)
@@ -37,8 +40,11 @@ func Install(srcDir, installRoot string, activeAgents []string, sk *skill.Skill)
 }
 
 // Remove deletes the named skill from each install destination implied by
-// the given agents.
+// the given agents. skillName is validated as a path-safe identifier.
 func Remove(installRoot, skillName string, agents []string) error {
+	if err := skill.ValidateName(skillName); err != nil {
+		return err
+	}
 	for _, dest := range destinations(installRoot, agents) {
 		full := filepath.Join(dest, skillName)
 		if err := os.RemoveAll(full); err != nil {

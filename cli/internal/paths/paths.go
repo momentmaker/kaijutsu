@@ -27,13 +27,9 @@ const (
 	GlobalLockfileFile  = "global.lock.json"
 )
 
-// HomeDir returns the user's home directory or panics.
-func HomeDir() string {
-	h, err := os.UserHomeDir()
-	if err != nil {
-		panic(err)
-	}
-	return h
+// HomeDir returns the user's home directory.
+func HomeDir() (string, error) {
+	return os.UserHomeDir()
 }
 
 // AgentSkillsDir returns the path where the given agent expects skills,

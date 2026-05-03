@@ -5,9 +5,25 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 
 	"gopkg.in/yaml.v3"
 )
+
+// NamePattern is the regex skill names must match. Mirrors the JSON Schema
+// constraint in schemas/skill.schema.json. Constraining names this tightly
+// is also a security boundary: skill.Name is used as a filesystem path
+// component during install and remove, so disallowing slashes and dots
+// prevents path traversal via a malicious skill.yaml.
+var NamePattern = regexp.MustCompile(`^[a-z][a-z0-9-]*[a-z0-9]$`)
+
+// ValidateName returns an error if name fails NamePattern.
+func ValidateName(name string) error {
+	if !NamePattern.MatchString(name) {
+		return fmt.Errorf("invalid skill name %q: must match %s", name, NamePattern.String())
+	}
+	return nil
+}
 
 type Permissions struct {
 	Bash    bool        `yaml:"bash"`
@@ -59,6 +75,9 @@ func Load(path string) (*Skill, error) {
 func (s *Skill) Validate() error {
 	if s.Name == "" {
 		return errors.New("skill.yaml: name is required")
+	}
+	if err := ValidateName(s.Name); err != nil {
+		return fmt.Errorf("skill.yaml: %w", err)
 	}
 	if s.Version == "" {
 		return errors.New("skill.yaml: version is required")
