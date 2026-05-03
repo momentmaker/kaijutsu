@@ -69,8 +69,16 @@ Most skills only need a single `SKILL.md`. For the rare cases where Claude and C
 
 See [`CONTRIBUTING.md`](./CONTRIBUTING.md). Skill authors can submit a PR to `skills/community/` or register a third-party repo in `registry/index.json`. All contributions must be MIT-licensed (or compatible: BSD-2/3, ISC, Apache-2.0).
 
+## What "kaijutsu" means
+
+Three readings, layered:
+
+1. **Open skills** *(primary)* — `kai` (開, "open") + `jutsu` (術, "skill / technique"). An open registry of agentic skills, free for any AI agent to consume.
+2. **Beast of techniques** — `kaiju` (怪獣, "strange beast") + `jutsu`. A nod to the chibi monster mascot. Open-source agents are wild creatures of capability waiting to be tamed and shared.
+3. **Kaizen-jutsu** — short for *kaizen-no-jutsu*, "techniques of continuous improvement." A system of techniques varying in intensity and effort to make oneself better and stronger toward the state of **optimum improvement**, lived by a regret-minimization framework.
+
+The primary meaning is *open skills*. The other readings are happy resonances.
+
 ## License
 
 MIT. See [`LICENSE`](./LICENSE).
-
-The name *kaijutsu* is a play on **kaiju** (怪獣, "strange beast") and **jutsu** (術, "technique") — also reads as "open / mysterious arts." The mascot is an original chibi monster, unaffiliated with Toho's Kaiju properties.
