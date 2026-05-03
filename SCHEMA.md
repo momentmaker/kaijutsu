@@ -141,6 +141,7 @@ Pinned, reproducible resolution. Committed to source control. Updated by `jutsu 
       "version": "1.2.0",
       "source": "momentmaker/kaijutsu",
       "ref": "abc123def456...",
+      "path": "skills/core/pr-review",
       "integrity": "sha256-..."
     },
     "weird-thirdparty-skill": {
@@ -154,7 +155,8 @@ Pinned, reproducible resolution. Committed to source control. Updated by `jutsu 
 ```
 
 - **`version: null`** means the upstream source has no semver tag; the lockfile pins to a commit SHA.
-- **`integrity`** is a SHA-256 of the fetched tarball. The CLI re-fetches and re-hashes on every install for verification.
+- **`path`** is the directory inside the source repo where the skill lives (omitted for repo-root layouts).
+- **`integrity`** is a base64-encoded SHA-256 of the fetched tarball, prefixed `sha256-`. The CLI re-fetches and re-hashes on every sync to verify reproducibility.
 
 ---
 

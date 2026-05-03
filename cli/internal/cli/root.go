@@ -21,6 +21,7 @@ func NewRootCmd() *cobra.Command {
 		newInstallCmd(),
 		newListCmd(),
 		newRemoveCmd(),
+		newUpgradeCmd(),
 	)
 	return root
 }

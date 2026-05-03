@@ -8,10 +8,15 @@ import (
 )
 
 // LockEntry pins a single skill to a specific source + ref + content hash.
+// Path is the directory inside the source repo where the skill lives;
+// empty means the skill is at the repo root (used by single-skill third-party
+// repos). Populated from registry/index.json or set to "skills/core/<name>"
+// for the default kaijutsu monorepo.
 type LockEntry struct {
 	Version   *string `json:"version"`
 	Source    string  `json:"source"`
 	Ref       string  `json:"ref"`
+	Path      string  `json:"path,omitempty"`
 	Integrity string  `json:"integrity"`
 }
 

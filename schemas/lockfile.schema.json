@@ -31,7 +31,11 @@
           "ref": {
             "type": "string",
             "minLength": 7,
-            "description": "Git commit SHA the lockfile pins to."
+            "description": "Git commit SHA the lockfile pins to (or 'local' for --registry mode)."
+          },
+          "path": {
+            "type": "string",
+            "description": "Directory inside the source repo where the skill lives (e.g., 'skills/core/decide'). Empty for repo-root layouts."
           },
           "integrity": {
             "type": "string",
