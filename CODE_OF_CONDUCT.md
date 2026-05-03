@@ -6,4 +6,4 @@ The full text is available at the link above. By participating in this project, 
 
 ## Reporting
 
-To report a violation, email the maintainer at **zendosoul@gmail.com** with subject line `kaijutsu CoC report`. Reports are confidential.
+To report a violation, email the maintainer at **gh@fz.ax** with subject line `kaijutsu CoC report`. Reports are confidential.
