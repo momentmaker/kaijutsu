@@ -99,12 +99,7 @@ func loadRemote(ctx context.Context, fetcher *fetch.Fetcher, defaultRegistry, sk
 	if res.Path != "" {
 		skillDir = filepath.Join(top, filepath.FromSlash(res.Path))
 	}
-	yamlPath := filepath.Join(skillDir, "skill.yaml")
-	if _, err := os.Stat(yamlPath); err != nil {
-		cleanup()
-		return nil, fmt.Errorf("skill.yaml not found at %s in %s@%s", res.Path, res.Source, ref)
-	}
-	sk, err := skill.Load(yamlPath)
+	sk, err := loadSkillOrSynthesize(skillDir, top, skillName, res.Source.String(), ref)
 	if err != nil {
 		cleanup()
 		return nil, err
@@ -120,6 +115,45 @@ func loadRemote(ctx context.Context, fetcher *fetch.Fetcher, defaultRegistry, sk
 		hash:    integrity,
 		cleanup: cleanup,
 	}, nil
+}
+
+// loadSkillOrSynthesize tries skill.yaml first; if absent, falls back to
+// synthesizing a minimal Skill from the SKILL.md frontmatter (vanilla
+// Anthropic Agent Skills compat — used for installing skills from
+// collections like addyosmani/agent-skills that ship only SKILL.md).
+//
+// Synthesized skills get safe defaults (bash=false, network=false,
+// fs-write=false, hooks=false) and the repo LICENSE is checked against
+// the kaijutsu compatibility allowlist. Caller should call
+// noteSynthesized to surface the safe-defaults disclaimer to the user.
+func loadSkillOrSynthesize(skillDir, repoTop, skillName, src, ref string) (*skill.Skill, error) {
+	yamlPath := filepath.Join(skillDir, "skill.yaml")
+	if _, err := os.Stat(yamlPath); err == nil {
+		return skill.Load(yamlPath)
+	}
+	skillMDPath := filepath.Join(skillDir, "SKILL.md")
+	if _, err := os.Stat(skillMDPath); err != nil {
+		return nil, fmt.Errorf("neither skill.yaml nor SKILL.md found at %s in %s@%s", skillDir, src, ref)
+	}
+	licensePath := ""
+	for _, candidate := range []string{"LICENSE", "LICENSE.md", "LICENSE.txt"} {
+		p := filepath.Join(repoTop, candidate)
+		if _, err := os.Stat(p); err == nil {
+			licensePath = p
+			break
+		}
+	}
+	sk, err := skill.SynthesizeFromSKILLMD(skillMDPath, licensePath)
+	if err != nil {
+		return nil, err
+	}
+	// The skill name encoded in the install command (skillName) and the
+	// frontmatter name should match; if they don't, the user typoed or
+	// the registry index points at the wrong path.
+	if sk.Name != skillName {
+		return nil, fmt.Errorf("synthesize: SKILL.md frontmatter name %q does not match install request %q", sk.Name, skillName)
+	}
+	return sk, nil
 }
 
 // loadByLockEntry re-fetches a skill at a previously-pinned ref and verifies
@@ -162,20 +196,22 @@ func loadByLockEntry(ctx context.Context, fetcher *fetch.Fetcher, skillName, src
 		filepath.Join(top, "skills", "core", skillName),
 		top,
 	)
-	var skillDir, yamlPath string
+	var skillDir string
 	for _, c := range candidates {
-		yp := filepath.Join(c, "skill.yaml")
-		if _, err := os.Stat(yp); err == nil {
+		if _, err := os.Stat(filepath.Join(c, "skill.yaml")); err == nil {
 			skillDir = c
-			yamlPath = yp
+			break
+		}
+		if _, err := os.Stat(filepath.Join(c, "SKILL.md")); err == nil {
+			skillDir = c
 			break
 		}
 	}
 	if skillDir == "" {
 		cleanup()
-		return nil, fmt.Errorf("skill.yaml not found for %s in fetched tarball", skillName)
+		return nil, fmt.Errorf("neither skill.yaml nor SKILL.md found for %s in fetched tarball", skillName)
 	}
-	sk, err := skill.Load(yamlPath)
+	sk, err := loadSkillOrSynthesize(skillDir, top, skillName, parsed.String(), ref)
 	if err != nil {
 		cleanup()
 		return nil, err

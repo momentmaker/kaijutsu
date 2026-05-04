@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -104,6 +105,115 @@ func Load(path string) (*Skill, error) {
 		return nil, err
 	}
 	return &s, nil
+}
+
+// SynthesizeFromSKILLMD reads a vanilla SKILL.md (Anthropic Agent Skills
+// standard — frontmatter + body, no kaijutsu skill.yaml alongside) and
+// synthesizes a minimal Skill with safe defaults: bash=false,
+// network=false, fs-write=false, hooks=false. license is read from the
+// repo's LICENSE file (passed via repoLicensePath; "" disables the
+// license check). Used by the installer's vanilla-SKILL compat mode for
+// installing skills from collections like addyosmani/agent-skills that
+// ship only SKILL.md files.
+//
+// The returned Skill carries `synthesized: true` semantics — callers
+// must surface this to the user (the safe-defaults disclaimer) before
+// installing.
+func SynthesizeFromSKILLMD(skillMDPath, repoLicensePath string) (*Skill, error) {
+	data, err := os.ReadFile(skillMDPath)
+	if err != nil {
+		return nil, err
+	}
+	name, description, err := parseSkillMDFrontmatter(data)
+	if err != nil {
+		return nil, fmt.Errorf("parse %s frontmatter: %w", skillMDPath, err)
+	}
+	if err := ValidateName(name); err != nil {
+		return nil, fmt.Errorf("synthesize: invalid name in SKILL.md frontmatter: %w", err)
+	}
+	license := "MIT"
+	if repoLicensePath != "" {
+		licStr, err := detectLicense(repoLicensePath)
+		if err != nil {
+			return nil, fmt.Errorf("synthesize: license detection failed: %w", err)
+		}
+		license = licStr
+	}
+	return &Skill{
+		Name:        name,
+		Version:     "0.0.0",
+		License:     license,
+		Layout:      "flat",
+		Description: description,
+		Agents:      []string{"claude", "codex", "gemini"},
+		Permissions: Permissions{
+			Bash:    false,
+			Network: false,
+			FsWrite: false,
+			Hooks:   false,
+		},
+	}, nil
+}
+
+// parseSkillMDFrontmatter extracts name + description from a YAML
+// frontmatter block at the top of a markdown file. Returns an error if
+// the file lacks frontmatter or required fields.
+func parseSkillMDFrontmatter(data []byte) (name, description string, err error) {
+	const delim = "---"
+	body := string(data)
+	if !strings.HasPrefix(strings.TrimSpace(body), delim) {
+		return "", "", errors.New("no YAML frontmatter")
+	}
+	// Skip leading whitespace then the opening ---
+	idx := strings.Index(body, delim)
+	if idx < 0 {
+		return "", "", errors.New("no opening frontmatter delimiter")
+	}
+	rest := body[idx+len(delim):]
+	close := strings.Index(rest, "\n"+delim)
+	if close < 0 {
+		return "", "", errors.New("no closing frontmatter delimiter")
+	}
+	front := rest[:close]
+	var meta struct {
+		Name        string `yaml:"name"`
+		Description string `yaml:"description"`
+	}
+	if err := yaml.Unmarshal([]byte(front), &meta); err != nil {
+		return "", "", err
+	}
+	if meta.Name == "" {
+		return "", "", errors.New("frontmatter missing name")
+	}
+	if meta.Description == "" {
+		return "", "", errors.New("frontmatter missing description")
+	}
+	return meta.Name, meta.Description, nil
+}
+
+// detectLicense reads a LICENSE file and returns the SPDX-ish identifier
+// for the kaijutsu compatibility allowlist (MIT, BSD-2-Clause,
+// BSD-3-Clause, ISC, Apache-2.0). Falls back to "MIT" when only marker
+// text is present without an explicit SPDX header.
+func detectLicense(path string) (string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	body := strings.ToLower(string(data))
+	switch {
+	case strings.Contains(body, "mit license"):
+		return "MIT", nil
+	case strings.Contains(body, "apache license"):
+		return "Apache-2.0", nil
+	case strings.Contains(body, "bsd 2-clause"):
+		return "BSD-2-Clause", nil
+	case strings.Contains(body, "bsd 3-clause"):
+		return "BSD-3-Clause", nil
+	case strings.Contains(body, "isc license"):
+		return "ISC", nil
+	}
+	return "", fmt.Errorf("license at %s is not in the kaijutsu compatibility allowlist (MIT / BSD-2/3 / ISC / Apache-2.0)", path)
 }
 
 func (s *Skill) Validate() error {

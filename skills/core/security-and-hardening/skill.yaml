@@ -1,0 +1,21 @@
+name: security-and-hardening
+version: 0.1.0
+license: MIT
+layout: flat
+description: "OWASP-Top-10-aware security review. Sweep the diff (or a target file set) for injection, auth gaps, deserialization risks, broken access control, sensitive data exposure, security misconfig, and supply-chain trust. Composes blunder-hunt's hostile-input lens."
+author: "Addy Osmani (originally) — adapted by kaijutsu maintainers"
+homepage: https://kaijutsu.dev/skills/security-and-hardening
+repository: https://github.com/momentmaker/kaijutsu
+upstream: https://github.com/addyosmani/agent-skills/blob/main/skills/security-and-hardening
+tags: [security, owasp, hardening, review, addyosmani]
+
+agents: [claude, codex, gemini]
+
+permissions:
+  bash: true
+  network: true
+  fs-write: false
+
+deps:
+  skills:
+    - blunder-hunt@^0.2

@@ -1,4 +1,65 @@
 {
   "version": 1,
-  "skills": {}
+  "skills": {
+    "idea-refine": {
+      "source": "github.com/addyosmani/agent-skills",
+      "path": "skills/idea-refine"
+    },
+    "context-engineering": {
+      "source": "github.com/addyosmani/agent-skills",
+      "path": "skills/context-engineering"
+    },
+    "source-driven-development": {
+      "source": "github.com/addyosmani/agent-skills",
+      "path": "skills/source-driven-development"
+    },
+    "frontend-ui-engineering": {
+      "source": "github.com/addyosmani/agent-skills",
+      "path": "skills/frontend-ui-engineering"
+    },
+    "api-and-interface-design": {
+      "source": "github.com/addyosmani/agent-skills",
+      "path": "skills/api-and-interface-design"
+    },
+    "browser-testing-with-devtools": {
+      "source": "github.com/addyosmani/agent-skills",
+      "path": "skills/browser-testing-with-devtools"
+    },
+    "debugging-and-error-recovery": {
+      "source": "github.com/addyosmani/agent-skills",
+      "path": "skills/debugging-and-error-recovery"
+    },
+    "code-review-and-quality": {
+      "source": "github.com/addyosmani/agent-skills",
+      "path": "skills/code-review-and-quality"
+    },
+    "performance-optimization": {
+      "source": "github.com/addyosmani/agent-skills",
+      "path": "skills/performance-optimization"
+    },
+    "test-driven-development": {
+      "source": "github.com/addyosmani/agent-skills",
+      "path": "skills/test-driven-development"
+    },
+    "git-workflow-and-versioning": {
+      "source": "github.com/addyosmani/agent-skills",
+      "path": "skills/git-workflow-and-versioning"
+    },
+    "ci-cd-and-automation": {
+      "source": "github.com/addyosmani/agent-skills",
+      "path": "skills/ci-cd-and-automation"
+    },
+    "deprecation-and-migration": {
+      "source": "github.com/addyosmani/agent-skills",
+      "path": "skills/deprecation-and-migration"
+    },
+    "documentation-and-adrs": {
+      "source": "github.com/addyosmani/agent-skills",
+      "path": "skills/documentation-and-adrs"
+    },
+    "shipping-and-launch": {
+      "source": "github.com/addyosmani/agent-skills",
+      "path": "skills/shipping-and-launch"
+    }
+  }
 }

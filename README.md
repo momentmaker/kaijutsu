@@ -108,6 +108,15 @@ curl -fsSL https://kaijutsu.dev/install.sh | GITHUB_TOKEN=$(gh auth token) sh
 
 You're on `v0.2.0`, which shipped broken transitive dep constraints. Upgrade to `v0.2.1` or later (`brew upgrade jutsu` or re-run `install.sh`).
 
+## Recommended collections
+
+kaijutsu is intentionally not the *only* skill source. We bundle a tight set under `skills/core/` (meta-process, primitives, safety) and adapt a handful of high-leverage skills from peer collections under MIT attribution:
+
+- **[`addyosmani/agent-skills`](https://github.com/addyosmani/agent-skills)** — Addy Osmani's 20-skill SDLC framework (Define / Plan / Build / Verify / Review / Ship / Simplify). 5 of these are ported into our `skills/core/` with attribution: `spec-driven-development`, `planning-and-task-breakdown`, `security-and-hardening`, `code-simplification`, `incremental-implementation`. The remaining 15 are referenced in `registry/index.json` and installable via `jutsu install addyosmani/<skill>` (v0.3 vanilla-SKILL.md compat mode).
+- **[Anthropic Agent Skills](https://agentskills.io)** — the open standard our schema extends. Any skill that follows the SKILL.md frontmatter convention is installable via kaijutsu, agent-agnostic.
+
+Full attribution + license accounting in [`NOTICE.md`](./NOTICE.md).
+
 ## Contributing
 
 See [`CONTRIBUTING.md`](./CONTRIBUTING.md). Skill authors can submit a PR to `skills/community/` or register a third-party repo in `registry/index.json`. All contributions must be MIT-licensed (or compatible: BSD-2/3, ISC, Apache-2.0).
