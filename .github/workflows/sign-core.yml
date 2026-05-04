@@ -14,8 +14,6 @@ on:
   workflow_run:
     workflows: ["Release jutsu"]
     types: [completed]
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       tag:
