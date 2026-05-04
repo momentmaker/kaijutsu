@@ -14,110 +14,744 @@
   <style>
     :root {
       --mint: #3DDC97;
+      --mint-dark: #2BB37C;
       --rust: #C18450;
       --ink: #1A1A1A;
       --paper: #F5EDE0;
+      --bg: #FFFFFF;
+      --border: #E5E5E5;
+      --muted: #6B6B6B;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", sans-serif;
-      background: #fff;
+      background: var(--bg);
       color: var(--ink);
-      line-height: 1.5;
+      line-height: 1.55;
     }
-    main {
-      max-width: 720px;
-      margin: 0 auto;
-      padding: 4rem 1.5rem;
+    a { color: var(--mint-dark); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .container { max-width: 1080px; margin: 0 auto; padding: 32px 20px; }
+    header {
       text-align: center;
+      padding: 48px 20px 32px;
+      background: linear-gradient(180deg, rgba(61, 220, 151, 0.08), transparent);
     }
-    img.logo {
-      width: 180px;
-      height: 180px;
-    }
+    header img { width: 160px; height: 160px; }
     h1 {
-      font-size: 3rem;
-      margin: 1rem 0 0.5rem;
+      font-size: clamp(32px, 5vw, 56px);
+      margin: 16px 0 8px;
       letter-spacing: -0.02em;
     }
-    p.tagline {
-      font-size: 1.25rem;
-      color: #555;
-      margin-top: 0;
+    .tagline {
+      font-size: 18px;
+      color: var(--muted);
+      margin: 0 auto 24px;
+      max-width: 680px;
     }
     .install {
-      background: var(--paper);
-      border-radius: 12px;
-      padding: 1.5rem;
-      margin: 2rem 0;
-      text-align: left;
-      font-family: ui-monospace, "SF Mono", monospace;
-      font-size: 0.95rem;
-      overflow-x: auto;
-    }
-    .links {
-      margin: 2rem 0;
-      display: flex;
-      gap: 1rem;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-    .links a {
-      color: var(--ink);
-      text-decoration: none;
-      border-bottom: 2px solid var(--mint);
-      padding-bottom: 2px;
-    }
-    .links a:hover {
-      border-bottom-color: var(--rust);
-    }
-    .status {
-      display: inline-block;
-      background: var(--rust);
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      background: var(--ink);
       color: #fff;
-      padding: 0.25rem 0.75rem;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 14px;
+      cursor: pointer;
+      user-select: text;
+    }
+    .install code { color: var(--mint); }
+    .install button {
+      background: var(--mint);
+      color: var(--ink);
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .quick-links {
+      margin-top: 16px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .quick-links a { margin: 0 6px; }
+    .controls {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .controls input[type="search"] {
+      flex: 1 1 280px;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 15px;
+    }
+    .controls input[type="search"]:focus {
+      outline: none;
+      border-color: var(--mint);
+      box-shadow: 0 0 0 3px rgba(61, 220, 151, 0.2);
+    }
+    .filter-group { display: flex; gap: 6px; flex-wrap: wrap; }
+    .filter {
+      padding: 8px 14px;
+      border: 1px solid var(--border);
       border-radius: 999px;
-      font-size: 0.8rem;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
+      background: #fff;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .filter.active {
+      background: var(--ink);
+      color: #fff;
+      border-color: var(--ink);
+    }
+    .stats {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: border-color 0.15s, transform 0.15s;
+    }
+    .card:hover {
+      border-color: var(--mint);
+      transform: translateY(-1px);
+    }
+    .card h3 {
+      margin: 0;
+      font-size: 18px;
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+    }
+    .card .desc {
+      font-size: 14px;
+      color: #333;
+      flex: 1;
+    }
+    .card .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .badge-core { background: rgba(61, 220, 151, 0.15); color: var(--mint-dark); }
+    .badge-third { background: rgba(193, 132, 80, 0.15); color: var(--rust); }
+    .badge-hooks { background: rgba(26, 26, 26, 0.08); color: var(--ink); }
+    .agents { color: var(--muted); }
+    .card-install {
+      font-family: ui-monospace, monospace;
+      font-size: 12px;
+      background: var(--paper);
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      user-select: all;
     }
     footer {
-      color: #888;
-      font-size: 0.85rem;
-      padding: 2rem 1rem;
+      margin: 64px auto 32px;
+      padding: 24px 20px;
       text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      border-top: 1px solid var(--border);
+    }
+    footer a { color: var(--ink); }
+    .empty {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--muted);
+      font-style: italic;
     }
   </style>
 </head>
 <body>
-  <main>
-    <img src="./assets/logo-256.png" alt="kaijutsu mascot" class="logo">
-    <h1>kaijutsu</h1>
-    <p class="tagline">open skills for AI coding agents</p>
-    <p><span class="status">pre-alpha</span></p>
 
-    <div class="install">
-      <code>curl -fsSL https://kaijutsu.dev/install.sh | sh</code>
+<header>
+  <img src="/web-app-manifest-192x192.png" alt="kaijutsu mascot">
+  <h1>kaijutsu</h1>
+  <p class="tagline">Open skills for AI coding agents. Install once, run on Claude Code, Codex, Gemini — all from the same registry.</p>
+  <div class="install" onclick="navigator.clipboard.writeText('curl -fsSL https://kaijutsu.dev/install.sh | sh')" title="Click to copy">
+    <code>curl -fsSL https://kaijutsu.dev/install.sh | sh</code>
+    <button>Copy</button>
+  </div>
+  <div class="quick-links">
+    <a href="https://github.com/momentmaker/kaijutsu">GitHub</a> ·
+    <a href="https://github.com/momentmaker/kaijutsu/blob/main/README.md">README</a> ·
+    <a href="https://github.com/momentmaker/kaijutsu/blob/main/SCHEMA.md">Schema</a> ·
+    <a href="https://github.com/momentmaker/kaijutsu/blob/main/ROADMAP.md">Roadmap</a> ·
+    <a href="https://github.com/momentmaker/kaijutsu/blob/main/SECURITY.md">Security</a> ·
+    <a href="/skills.json">skills.json</a>
+  </div>
+</header>
+
+<main class="container">
+  <div class="controls">
+    <input type="search" id="search" placeholder="Search skills by name, description, tag…" autocomplete="off">
+    <div class="filter-group" id="filters">
+      <button class="filter active" data-filter="all">All (37)</button>
+      <button class="filter" data-filter="core">Core</button>
+      <button class="filter" data-filter="third-party">Third-party</button>
+      <button class="filter" data-filter="hooks">Hooks</button>
     </div>
+  </div>
+  <p class="stats" id="stats">Showing all 37 skills.</p>
 
-    <div class="links">
-      <a href="https://github.com/momentmaker/kaijutsu">GitHub</a>
-      <a href="https://github.com/momentmaker/kaijutsu/blob/main/README.md">README</a>
-      <a href="https://github.com/momentmaker/kaijutsu/blob/main/SCHEMA.md">Schema</a>
-      <a href="https://github.com/momentmaker/kaijutsu/blob/main/ROADMAP.md">Roadmap</a>
-      <a href="https://github.com/momentmaker/kaijutsu/blob/main/CONTRIBUTING.md">Contributing</a>
-    </div>
+  <div class="grid" id="grid">
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="agent-doctor Diagnostic &#43; cleanup tool for AI agent state directories. Audits ~/.claude, ~/.codex, ~/.gemini, ~/.agents; surfaces stale sessions, orphaned cache, broken hook refs; reclaims space safely (trash-not-delete, 30-day recovery). maintenance cleanup disk-space claude codex gemini">
+      <div class="row">
+        <h3>agent-doctor<span style="color:var(--muted);font-weight:normal"> 0.1.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Diagnostic &#43; cleanup tool for AI agent state directories. Audits ~/.claude, ~/.codex, ~/.gemini, ~/.agents; surfaces stale sessions, orphaned cache, broken hook refs; reclaims space safely (trash-not-delete, 30-day recovery).</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install agent-doctor')" title="Click to copy">jutsu install agent-doctor</div>
+    </article>
+    
+    <article class="card" data-source="third-party" data-hooks="false" data-search="api-and-interface-design Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install api-and-interface-design`.  claude codex gemini">
+      <div class="row">
+        <h3>api-and-interface-design</h3>
+        <span class="badge badge-third">THIRD-PARTY</span>
+      </div>
+      <p class="desc">Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install api-and-interface-design`.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install api-and-interface-design')" title="Click to copy">jutsu install api-and-interface-design</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="blunder-hunt Multi-pass adversarial critique. Run a skeptic review N times in fresh contexts (optionally in parallel via dispatch-parallel); deduplicate; surface only issues that survive. primitive review adversarial claude codex gemini">
+      <div class="row">
+        <h3>blunder-hunt<span style="color:var(--muted);font-weight:normal"> 0.2.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Multi-pass adversarial critique. Run a skeptic review N times in fresh contexts (optionally in parallel via dispatch-parallel); deduplicate; surface only issues that survive.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install blunder-hunt')" title="Click to copy">jutsu install blunder-hunt</div>
+    </article>
+    
+    <article class="card" data-source="third-party" data-hooks="false" data-search="browser-testing-with-devtools Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install browser-testing-with-devtools`.  claude codex gemini">
+      <div class="row">
+        <h3>browser-testing-with-devtools</h3>
+        <span class="badge badge-third">THIRD-PARTY</span>
+      </div>
+      <p class="desc">Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install browser-testing-with-devtools`.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install browser-testing-with-devtools')" title="Click to copy">jutsu install browser-testing-with-devtools</div>
+    </article>
+    
+    <article class="card" data-source="third-party" data-hooks="false" data-search="ci-cd-and-automation Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install ci-cd-and-automation`.  claude codex gemini">
+      <div class="row">
+        <h3>ci-cd-and-automation</h3>
+        <span class="badge badge-third">THIRD-PARTY</span>
+      </div>
+      <p class="desc">Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install ci-cd-and-automation`.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install ci-cd-and-automation')" title="Click to copy">jutsu install ci-cd-and-automation</div>
+    </article>
+    
+    <article class="card" data-source="third-party" data-hooks="false" data-search="code-review-and-quality Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install code-review-and-quality`.  claude codex gemini">
+      <div class="row">
+        <h3>code-review-and-quality</h3>
+        <span class="badge badge-third">THIRD-PARTY</span>
+      </div>
+      <p class="desc">Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install code-review-and-quality`.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install code-review-and-quality')" title="Click to copy">jutsu install code-review-and-quality</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="code-simplification Reduce code without changing behavior. Apply Chesterton&#39;s Fence &#43; Rule of 500. Find dead code, duplicate logic, unused abstractions, leaky helpers, premature factoring. Composes polish (review-fix loop) and blunder-hunt (regression risk). simplification refactor dead-code chesterton addyosmani claude codex gemini">
+      <div class="row">
+        <h3>code-simplification<span style="color:var(--muted);font-weight:normal"> 0.1.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Reduce code without changing behavior. Apply Chesterton&#39;s Fence &#43; Rule of 500. Find dead code, duplicate logic, unused abstractions, leaky helpers, premature factoring. Composes polish (review-fix loop) and blunder-hunt (regression risk).</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install code-simplification')" title="Click to copy">jutsu install code-simplification</div>
+    </article>
+    
+    <article class="card" data-source="third-party" data-hooks="false" data-search="context-engineering Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install context-engineering`.  claude codex gemini">
+      <div class="row">
+        <h3>context-engineering</h3>
+        <span class="badge badge-third">THIRD-PARTY</span>
+      </div>
+      <p class="desc">Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install context-engineering`.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install context-engineering')" title="Click to copy">jutsu install context-engineering</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="convergence-detect Detect when an iterative loop has stopped producing new signal. Quantitative scoring (token deltas, jaccard similarity, new-item ratio) plus optional persistence of round-by-round signals to .claude/convergence-log/ for post-hoc tuning. primitive iteration signal claude codex gemini">
+      <div class="row">
+        <h3>convergence-detect<span style="color:var(--muted);font-weight:normal"> 0.2.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Detect when an iterative loop has stopped producing new signal. Quantitative scoring (token deltas, jaccard similarity, new-item ratio) plus optional persistence of round-by-round signals to .claude/convergence-log/ for post-hoc tuning.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install convergence-detect')" title="Click to copy">jutsu install convergence-detect</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="true" data-search="dcg Destructive command guard. Pre-tool-use hook that blocks rm -rf /, git reset --hard, git clean -fd, rm of .env / credentials, and other unrecoverable shell commands before the agent executes them. safety hooks pre-tool-use destructive-commands dcg claude codex gemini">
+      <div class="row">
+        <h3>dcg<span style="color:var(--muted);font-weight:normal"> 0.1.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Destructive command guard. Pre-tool-use hook that blocks rm -rf /, git reset --hard, git clean -fd, rm of .env / credentials, and other unrecoverable shell commands before the agent executes them.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        <span class="badge badge-hooks">HOOKS</span>
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install dcg')" title="Click to copy">jutsu install dcg</div>
+    </article>
+    
+    <article class="card" data-source="third-party" data-hooks="false" data-search="debugging-and-error-recovery Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install debugging-and-error-recovery`.  claude codex gemini">
+      <div class="row">
+        <h3>debugging-and-error-recovery</h3>
+        <span class="badge badge-third">THIRD-PARTY</span>
+      </div>
+      <p class="desc">Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install debugging-and-error-recovery`.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install debugging-and-error-recovery')" title="Click to copy">jutsu install debugging-and-error-recovery</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="decide Decision journal — record architectural decisions with reasoning &#43; tripwires; multi-model critique on record; auto-tag from content; surface recorded decisions when about to contradict one. Writes to project-memory. decisions architecture journal claude codex gemini">
+      <div class="row">
+        <h3>decide<span style="color:var(--muted);font-weight:normal"> 0.2.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Decision journal — record architectural decisions with reasoning &#43; tripwires; multi-model critique on record; auto-tag from content; surface recorded decisions when about to contradict one. Writes to project-memory.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install decide')" title="Click to copy">jutsu install decide</div>
+    </article>
+    
+    <article class="card" data-source="third-party" data-hooks="false" data-search="deprecation-and-migration Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install deprecation-and-migration`.  claude codex gemini">
+      <div class="row">
+        <h3>deprecation-and-migration</h3>
+        <span class="badge badge-third">THIRD-PARTY</span>
+      </div>
+      <p class="desc">Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install deprecation-and-migration`.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install deprecation-and-migration')" title="Click to copy">jutsu install deprecation-and-migration</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="deslop Strip AI-generated tells from a draft. Two modes: --strip edits in place; --detect reports flagged passages without editing. Reads project style guides from CLAUDE.md/AGENTS.md for project-specific term preservation. primitive writing polish claude codex gemini">
+      <div class="row">
+        <h3>deslop<span style="color:var(--muted);font-weight:normal"> 0.2.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Strip AI-generated tells from a draft. Two modes: --strip edits in place; --detect reports flagged passages without editing. Reads project style guides from CLAUDE.md/AGENTS.md for project-specific term preservation.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install deslop')" title="Click to copy">jutsu install deslop</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="dispatch-parallel Fan out N independent tasks to parallel subagents, collect, synthesize. Primitive for skills that need parallelism (multi-lens review, multi-file edits, multi-source data gathering). primitive parallelism subagents claude codex gemini">
+      <div class="row">
+        <h3>dispatch-parallel<span style="color:var(--muted);font-weight:normal"> 0.2.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Fan out N independent tasks to parallel subagents, collect, synthesize. Primitive for skills that need parallelism (multi-lens review, multi-file edits, multi-source data gathering).</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install dispatch-parallel')" title="Click to copy">jutsu install dispatch-parallel</div>
+    </article>
+    
+    <article class="card" data-source="third-party" data-hooks="false" data-search="documentation-and-adrs Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install documentation-and-adrs`.  claude codex gemini">
+      <div class="row">
+        <h3>documentation-and-adrs</h3>
+        <span class="badge badge-third">THIRD-PARTY</span>
+      </div>
+      <p class="desc">Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install documentation-and-adrs`.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install documentation-and-adrs')" title="Click to copy">jutsu install documentation-and-adrs</div>
+    </article>
+    
+    <article class="card" data-source="third-party" data-hooks="false" data-search="frontend-ui-engineering Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install frontend-ui-engineering`.  claude codex gemini">
+      <div class="row">
+        <h3>frontend-ui-engineering</h3>
+        <span class="badge badge-third">THIRD-PARTY</span>
+      </div>
+      <p class="desc">Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install frontend-ui-engineering`.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install frontend-ui-engineering')" title="Click to copy">jutsu install frontend-ui-engineering</div>
+    </article>
+    
+    <article class="card" data-source="third-party" data-hooks="false" data-search="git-workflow-and-versioning Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install git-workflow-and-versioning`.  claude codex gemini">
+      <div class="row">
+        <h3>git-workflow-and-versioning</h3>
+        <span class="badge badge-third">THIRD-PARTY</span>
+      </div>
+      <p class="desc">Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install git-workflow-and-versioning`.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install git-workflow-and-versioning')" title="Click to copy">jutsu install git-workflow-and-versioning</div>
+    </article>
+    
+    <article class="card" data-source="third-party" data-hooks="false" data-search="idea-refine Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install idea-refine`.  claude codex gemini">
+      <div class="row">
+        <h3>idea-refine</h3>
+        <span class="badge badge-third">THIRD-PARTY</span>
+      </div>
+      <p class="desc">Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install idea-refine`.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install idea-refine')" title="Click to copy">jutsu install idea-refine</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="incremental-implementation Implement features as thin vertical slices, each shippable behind a feature flag. Each slice ends in green CI. No big-bang refactors. Composes scope-check (cost-tier) and polish (per-slice review). implementation vertical-slice feature-flag ship-small addyosmani claude codex gemini">
+      <div class="row">
+        <h3>incremental-implementation<span style="color:var(--muted);font-weight:normal"> 0.1.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Implement features as thin vertical slices, each shippable behind a feature flag. Each slice ends in green CI. No big-bang refactors. Composes scope-check (cost-tier) and polish (per-slice review).</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install incremental-implementation')" title="Click to copy">jutsu install incremental-implementation</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="journal Periodic development journal — read git/PRs/decisions/memory; produce a structured narrative; optional multi-model synthesis for the narrative voice. Themed cadences (weekly/sprint/release/monthly) and sentiment&#43;velocity tracking. journal retrospective reporting claude codex gemini">
+      <div class="row">
+        <h3>journal<span style="color:var(--muted);font-weight:normal"> 0.2.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Periodic development journal — read git/PRs/decisions/memory; produce a structured narrative; optional multi-model synthesis for the narrative voice. Themed cadences (weekly/sprint/release/monthly) and sentiment&#43;velocity tracking.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install journal')" title="Click to copy">jutsu install journal</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="lie-to-them Prompt primitive — assert N issues exist to force exhaustive enumeration. Includes a transparency footer recommendation: every output that used lie-to-them should disclose the claimed-N and actual-found counts. primitive prompt-engineering review claude codex gemini">
+      <div class="row">
+        <h3>lie-to-them<span style="color:var(--muted);font-weight:normal"> 0.2.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Prompt primitive — assert N issues exist to force exhaustive enumeration. Includes a transparency footer recommendation: every output that used lie-to-them should disclose the claimed-N and actual-found counts.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install lie-to-them')" title="Click to copy">jutsu install lie-to-them</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="multi-model-synth Fan out the same task to multiple models (Claude, Codex, Gemini), compare responses, synthesize a &#39;best of all worlds&#39; answer that artfully blends each model&#39;s strengths. primitive multi-model synthesis planning claude codex gemini">
+      <div class="row">
+        <h3>multi-model-synth<span style="color:var(--muted);font-weight:normal"> 0.2.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Fan out the same task to multiple models (Claude, Codex, Gemini), compare responses, synthesize a &#39;best of all worlds&#39; answer that artfully blends each model&#39;s strengths.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install multi-model-synth')" title="Click to copy">jutsu install multi-model-synth</div>
+    </article>
+    
+    <article class="card" data-source="third-party" data-hooks="false" data-search="performance-optimization Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install performance-optimization`.  claude codex gemini">
+      <div class="row">
+        <h3>performance-optimization</h3>
+        <span class="badge badge-third">THIRD-PARTY</span>
+      </div>
+      <p class="desc">Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install performance-optimization`.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install performance-optimization')" title="Click to copy">jutsu install performance-optimization</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="planning-and-task-breakdown Decompose a spec into a verifiable task list — vertical slices, explicit dependencies, acceptance criteria per task. Final review pass via blunder-hunt &#43; scope-check before tasks are considered ready for implementation. planning tasks breakdown plan addyosmani claude codex gemini">
+      <div class="row">
+        <h3>planning-and-task-breakdown<span style="color:var(--muted);font-weight:normal"> 0.1.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Decompose a spec into a verifiable task list — vertical slices, explicit dependencies, acceptance criteria per task. Final review pass via blunder-hunt &#43; scope-check before tasks are considered ready for implementation.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install planning-and-task-breakdown')" title="Click to copy">jutsu install planning-and-task-breakdown</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="polish Automated post-implementation review-and-fix loop. Up to 4 passes; each pass alternates random-code-exploration and cross-agent-review lenses; convergence-detect declares the stop; deslop runs at the end on any user-facing prose. review refactor workflow claude codex gemini">
+      <div class="row">
+        <h3>polish<span style="color:var(--muted);font-weight:normal"> 0.2.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Automated post-implementation review-and-fix loop. Up to 4 passes; each pass alternates random-code-exploration and cross-agent-review lenses; convergence-detect declares the stop; deslop runs at the end on any user-facing prose.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install polish')" title="Click to copy">jutsu install polish</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="pr-review Adversarial PR review. Run by a different agent than the committer; assume bugs exist; surface them as inline PR comments via gh. Optional multi-model fan-out for high-stakes diffs. code-review pull-request github adversarial claude codex gemini">
+      <div class="row">
+        <h3>pr-review<span style="color:var(--muted);font-weight:normal"> 0.3.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Adversarial PR review. Run by a different agent than the committer; assume bugs exist; surface them as inline PR comments via gh. Optional multi-model fan-out for high-stakes diffs.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install pr-review')" title="Click to copy">jutsu install pr-review</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="project-memory Cross-skill project-memory contract. Defines the schema and conventions for the per-project memory directory that decide, session-retro, unstuck, and other skills read and write. primitive memory schema claude codex gemini">
+      <div class="row">
+        <h3>project-memory<span style="color:var(--muted);font-weight:normal"> 0.2.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Cross-skill project-memory contract. Defines the schema and conventions for the per-project memory directory that decide, session-retro, unstuck, and other skills read and write.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install project-memory')" title="Click to copy">jutsu install project-memory</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="readme-update Detect README staleness, identify out-of-date sections, propose targeted diffs. Semantic section matching (Quickstart ≈ Get Started); works on any markdown doc (CONTRIBUTING, ARCHITECTURE, CHANGELOG); auto-generates usage examples from new CLI commands; checks badge staleness. docs readme maintenance claude codex gemini">
+      <div class="row">
+        <h3>readme-update<span style="color:var(--muted);font-weight:normal"> 0.2.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Detect README staleness, identify out-of-date sections, propose targeted diffs. Semantic section matching (Quickstart ≈ Get Started); works on any markdown doc (CONTRIBUTING, ARCHITECTURE, CHANGELOG); auto-generates usage examples from new CLI commands; checks badge staleness.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install readme-update')" title="Click to copy">jutsu install readme-update</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="scope-check Mid-task scope mirror with cost-tier classification (plan/bead/code = 1x/5x/25x). Surfaces when work has drifted from cheap planning into expensive code-space rework, and identifies natural split-points where a PR could become two. workflow focus planning claude codex gemini">
+      <div class="row">
+        <h3>scope-check<span style="color:var(--muted);font-weight:normal"> 0.2.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Mid-task scope mirror with cost-tier classification (plan/bead/code = 1x/5x/25x). Surfaces when work has drifted from cheap planning into expensive code-space rework, and identifies natural split-points where a PR could become two.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install scope-check')" title="Click to copy">jutsu install scope-check</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="security-and-hardening OWASP-Top-10-aware security review. Sweep the diff (or a target file set) for injection, auth gaps, deserialization risks, broken access control, sensitive data exposure, security misconfig, and supply-chain trust. Composes blunder-hunt&#39;s hostile-input lens. security owasp hardening review addyosmani claude codex gemini">
+      <div class="row">
+        <h3>security-and-hardening<span style="color:var(--muted);font-weight:normal"> 0.1.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">OWASP-Top-10-aware security review. Sweep the diff (or a target file set) for injection, auth gaps, deserialization risks, broken access control, sensitive data exposure, security misconfig, and supply-chain trust. Composes blunder-hunt&#39;s hostile-input lens.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install security-and-hardening')" title="Click to copy">jutsu install security-and-hardening</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="session-retro End-of-session retrospective. Mines the current conversation for learnings; cross-session pattern detection across recent retros; writes to project-memory; optional auto-apply mode. retrospective memory learning claude codex gemini">
+      <div class="row">
+        <h3>session-retro<span style="color:var(--muted);font-weight:normal"> 0.3.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">End-of-session retrospective. Mines the current conversation for learnings; cross-session pattern detection across recent retros; writes to project-memory; optional auto-apply mode.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install session-retro')" title="Click to copy">jutsu install session-retro</div>
+    </article>
+    
+    <article class="card" data-source="third-party" data-hooks="false" data-search="shipping-and-launch Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install shipping-and-launch`.  claude codex gemini">
+      <div class="row">
+        <h3>shipping-and-launch</h3>
+        <span class="badge badge-third">THIRD-PARTY</span>
+      </div>
+      <p class="desc">Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install shipping-and-launch`.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install shipping-and-launch')" title="Click to copy">jutsu install shipping-and-launch</div>
+    </article>
+    
+    <article class="card" data-source="third-party" data-hooks="false" data-search="source-driven-development Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install source-driven-development`.  claude codex gemini">
+      <div class="row">
+        <h3>source-driven-development</h3>
+        <span class="badge badge-third">THIRD-PARTY</span>
+      </div>
+      <p class="desc">Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install source-driven-development`.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install source-driven-development')" title="Click to copy">jutsu install source-driven-development</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="spec-driven-development Author a PRD-style spec before writing implementation. Produce a written, reviewable artifact (problem statement, scope, non-goals, acceptance criteria, open questions) that survives the agent session and gets reviewed by a fresh-eyes pass before unblocking implementation. planning spec prd define addyosmani claude codex gemini">
+      <div class="row">
+        <h3>spec-driven-development<span style="color:var(--muted);font-weight:normal"> 0.1.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Author a PRD-style spec before writing implementation. Produce a written, reviewable artifact (problem statement, scope, non-goals, acceptance criteria, open questions) that survives the agent session and gets reviewed by a fresh-eyes pass before unblocking implementation.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install spec-driven-development')" title="Click to copy">jutsu install spec-driven-development</div>
+    </article>
+    
+    <article class="card" data-source="third-party" data-hooks="false" data-search="test-driven-development Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install test-driven-development`.  claude codex gemini">
+      <div class="row">
+        <h3>test-driven-development</h3>
+        <span class="badge badge-third">THIRD-PARTY</span>
+      </div>
+      <p class="desc">Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install test-driven-development`.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install test-driven-development')" title="Click to copy">jutsu install test-driven-development</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="unstuck Guided problem articulation when you&#39;re stuck — break unproductive loops by forcing clarity, then escalate via blunder-hunt &#43; structured pivots. debugging problem-solving workflow claude codex gemini">
+      <div class="row">
+        <h3>unstuck<span style="color:var(--muted);font-weight:normal"> 0.2.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Guided problem articulation when you&#39;re stuck — break unproductive loops by forcing clarity, then escalate via blunder-hunt &#43; structured pivots.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install unstuck')" title="Click to copy">jutsu install unstuck</div>
+    </article>
+    
+  </div>
+  <p class="empty" id="empty" style="display:none">No skills match your filters.</p>
+</main>
 
-    <p>
-      One source of truth for Claude Code, OpenAI Codex CLI, and Google Gemini CLI.
-      One CLI <code>jutsu</code>, two install paths
-      (<code>.claude/skills/</code> for Claude; <code>.agents/skills/</code> for Codex + Gemini),
-      three agents covered.
-    </p>
-  </main>
-  <footer>
-    MIT-licensed · maintained by <a href="https://github.com/momentmaker">momentmaker</a>
-  </footer>
+<footer>
+  <p>kaijutsu is MIT-licensed. The mascot, monster eats unrecoverable shell commands.</p>
+  <p>Generated from <a href="https://github.com/momentmaker/kaijutsu/tree/main/skills/core">skills/core/</a> + <a href="https://github.com/momentmaker/kaijutsu/blob/main/registry/index.json">registry/index.json</a>. <a href="/skills.json">JSON catalog</a>.</p>
+</footer>
+
+<script>
+  const search = document.getElementById('search');
+  const filters = document.getElementById('filters');
+  const grid = document.getElementById('grid');
+  const stats = document.getElementById('stats');
+  const empty = document.getElementById('empty');
+  const cards = Array.from(grid.children);
+  let activeFilter = 'all';
+
+  function render() {
+    const q = search.value.trim().toLowerCase();
+    let shown = 0;
+    for (const c of cards) {
+      const matches = !q || c.dataset.search.toLowerCase().includes(q);
+      const filter = activeFilter === 'all'
+        || (activeFilter === 'core' && c.dataset.source === 'core')
+        || (activeFilter === 'third-party' && c.dataset.source === 'third-party')
+        || (activeFilter === 'hooks' && c.dataset.hooks === 'true');
+      const visible = matches && filter;
+      c.style.display = visible ? '' : 'none';
+      if (visible) shown++;
+    }
+    stats.textContent = `Showing ${shown} of ${cards.length} skills.`;
+    empty.style.display = shown === 0 ? '' : 'none';
+  }
+
+  search.addEventListener('input', render);
+  filters.addEventListener('click', e => {
+    if (!e.target.matches('button[data-filter]')) return;
+    activeFilter = e.target.dataset.filter;
+    for (const b of filters.querySelectorAll('button')) {
+      b.classList.toggle('active', b === e.target);
+    }
+    render();
+  });
+</script>
+
 </body>
 </html>

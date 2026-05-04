@@ -1,0 +1,873 @@
+{
+  "generated_at": "stable",
+  "total": 37,
+  "skills": [
+    {
+      "name": "agent-doctor",
+      "version": "0.1.0",
+      "license": "MIT",
+      "description": "Diagnostic + cleanup tool for AI agent state directories. Audits ~/.claude, ~/.codex, ~/.gemini, ~/.agents; surfaces stale sessions, orphaned cache, broken hook refs; reclaims space safely (trash-not-delete, 30-day recovery).",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "maintenance",
+        "cleanup",
+        "disk-space"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/agent-doctor",
+      "homepage": "https://kaijutsu.dev/skills/agent-doctor",
+      "has_hooks": false,
+      "permissions": {
+        "bash": true,
+        "network": false,
+        "fs_write": "scoped"
+      }
+    },
+    {
+      "name": "api-and-interface-design",
+      "description": "Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install api-and-interface-design`.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "source": "third-party",
+      "repo": "github.com/addyosmani/agent-skills",
+      "path": "skills/api-and-interface-design",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": null
+      }
+    },
+    {
+      "name": "blunder-hunt",
+      "version": "0.2.0",
+      "license": "MIT",
+      "description": "Multi-pass adversarial critique. Run a skeptic review N times in fresh contexts (optionally in parallel via dispatch-parallel); deduplicate; surface only issues that survive.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "primitive",
+        "review",
+        "adversarial"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/blunder-hunt",
+      "homepage": "https://kaijutsu.dev/skills/blunder-hunt",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": false
+      }
+    },
+    {
+      "name": "browser-testing-with-devtools",
+      "description": "Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install browser-testing-with-devtools`.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "source": "third-party",
+      "repo": "github.com/addyosmani/agent-skills",
+      "path": "skills/browser-testing-with-devtools",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": null
+      }
+    },
+    {
+      "name": "ci-cd-and-automation",
+      "description": "Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install ci-cd-and-automation`.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "source": "third-party",
+      "repo": "github.com/addyosmani/agent-skills",
+      "path": "skills/ci-cd-and-automation",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": null
+      }
+    },
+    {
+      "name": "code-review-and-quality",
+      "description": "Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install code-review-and-quality`.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "source": "third-party",
+      "repo": "github.com/addyosmani/agent-skills",
+      "path": "skills/code-review-and-quality",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": null
+      }
+    },
+    {
+      "name": "code-simplification",
+      "version": "0.1.0",
+      "license": "MIT",
+      "description": "Reduce code without changing behavior. Apply Chesterton's Fence + Rule of 500. Find dead code, duplicate logic, unused abstractions, leaky helpers, premature factoring. Composes polish (review-fix loop) and blunder-hunt (regression risk).",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "simplification",
+        "refactor",
+        "dead-code",
+        "chesterton",
+        "addyosmani"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/code-simplification",
+      "homepage": "https://kaijutsu.dev/skills/code-simplification",
+      "upstream": "https://github.com/addyosmani/agent-skills/blob/main/skills/code-simplification",
+      "author": "Addy Osmani (originally) — adapted by kaijutsu maintainers",
+      "has_hooks": false,
+      "permissions": {
+        "bash": true,
+        "network": false,
+        "fs_write": "scoped"
+      }
+    },
+    {
+      "name": "context-engineering",
+      "description": "Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install context-engineering`.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "source": "third-party",
+      "repo": "github.com/addyosmani/agent-skills",
+      "path": "skills/context-engineering",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": null
+      }
+    },
+    {
+      "name": "convergence-detect",
+      "version": "0.2.0",
+      "license": "MIT",
+      "description": "Detect when an iterative loop has stopped producing new signal. Quantitative scoring (token deltas, jaccard similarity, new-item ratio) plus optional persistence of round-by-round signals to .claude/convergence-log/ for post-hoc tuning.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "primitive",
+        "iteration",
+        "signal"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/convergence-detect",
+      "homepage": "https://kaijutsu.dev/skills/convergence-detect",
+      "has_hooks": false,
+      "permissions": {
+        "bash": true,
+        "network": false,
+        "fs_write": "scoped"
+      }
+    },
+    {
+      "name": "dcg",
+      "version": "0.1.0",
+      "license": "MIT",
+      "description": "Destructive command guard. Pre-tool-use hook that blocks rm -rf /, git reset --hard, git clean -fd, rm of .env / credentials, and other unrecoverable shell commands before the agent executes them.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "safety",
+        "hooks",
+        "pre-tool-use",
+        "destructive-commands",
+        "dcg"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/dcg",
+      "homepage": "https://kaijutsu.dev/skills/dcg",
+      "author": "kaijutsu-core \u003cgh@fz.ax\u003e",
+      "has_hooks": true,
+      "permissions": {
+        "bash": true,
+        "network": false,
+        "fs_write": false
+      }
+    },
+    {
+      "name": "debugging-and-error-recovery",
+      "description": "Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install debugging-and-error-recovery`.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "source": "third-party",
+      "repo": "github.com/addyosmani/agent-skills",
+      "path": "skills/debugging-and-error-recovery",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": null
+      }
+    },
+    {
+      "name": "decide",
+      "version": "0.2.0",
+      "license": "MIT",
+      "description": "Decision journal — record architectural decisions with reasoning + tripwires; multi-model critique on record; auto-tag from content; surface recorded decisions when about to contradict one. Writes to project-memory.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "decisions",
+        "architecture",
+        "journal"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/decide",
+      "homepage": "https://kaijutsu.dev/skills/decide",
+      "has_hooks": false,
+      "permissions": {
+        "bash": true,
+        "network": true,
+        "fs_write": "scoped"
+      }
+    },
+    {
+      "name": "deprecation-and-migration",
+      "description": "Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install deprecation-and-migration`.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "source": "third-party",
+      "repo": "github.com/addyosmani/agent-skills",
+      "path": "skills/deprecation-and-migration",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": null
+      }
+    },
+    {
+      "name": "deslop",
+      "version": "0.2.0",
+      "license": "MIT",
+      "description": "Strip AI-generated tells from a draft. Two modes: --strip edits in place; --detect reports flagged passages without editing. Reads project style guides from CLAUDE.md/AGENTS.md for project-specific term preservation.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "primitive",
+        "writing",
+        "polish"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/deslop",
+      "homepage": "https://kaijutsu.dev/skills/deslop",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": "scoped"
+      }
+    },
+    {
+      "name": "dispatch-parallel",
+      "version": "0.2.0",
+      "license": "MIT",
+      "description": "Fan out N independent tasks to parallel subagents, collect, synthesize. Primitive for skills that need parallelism (multi-lens review, multi-file edits, multi-source data gathering).",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "primitive",
+        "parallelism",
+        "subagents"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/dispatch-parallel",
+      "homepage": "https://kaijutsu.dev/skills/dispatch-parallel",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": false
+      }
+    },
+    {
+      "name": "documentation-and-adrs",
+      "description": "Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install documentation-and-adrs`.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "source": "third-party",
+      "repo": "github.com/addyosmani/agent-skills",
+      "path": "skills/documentation-and-adrs",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": null
+      }
+    },
+    {
+      "name": "frontend-ui-engineering",
+      "description": "Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install frontend-ui-engineering`.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "source": "third-party",
+      "repo": "github.com/addyosmani/agent-skills",
+      "path": "skills/frontend-ui-engineering",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": null
+      }
+    },
+    {
+      "name": "git-workflow-and-versioning",
+      "description": "Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install git-workflow-and-versioning`.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "source": "third-party",
+      "repo": "github.com/addyosmani/agent-skills",
+      "path": "skills/git-workflow-and-versioning",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": null
+      }
+    },
+    {
+      "name": "idea-refine",
+      "description": "Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install idea-refine`.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "source": "third-party",
+      "repo": "github.com/addyosmani/agent-skills",
+      "path": "skills/idea-refine",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": null
+      }
+    },
+    {
+      "name": "incremental-implementation",
+      "version": "0.1.0",
+      "license": "MIT",
+      "description": "Implement features as thin vertical slices, each shippable behind a feature flag. Each slice ends in green CI. No big-bang refactors. Composes scope-check (cost-tier) and polish (per-slice review).",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "implementation",
+        "vertical-slice",
+        "feature-flag",
+        "ship-small",
+        "addyosmani"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/incremental-implementation",
+      "homepage": "https://kaijutsu.dev/skills/incremental-implementation",
+      "upstream": "https://github.com/addyosmani/agent-skills/blob/main/skills/incremental-implementation",
+      "author": "Addy Osmani (originally) — adapted by kaijutsu maintainers",
+      "has_hooks": false,
+      "permissions": {
+        "bash": true,
+        "network": false,
+        "fs_write": "scoped"
+      }
+    },
+    {
+      "name": "journal",
+      "version": "0.2.0",
+      "license": "MIT",
+      "description": "Periodic development journal — read git/PRs/decisions/memory; produce a structured narrative; optional multi-model synthesis for the narrative voice. Themed cadences (weekly/sprint/release/monthly) and sentiment+velocity tracking.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "journal",
+        "retrospective",
+        "reporting"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/journal",
+      "homepage": "https://kaijutsu.dev/skills/journal",
+      "has_hooks": false,
+      "permissions": {
+        "bash": true,
+        "network": true,
+        "fs_write": "scoped"
+      }
+    },
+    {
+      "name": "lie-to-them",
+      "version": "0.2.0",
+      "license": "MIT",
+      "description": "Prompt primitive — assert N issues exist to force exhaustive enumeration. Includes a transparency footer recommendation: every output that used lie-to-them should disclose the claimed-N and actual-found counts.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "primitive",
+        "prompt-engineering",
+        "review"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/lie-to-them",
+      "homepage": "https://kaijutsu.dev/skills/lie-to-them",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": false
+      }
+    },
+    {
+      "name": "multi-model-synth",
+      "version": "0.2.0",
+      "license": "MIT",
+      "description": "Fan out the same task to multiple models (Claude, Codex, Gemini), compare responses, synthesize a 'best of all worlds' answer that artfully blends each model's strengths.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "primitive",
+        "multi-model",
+        "synthesis",
+        "planning"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/multi-model-synth",
+      "homepage": "https://kaijutsu.dev/skills/multi-model-synth",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": true,
+        "fs_write": false
+      }
+    },
+    {
+      "name": "performance-optimization",
+      "description": "Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install performance-optimization`.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "source": "third-party",
+      "repo": "github.com/addyosmani/agent-skills",
+      "path": "skills/performance-optimization",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": null
+      }
+    },
+    {
+      "name": "planning-and-task-breakdown",
+      "version": "0.1.0",
+      "license": "MIT",
+      "description": "Decompose a spec into a verifiable task list — vertical slices, explicit dependencies, acceptance criteria per task. Final review pass via blunder-hunt + scope-check before tasks are considered ready for implementation.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "planning",
+        "tasks",
+        "breakdown",
+        "plan",
+        "addyosmani"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/planning-and-task-breakdown",
+      "homepage": "https://kaijutsu.dev/skills/planning-and-task-breakdown",
+      "upstream": "https://github.com/addyosmani/agent-skills/blob/main/skills/planning-and-task-breakdown",
+      "author": "Addy Osmani (originally) — adapted by kaijutsu maintainers",
+      "has_hooks": false,
+      "permissions": {
+        "bash": true,
+        "network": false,
+        "fs_write": "scoped"
+      }
+    },
+    {
+      "name": "polish",
+      "version": "0.2.0",
+      "license": "MIT",
+      "description": "Automated post-implementation review-and-fix loop. Up to 4 passes; each pass alternates random-code-exploration and cross-agent-review lenses; convergence-detect declares the stop; deslop runs at the end on any user-facing prose.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "review",
+        "refactor",
+        "workflow"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/polish",
+      "homepage": "https://kaijutsu.dev/skills/polish",
+      "has_hooks": false,
+      "permissions": {
+        "bash": true,
+        "network": true,
+        "fs_write": "scoped"
+      }
+    },
+    {
+      "name": "pr-review",
+      "version": "0.3.0",
+      "license": "MIT",
+      "description": "Adversarial PR review. Run by a different agent than the committer; assume bugs exist; surface them as inline PR comments via gh. Optional multi-model fan-out for high-stakes diffs.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "code-review",
+        "pull-request",
+        "github",
+        "adversarial"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/pr-review",
+      "homepage": "https://kaijutsu.dev/skills/pr-review",
+      "has_hooks": false,
+      "permissions": {
+        "bash": true,
+        "network": true,
+        "fs_write": false
+      }
+    },
+    {
+      "name": "project-memory",
+      "version": "0.2.0",
+      "license": "MIT",
+      "description": "Cross-skill project-memory contract. Defines the schema and conventions for the per-project memory directory that decide, session-retro, unstuck, and other skills read and write.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "primitive",
+        "memory",
+        "schema"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/project-memory",
+      "homepage": "https://kaijutsu.dev/skills/project-memory",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": "scoped"
+      }
+    },
+    {
+      "name": "readme-update",
+      "version": "0.2.0",
+      "license": "MIT",
+      "description": "Detect README staleness, identify out-of-date sections, propose targeted diffs. Semantic section matching (Quickstart ≈ Get Started); works on any markdown doc (CONTRIBUTING, ARCHITECTURE, CHANGELOG); auto-generates usage examples from new CLI commands; checks badge staleness.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "docs",
+        "readme",
+        "maintenance"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/readme-update",
+      "homepage": "https://kaijutsu.dev/skills/readme-update",
+      "has_hooks": false,
+      "permissions": {
+        "bash": true,
+        "network": false,
+        "fs_write": "scoped"
+      }
+    },
+    {
+      "name": "scope-check",
+      "version": "0.2.0",
+      "license": "MIT",
+      "description": "Mid-task scope mirror with cost-tier classification (plan/bead/code = 1x/5x/25x). Surfaces when work has drifted from cheap planning into expensive code-space rework, and identifies natural split-points where a PR could become two.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "workflow",
+        "focus",
+        "planning"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/scope-check",
+      "homepage": "https://kaijutsu.dev/skills/scope-check",
+      "has_hooks": false,
+      "permissions": {
+        "bash": true,
+        "network": false,
+        "fs_write": false
+      }
+    },
+    {
+      "name": "security-and-hardening",
+      "version": "0.1.0",
+      "license": "MIT",
+      "description": "OWASP-Top-10-aware security review. Sweep the diff (or a target file set) for injection, auth gaps, deserialization risks, broken access control, sensitive data exposure, security misconfig, and supply-chain trust. Composes blunder-hunt's hostile-input lens.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "security",
+        "owasp",
+        "hardening",
+        "review",
+        "addyosmani"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/security-and-hardening",
+      "homepage": "https://kaijutsu.dev/skills/security-and-hardening",
+      "upstream": "https://github.com/addyosmani/agent-skills/blob/main/skills/security-and-hardening",
+      "author": "Addy Osmani (originally) — adapted by kaijutsu maintainers",
+      "has_hooks": false,
+      "permissions": {
+        "bash": true,
+        "network": true,
+        "fs_write": false
+      }
+    },
+    {
+      "name": "session-retro",
+      "version": "0.3.0",
+      "license": "MIT",
+      "description": "End-of-session retrospective. Mines the current conversation for learnings; cross-session pattern detection across recent retros; writes to project-memory; optional auto-apply mode.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "retrospective",
+        "memory",
+        "learning"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/session-retro",
+      "homepage": "https://kaijutsu.dev/skills/session-retro",
+      "has_hooks": false,
+      "permissions": {
+        "bash": true,
+        "network": false,
+        "fs_write": "scoped"
+      }
+    },
+    {
+      "name": "shipping-and-launch",
+      "description": "Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install shipping-and-launch`.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "source": "third-party",
+      "repo": "github.com/addyosmani/agent-skills",
+      "path": "skills/shipping-and-launch",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": null
+      }
+    },
+    {
+      "name": "source-driven-development",
+      "description": "Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install source-driven-development`.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "source": "third-party",
+      "repo": "github.com/addyosmani/agent-skills",
+      "path": "skills/source-driven-development",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": null
+      }
+    },
+    {
+      "name": "spec-driven-development",
+      "version": "0.1.0",
+      "license": "MIT",
+      "description": "Author a PRD-style spec before writing implementation. Produce a written, reviewable artifact (problem statement, scope, non-goals, acceptance criteria, open questions) that survives the agent session and gets reviewed by a fresh-eyes pass before unblocking implementation.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "planning",
+        "spec",
+        "prd",
+        "define",
+        "addyosmani"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/spec-driven-development",
+      "homepage": "https://kaijutsu.dev/skills/spec-driven-development",
+      "upstream": "https://github.com/addyosmani/agent-skills/blob/main/skills/spec-driven-development",
+      "author": "Addy Osmani (originally) — adapted by kaijutsu maintainers",
+      "has_hooks": false,
+      "permissions": {
+        "bash": true,
+        "network": false,
+        "fs_write": "scoped"
+      }
+    },
+    {
+      "name": "test-driven-development",
+      "description": "Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install test-driven-development`.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "source": "third-party",
+      "repo": "github.com/addyosmani/agent-skills",
+      "path": "skills/test-driven-development",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": null
+      }
+    },
+    {
+      "name": "unstuck",
+      "version": "0.2.0",
+      "license": "MIT",
+      "description": "Guided problem articulation when you're stuck — break unproductive loops by forcing clarity, then escalate via blunder-hunt + structured pivots.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "debugging",
+        "problem-solving",
+        "workflow"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/unstuck",
+      "homepage": "https://kaijutsu.dev/skills/unstuck",
+      "has_hooks": false,
+      "permissions": {
+        "bash": true,
+        "network": true,
+        "fs_write": "scoped"
+      }
+    }
+  ]
+}
