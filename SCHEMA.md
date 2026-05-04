@@ -190,6 +190,59 @@ A single write to `~/.agents/skills/` covers both Codex and Gemini, per the [Age
 
 ---
 
+## Hooks
+
+Skills can ship agent hooks — pre-tool-use / post-tool-use / session-start / etc. callbacks that the CLI registers into the target agent's native settings file at install time. Declared via `skill.yaml`'s `hooks:` block + `permissions.hooks: true`:
+
+```yaml
+permissions:
+  bash: true
+  network: false
+  fs-write: false
+  hooks: true
+
+hooks:
+  - id: block-destructive-shell
+    event: pre-tool-use         # canonical kaijutsu event
+    matcher: Bash               # tool name (Claude/Gemini) or Codex expression
+    script: hooks/dcg.sh        # path inside the skill dir
+    timeout_seconds: 5
+    can_block: true
+    description: Block rm -rf / and similar
+```
+
+**Canonical event vocabulary** (see `cli/internal/hooks/EventTable` for translations):
+
+| Canonical | Claude | Codex | Gemini |
+|---|---|---|---|
+| `pre-tool-use` | PreToolUse | PreToolUse | BeforeTool |
+| `post-tool-use` | PostToolUse | PostToolUse | AfterTool |
+| `session-start` | SessionStart | SessionStart | SessionStart |
+| `session-end` | Stop | Stop | SessionEnd |
+| `notification` | Notification | — | Notification |
+| `user-prompt-submit` | UserPromptSubmit | UserPromptSubmit | — |
+| `pre-compact` | PreCompact | — | PreCompress |
+| `permission-request` | — | PermissionRequest | — |
+| `before-agent` / `after-agent` | — | — | Gemini-only |
+| `before-model` / `after-model` | — | — | Gemini-only |
+| `before-tool-selection` | — | — | Gemini-only |
+
+Hooks for events the agent doesn't support are skipped with a stderr warning.
+
+**Install paths** (per agent):
+
+| Agent | Settings file |
+|---|---|
+| Claude | `<root>/.claude/settings.json` (`hooks.<NativeEvent>[]`) |
+| Codex | `<root>/.codex/config.toml` (`[[<NativeEvent>]]` + nested `[[<NativeEvent>.hooks]]`) |
+| Gemini | `<root>/.gemini/settings.json` (`hooks.<NativeEvent>[]`, ms timeouts) |
+
+Each entry written by kaijutsu carries a marker (`_kaijutsu: kaijutsu:skill:<name>:hook:<id>`) so removal can scrub exactly what we added without disturbing user-authored hooks.
+
+**Permission gate**: `jutsu install <skill>` prompts before installing hooks (`--yes` skips, `--no-hooks` installs the skill files but skips hook registration).
+
+See `cli/internal/hooks/` for translator implementations and `skills/core/dcg/` for the canonical destructive-command-guard example.
+
 ## JSON sidecar pattern
 
 Skills produce human-readable markdown by default. When invoked under structured-output mode (a `--json` flag, an environment variable, or a parent skill that needs to consume the output), they MAY also emit a JSON twin alongside the markdown.

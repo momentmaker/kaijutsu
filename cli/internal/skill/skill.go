@@ -29,6 +29,11 @@ type Permissions struct {
 	Bash    bool        `yaml:"bash"`
 	Network bool        `yaml:"network"`
 	FsWrite interface{} `yaml:"fs-write"`
+	// Hooks declares that the skill ships agent hooks (entries in
+	// skill.yaml `hooks:` that get registered into the agent's
+	// settings file at install time). The CLI prompts before
+	// installing skills with hooks: true.
+	Hooks bool `yaml:"hooks,omitempty"`
 }
 
 type Trust struct {
@@ -37,6 +42,34 @@ type Trust struct {
 
 type Deps struct {
 	Skills []string `yaml:"skills,omitempty"`
+}
+
+// Hook is one entry in a skill's hooks block. The CLI translates these
+// into per-agent native hook configs (Claude settings.json, Codex
+// config.toml, Gemini settings.json) at install time.
+type Hook struct {
+	// ID must be unique within the skill. Used as part of the
+	// idempotency marker so re-installs update prior entries instead
+	// of duplicating.
+	ID string `yaml:"id"`
+	// Event is the kaijutsu canonical event name. Translated per
+	// agent: pre-tool-use, post-tool-use, session-start, session-end,
+	// notification, user-prompt-submit, pre-compact,
+	// permission-request, before-agent, after-agent, before-model,
+	// after-model, before-tool-selection.
+	Event string `yaml:"event"`
+	// Matcher is the per-agent filter expression — e.g. "Bash" for
+	// Claude/Gemini tool-name match, "tool_name == 'shell_command'"
+	// for Codex. The CLI passes it through unmodified; authors should
+	// use the canonical agent-neutral form documented in SCHEMA.md.
+	Matcher string `yaml:"matcher"`
+	// Script is the path inside the skill directory to the hook
+	// script. Resolved against the install location at hook-register
+	// time.
+	Script         string `yaml:"script"`
+	TimeoutSeconds int    `yaml:"timeout_seconds,omitempty"`
+	CanBlock       *bool  `yaml:"can_block,omitempty"`
+	Description    string `yaml:"description,omitempty"`
 }
 
 // Skill mirrors skill.yaml.
@@ -55,6 +88,7 @@ type Skill struct {
 	Permissions Permissions `yaml:"permissions"`
 	Deps        *Deps       `yaml:"deps,omitempty"`
 	Trust       *Trust      `yaml:"trust,omitempty"`
+	Hooks       []Hook      `yaml:"hooks,omitempty"`
 }
 
 func Load(path string) (*Skill, error) {
@@ -91,5 +125,54 @@ func (s *Skill) Validate() error {
 	if len(s.Agents) == 0 {
 		return errors.New("skill.yaml: at least one agent is required")
 	}
+	seen := map[string]bool{}
+	for i, h := range s.Hooks {
+		if h.ID == "" {
+			return fmt.Errorf("skill.yaml: hooks[%d]: id is required", i)
+		}
+		if !hookIDPattern.MatchString(h.ID) {
+			return fmt.Errorf("skill.yaml: hooks[%d]: invalid id %q (must match %s)", i, h.ID, hookIDPattern.String())
+		}
+		if seen[h.ID] {
+			return fmt.Errorf("skill.yaml: hooks[%d]: duplicate id %q", i, h.ID)
+		}
+		seen[h.ID] = true
+		if h.Event == "" {
+			return fmt.Errorf("skill.yaml: hooks[%d]: event is required", i)
+		}
+		if !validHookEvents[h.Event] {
+			return fmt.Errorf("skill.yaml: hooks[%d]: invalid event %q", i, h.Event)
+		}
+		if h.Matcher == "" {
+			return fmt.Errorf("skill.yaml: hooks[%d]: matcher is required", i)
+		}
+		if h.Script == "" {
+			return fmt.Errorf("skill.yaml: hooks[%d]: script is required", i)
+		}
+	}
+	if len(s.Hooks) > 0 && !s.Permissions.Hooks {
+		return errors.New("skill.yaml: skills declaring hooks must set permissions.hooks: true")
+	}
 	return nil
+}
+
+var hookIDPattern = regexp.MustCompile(`^[a-z][a-z0-9-]*[a-z0-9]$`)
+
+// validHookEvents is the canonical kaijutsu event vocabulary. Mirrors
+// the list documented in SCHEMA.md and translated per agent in
+// internal/hooks/.
+var validHookEvents = map[string]bool{
+	"pre-tool-use":          true,
+	"post-tool-use":         true,
+	"session-start":         true,
+	"session-end":           true,
+	"notification":          true,
+	"user-prompt-submit":    true,
+	"pre-compact":           true,
+	"permission-request":    true,
+	"before-agent":          true,
+	"after-agent":           true,
+	"before-model":          true,
+	"after-model":           true,
+	"before-tool-selection": true,
 }

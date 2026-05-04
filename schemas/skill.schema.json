@@ -77,6 +77,10 @@
             { "type": "boolean", "const": false },
             { "enum": ["scoped", "full"] }
           ]
+        },
+        "hooks": {
+          "type": "boolean",
+          "description": "Whether the skill ships agent hooks (entries in skill.yaml `hooks:` that get registered into the agent's settings file at install time). Required to be true when the skill declares any hooks."
         }
       }
     },
@@ -101,6 +105,61 @@
         "expected-signer": {
           "type": "string",
           "description": "GitHub identity (e.g. kaijutsu-core@github) the CLI will verify the Sigstore bundle against. Authors do NOT self-assert signed=true; the CLI derives it from successful cosign verify-blob."
+        }
+      }
+    },
+    "hooks": {
+      "type": "array",
+      "description": "Agent hooks that the CLI registers into the target agent's settings file at install time. Each entry is translated to the agent-native format (Claude/Gemini: JSON in settings.json; Codex: TOML in config.toml).",
+      "items": {
+        "type": "object",
+        "required": ["id", "event", "matcher", "script"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$",
+            "description": "Unique-within-skill identifier; part of the kaijutsu marker so re-installs update prior entries instead of duplicating."
+          },
+          "event": {
+            "enum": [
+              "pre-tool-use",
+              "post-tool-use",
+              "session-start",
+              "session-end",
+              "notification",
+              "user-prompt-submit",
+              "pre-compact",
+              "permission-request",
+              "before-agent",
+              "after-agent",
+              "before-model",
+              "after-model",
+              "before-tool-selection"
+            ],
+            "description": "Canonical kaijutsu event name. The CLI translates each per-agent: pre-tool-use → Claude PreToolUse / Codex PreToolUse / Gemini BeforeTool, etc. Events with no per-agent equivalent are skipped on that agent with a warning."
+          },
+          "matcher": {
+            "type": "string",
+            "description": "Filter expression. Tool name (e.g. 'Bash') for Claude/Gemini; expression syntax (e.g. \"tool_name == 'shell_command'\") for Codex. Pass through unmodified to the target settings file."
+          },
+          "script": {
+            "type": "string",
+            "description": "Path inside the skill directory (e.g. 'hooks/dcg.sh'). Resolved against the install location at hook-register time."
+          },
+          "timeout_seconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 300,
+            "description": "Per-hook timeout. Default 30 seconds."
+          },
+          "can_block": {
+            "type": "boolean",
+            "description": "Whether the hook may block the triggering action. Default true for pre-* events, false for post-* / notification."
+          },
+          "description": {
+            "type": "string"
+          }
         }
       }
     }

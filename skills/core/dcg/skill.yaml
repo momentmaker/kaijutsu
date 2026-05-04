@@ -1,0 +1,26 @@
+name: dcg
+version: 0.1.0
+license: MIT
+layout: flat
+description: "Destructive command guard. Pre-tool-use hook that blocks rm -rf /, git reset --hard, git clean -fd, rm of .env / credentials, and other unrecoverable shell commands before the agent executes them."
+author: "kaijutsu-core <gh@fz.ax>"
+homepage: https://kaijutsu.dev/skills/dcg
+repository: https://github.com/momentmaker/kaijutsu
+tags: [safety, hooks, pre-tool-use, destructive-commands, dcg]
+
+agents: [claude, codex, gemini]
+
+permissions:
+  bash: true
+  network: false
+  fs-write: false
+  hooks: true
+
+hooks:
+  - id: block-destructive-shell
+    event: pre-tool-use
+    matcher: Bash
+    script: hooks/dcg.sh
+    timeout_seconds: 5
+    can_block: true
+    description: Block destructive shell commands (rm -rf, git reset --hard, etc.)

@@ -1,14 +1,17 @@
 package cli
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/momentmaker/kaijutsu/cli/internal/detect"
 	"github.com/momentmaker/kaijutsu/cli/internal/fetch"
+	"github.com/momentmaker/kaijutsu/cli/internal/hooks"
 	"github.com/momentmaker/kaijutsu/cli/internal/install"
 	"github.com/momentmaker/kaijutsu/cli/internal/manifest"
 	"github.com/momentmaker/kaijutsu/cli/internal/paths"
@@ -20,6 +23,8 @@ import (
 func newInstallCmd() *cobra.Command {
 	var global bool
 	var registryPath string
+	var noHooks bool
+	var yes bool
 
 	cmd := &cobra.Command{
 		Use:   "install [<skill>[@constraint]]",
@@ -77,6 +82,8 @@ recorded sha256 integrity.`,
 				m:           m,
 				lf:          lf,
 				visited:     map[string]bool{},
+				noHooks:     noHooks,
+				yes:         yes,
 			}
 
 			if err := sess.installOne(name, constraint, ""); err != nil {
@@ -94,6 +101,8 @@ recorded sha256 integrity.`,
 	}
 	cmd.Flags().BoolVarP(&global, "global", "g", false, "install globally (~/.claude/skills/, ~/.agents/skills/)")
 	cmd.Flags().StringVar(&registryPath, "registry", "", "path to a local kaijutsu monorepo checkout (skips remote fetch)")
+	cmd.Flags().BoolVar(&noHooks, "no-hooks", false, "skip hook registration even if the skill declares hooks")
+	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "non-interactive: skip confirmation prompts (e.g., for hook permissions)")
 	return cmd
 }
 
@@ -109,6 +118,8 @@ type installSession struct {
 	m           *manifest.Manifest
 	lf          *manifest.Lockfile
 	visited     map[string]bool
+	noHooks     bool
+	yes         bool
 }
 
 // installOne loads the named skill (locally or remotely), recurses into
@@ -140,8 +151,18 @@ func (s *installSession) installOne(name, constraint, parent string) error {
 
 	advisorySignerNotice(s.cmd, l.skill)
 
+	if err := s.confirmHooks(l.skill); err != nil {
+		return err
+	}
+
 	if err := install.Install(l.dir, s.installRoot, s.m.Agents, l.skill); err != nil {
 		return err
+	}
+
+	if !s.noHooks && len(l.skill.Hooks) > 0 {
+		if err := hooks.InstallForSkill(s.cmd.ErrOrStderr(), s.installRoot, s.m.Agents, l.skill); err != nil {
+			return err
+		}
 	}
 
 	s.lf.Agents = s.m.Agents
@@ -153,6 +174,36 @@ func (s *installSession) installOne(name, constraint, parent string) error {
 	}
 	fmt.Fprintf(s.cmd.OutOrStdout(), "Installed %s@%s (%s, %s)%s\n",
 		l.skill.Name, l.skill.Version, l.source, shortRef(l.ref), suffix)
+	return nil
+}
+
+// confirmHooks prompts the user before installing a skill that ships
+// hooks. Hooks register into agent settings.json/config.toml and run
+// shell commands on every matching tool call — they're privileged.
+// The --yes flag and --no-hooks flag both bypass the prompt.
+func (s *installSession) confirmHooks(sk *skill.Skill) error {
+	if s.noHooks || len(sk.Hooks) == 0 || s.yes {
+		return nil
+	}
+	out := s.cmd.OutOrStdout()
+	fmt.Fprintf(out, "\n%s ships %d hook(s) that will register into your agent settings:\n", sk.Name, len(sk.Hooks))
+	for _, h := range sk.Hooks {
+		blockNote := ""
+		if hooks.CanBlock(h) {
+			blockNote = " (can block actions)"
+		}
+		fmt.Fprintf(out, "  - %s [%s, matcher=%q]%s — %s\n", h.ID, h.Event, h.Matcher, blockNote, h.Description)
+	}
+	fmt.Fprint(out, "Install hooks? [y/N]: ")
+	r := bufio.NewReader(s.cmd.InOrStdin())
+	line, err := r.ReadString('\n')
+	if err != nil {
+		return errors.New("hook install declined (no input)")
+	}
+	line = strings.TrimSpace(strings.ToLower(line))
+	if line != "y" && line != "yes" {
+		return errors.New("hook install declined; re-run with --no-hooks to install the skill files only, or --yes to accept")
+	}
 	return nil
 }
 

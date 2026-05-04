@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/momentmaker/kaijutsu/cli/internal/hooks"
 	"github.com/momentmaker/kaijutsu/cli/internal/install"
 	"github.com/momentmaker/kaijutsu/cli/internal/manifest"
 	"github.com/spf13/cobra"
@@ -34,6 +35,12 @@ func newRemoveCmd() *cobra.Command {
 			}
 			if _, ok := lf.Skills[skillName]; !ok {
 				return errors.New("skill is not installed")
+			}
+
+			// Hooks first — they reference paths inside the skill dir
+			// which install.Remove is about to delete.
+			if err := hooks.RemoveForSkill(installRoot, lf.Agents, skillName); err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "warning: hook cleanup for %s failed: %v\n", skillName, err)
 			}
 
 			if err := install.Remove(installRoot, skillName, lf.Agents); err != nil {
