@@ -33,6 +33,39 @@ func TestLockfilePathFieldRoundTrip(t *testing.T) {
 	}
 }
 
+func TestLockEntryInstalledAsRoundTrip(t *testing.T) {
+	tmp := t.TempDir()
+	p := filepath.Join(tmp, "kaijutsu.lock.json")
+	lf := NewLockfile([]string{"claude"})
+	v := "0.2.0"
+	lf.Skills["pr-review"] = LockEntry{
+		Version:     &v,
+		Source:      "momentmaker/kaijutsu",
+		Ref:         "abc1234",
+		InstalledAs: "direct",
+	}
+	v2 := "0.1.0"
+	lf.Skills["blunder-hunt"] = LockEntry{
+		Version:     &v2,
+		Source:      "momentmaker/kaijutsu",
+		Ref:         "abc1234",
+		InstalledAs: "dep:pr-review",
+	}
+	if err := lf.Save(p); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := LoadLockfile(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := loaded.Skills["pr-review"].InstalledAs; got != "direct" {
+		t.Errorf("pr-review installedAs = %q, want %q", got, "direct")
+	}
+	if got := loaded.Skills["blunder-hunt"].InstalledAs; got != "dep:pr-review" {
+		t.Errorf("blunder-hunt installedAs = %q, want %q", got, "dep:pr-review")
+	}
+}
+
 func TestLockEntryNullVersionPersists(t *testing.T) {
 	tmp := t.TempDir()
 	p := filepath.Join(tmp, "kaijutsu.lock.json")

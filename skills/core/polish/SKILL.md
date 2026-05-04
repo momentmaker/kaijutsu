@@ -51,7 +51,7 @@ After each pass, fix every finding (not just critical). Run the project's test/l
 
 ### Convergence check
 
-After pass 2 (need 3 rounds of data including pass-0 baseline), invoke `convergence-detect`. If it returns CONVERGED, stop. Otherwise continue to next pass.
+After pass 3 — once you have at least three rounds of findings — invoke `convergence-detect`. If it returns CONVERGED, stop. Otherwise continue to pass 4 (the cap).
 
 ## Step F: Final deslop
 

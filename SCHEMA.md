@@ -145,7 +145,16 @@ Pinned, reproducible resolution. Committed to source control. Updated by `jutsu 
       "source": "momentmaker/kaijutsu",
       "ref": "abc123def456...",
       "path": "skills/core/pr-review",
-      "integrity": "sha256-..."
+      "integrity": "sha256-...",
+      "installedAs": "direct"
+    },
+    "blunder-hunt": {
+      "version": "0.1.0",
+      "source": "momentmaker/kaijutsu",
+      "ref": "abc123def456...",
+      "path": "skills/core/blunder-hunt",
+      "integrity": "sha256-...",
+      "installedAs": "dep:pr-review"
     },
     "weird-thirdparty-skill": {
       "version": null,
@@ -160,6 +169,7 @@ Pinned, reproducible resolution. Committed to source control. Updated by `jutsu 
 - **`version: null`** means the upstream source has no semver tag; the lockfile pins to a commit SHA.
 - **`path`** is the directory inside the source repo where the skill lives (omitted for repo-root layouts).
 - **`integrity`** is a base64-encoded SHA-256 of the fetched tarball, prefixed `sha256-`. The CLI re-fetches and re-hashes on every sync to verify reproducibility.
+- **`installedAs`** records *why* the skill is in the lockfile and is informational. `"direct"` means the user explicitly ran `jutsu install <name>`. `"dep:<parent>"` means the skill was first pulled in to satisfy `<parent>`'s `deps.skills`. The value is written once (on first install) and preserved across subsequent re-encounters; if multiple skills depend on the same dep, only the first parent is recorded. Authoritative orphan detection at remove time should compute the dep graph dynamically by walking every installed skill's `deps.skills` rather than trusting this field as the source of truth.
 
 ---
 

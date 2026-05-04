@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/momentmaker/kaijutsu/cli/internal/detect"
 	"github.com/momentmaker/kaijutsu/cli/internal/fetch"
 	"github.com/momentmaker/kaijutsu/cli/internal/install"
@@ -114,6 +115,9 @@ type installSession struct {
 // deps.skills, then installs the skill itself. parent is "" for the
 // user-requested skill and the parent skill name for transitive deps.
 func (s *installSession) installOne(name, constraint, parent string) error {
+	// Surface cross-session version conflicts: a previous lockfile entry
+	// may not satisfy the constraint this caller is requesting.
+	s.warnVersionConflict(name, constraint, parent)
 	if s.visited[name] {
 		return nil
 	}
@@ -157,6 +161,32 @@ func (s *installSession) load(name, constraint string) (*loaded, error) {
 		return loadLocal(s.localReg, name)
 	}
 	return loadRemote(s.cmd.Context(), s.fetcher, s.defaultReg, name, constraint)
+}
+
+// warnVersionConflict emits a stderr warning when a transitive dep is
+// requested under a constraint the already-resolved version doesn't
+// satisfy. First-resolved wins; this just makes the conflict visible.
+func (s *installSession) warnVersionConflict(name, requested, parent string) {
+	if requested == "" || parent == "" {
+		return
+	}
+	entry, ok := s.lf.Skills[name]
+	if !ok || entry.Version == nil {
+		return
+	}
+	c, err := semver.NewConstraint(requested)
+	if err != nil {
+		return
+	}
+	v, err := semver.NewVersion(*entry.Version)
+	if err != nil {
+		return
+	}
+	if !c.Check(v) {
+		fmt.Fprintf(s.cmd.ErrOrStderr(),
+			"warning: %s wants %s@%s but the lockfile pinned %s@%s — replacing the pin with a freshly-resolved version.\n",
+			parent, name, requested, name, *entry.Version)
+	}
 }
 
 // runSyncFromLockfile re-installs every skill listed in the lockfile at
@@ -235,15 +265,14 @@ func recordInstall(m *manifest.Manifest, lf *manifest.Lockfile, l *loaded, const
 		installedAs = "dep:" + parent
 	}
 
-	// Preserve "direct" if a skill is already installed directly and is
-	// being re-encountered as a transitive dep.
-	if existing, ok := lf.Skills[l.skill.Name]; ok {
-		if existing.InstalledAs == "direct" || existing.InstalledAs == "" {
-			installedAs = existing.InstalledAs
-			if installedAs == "" {
-				installedAs = "direct"
-			}
-		}
+	// installedAs is informational; preserve whatever was set on the first
+	// install. A "direct" install stays "direct" even when later
+	// re-encountered as a dep; a "dep:<X>" install stays pinned to its
+	// original parent rather than overwriting with the most recent one.
+	// Authoritative orphan detection at remove-time should compute the
+	// dep graph dynamically by walking installed skills' deps.skills.
+	if existing, ok := lf.Skills[l.skill.Name]; ok && existing.InstalledAs != "" {
+		installedAs = existing.InstalledAs
 	}
 
 	lf.Skills[l.skill.Name] = manifest.LockEntry{

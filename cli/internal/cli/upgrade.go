@@ -86,12 +86,35 @@ that exceed the constraint.`,
 					return err
 				}
 				v := c.newVersion
+				prevInstalledAs := lf.Skills[c.name].InstalledAs
 				lf.Skills[c.name] = manifest.LockEntry{
-					Version:   &v,
-					Source:    c.source,
-					Ref:       c.newRef,
-					Path:      c.path,
-					Integrity: l.hash,
+					Version:     &v,
+					Source:      c.source,
+					Ref:         c.newRef,
+					Path:        c.path,
+					Integrity:   l.hash,
+					InstalledAs: prevInstalledAs,
+				}
+				// If the upgraded skill changed its deps.skills, recurse so
+				// new deps install and existing deps stay in sync.
+				if l.skill.Deps != nil && len(l.skill.Deps.Skills) > 0 {
+					sess := &installSession{
+						cmd:         cmd,
+						fetcher:     fetcher,
+						localReg:    "",
+						defaultReg:  registryDefault(m),
+						installRoot: installRoot,
+						m:           m,
+						lf:          lf,
+						visited:     map[string]bool{c.name: true},
+					}
+					for _, depSpec := range l.skill.Deps.Skills {
+						depName, depConstraint := parseSpec(depSpec)
+						if err := sess.installOne(depName, depConstraint, c.name); err != nil {
+							l.cleanup()
+							return fmt.Errorf("refresh dep %s of %s: %w", depName, c.name, err)
+						}
+					}
 				}
 				l.cleanup()
 				// Persist after every successful upgrade so a partial failure

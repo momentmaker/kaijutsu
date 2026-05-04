@@ -41,6 +41,10 @@
             "type": "string",
             "pattern": "^sha256-[A-Za-z0-9+/=]+$",
             "description": "SHA-256 of the fetched tarball, prefixed sha256-."
+          },
+          "installedAs": {
+            "type": "string",
+            "description": "'direct' for user-requested installs; 'dep:<parent>' for transitive dependencies."
           }
         }
       }
