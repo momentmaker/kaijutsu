@@ -31,7 +31,7 @@ func verifySignature(ctx context.Context, stderr io.Writer, fetcher *fetch.Fetch
 	if l.skill.Trust == nil || l.skill.Trust.ExpectedSigner == "" {
 		return nil
 	}
-	if l.tarballPath == "" || l.tag == "" || l.source == "local" {
+	if l.tag == "" || l.source == "local" {
 		// Local registry mode skips verify; sig bundles only exist for
 		// remote tagged releases.
 		return nil
@@ -46,11 +46,29 @@ func verifySignature(ctx context.Context, stderr io.Writer, fetcher *fetch.Fetch
 		return fmt.Errorf("skill %s: %w", l.skill.Name, err)
 	}
 
-	// Sig bundle is named "<skill>-<tag>.tar.gz.sig" by sign-core.yml.
-	bundleName := fmt.Sprintf("%s-%s.tar.gz.sig", l.skill.Name, l.tag)
+	// sign-core.yml uploads two assets per skill: <name>-<tag>.tar.gz
+	// (the per-skill tarball that was signed) and <name>-<tag>.tar.gz.sig
+	// (the Sigstore bundle). cosign verify-blob compares the signed
+	// tarball against its bundle — so we fetch BOTH and verify them as
+	// a pair. Note: this is a different tarball from the codeload
+	// archive used for actual install. Verifying the asset proves the
+	// kaijutsu-core workflow signed *a* tarball of skills/core/<name>/
+	// at this tag; install proceeds with the codeload mirror at the
+	// same commit SHA, which carries GitHub's authoritative integrity.
 	src, err := source.Parse(l.source)
 	if err != nil {
 		return fmt.Errorf("skill %s: parse source: %w", l.skill.Name, err)
+	}
+	tarballName := fmt.Sprintf("%s-%s.tar.gz", l.skill.Name, l.tag)
+	bundleName := tarballName + ".sig"
+
+	tarballBytes, err := fetcher.GetReleaseAsset(ctx, src, l.tag, tarballName)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("skill %s declares expected-signer %q but no signed tarball found at release %s asset %s; refusing to install. Pass --no-verify to bypass at your own risk",
+				l.skill.Name, l.skill.Trust.ExpectedSigner, l.tag, tarballName)
+		}
+		return fmt.Errorf("skill %s: fetch signed tarball: %w", l.skill.Name, err)
 	}
 	bundleBytes, err := fetcher.GetReleaseAsset(ctx, src, l.tag, bundleName)
 	if err != nil {
@@ -61,14 +79,21 @@ func verifySignature(ctx context.Context, stderr io.Writer, fetcher *fetch.Fetch
 		return fmt.Errorf("skill %s: fetch sig bundle: %w", l.skill.Name, err)
 	}
 
-	// cosign verify-blob takes file paths.
-	tmpDir := filepath.Dir(l.tarballPath)
+	tmpDir, err := os.MkdirTemp("", "kaijutsu-verify-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(tmpDir)
+	tarballPath := filepath.Join(tmpDir, tarballName)
 	bundlePath := filepath.Join(tmpDir, bundleName)
+	if err := os.WriteFile(tarballPath, tarballBytes, 0644); err != nil {
+		return err
+	}
 	if err := os.WriteFile(bundlePath, bundleBytes, 0644); err != nil {
 		return err
 	}
 
-	if err := sign.VerifyBlob(ctx, l.tarballPath, bundlePath, identityRegex, oidcIssuer); err != nil {
+	if err := sign.VerifyBlob(ctx, tarballPath, bundlePath, identityRegex, oidcIssuer); err != nil {
 		return fmt.Errorf("skill %s: signature verification FAILED: %w", l.skill.Name, err)
 	}
 
