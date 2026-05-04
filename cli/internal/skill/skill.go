@@ -83,6 +83,7 @@ type Skill struct {
 	Author      string      `yaml:"author,omitempty"`
 	Homepage    string      `yaml:"homepage,omitempty"`
 	Repository  string      `yaml:"repository,omitempty"`
+	Upstream    string      `yaml:"upstream,omitempty"` // attribution URL for adapted skills
 	Tags        []string    `yaml:"tags,omitempty"`
 	Agents      []string    `yaml:"agents"`
 	Shared      []string    `yaml:"shared,omitempty"`

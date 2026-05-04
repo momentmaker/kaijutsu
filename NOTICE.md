@@ -18,7 +18,7 @@ Modifications: each port is wrapped in a kaijutsu `skill.yaml` (license, agents,
 
 ## Referenced — not bundled
 
-The full [`addyosmani/agent-skills`](https://github.com/addyosmani/agent-skills) collection (20 skills covering Define / Plan / Build / Verify / Review / Ship / Simplify) is also accessible via `registry/index.json` entries. Users can install any skill in the upstream repo with `jutsu install addyosmani/<skill-name>` once the v0.3 vanilla-SKILL.md compat mode lands. The originals remain canonical; kaijutsu's index just provides the multi-agent install path.
+The full [`addyosmani/agent-skills`](https://github.com/addyosmani/agent-skills) collection (20 skills covering Define / Plan / Build / Verify / Review / Ship / Simplify) is also accessible via `registry/index.json` entries. As of v0.3.0 the kaijutsu CLI's vanilla-SKILL.md compat mode synthesizes a minimal manifest with safe defaults (bash/network/fs-write all false; license auto-detected from the upstream repo's LICENSE), so any of the 15 non-ported skills can be installed directly with `jutsu install <skill-name>` (e.g. `jutsu install idea-refine`). The originals remain canonical; kaijutsu's index just provides the multi-agent install path.
 
 ## Patterns and ideas (no code carried)
 

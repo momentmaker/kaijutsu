@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -58,7 +59,7 @@ func loadLocal(registryPath, skillName string) (*loaded, error) {
 // constraint is a semver range expression ("^1.0", "~1.2", "1.2.3") or empty
 // for "latest". If constraint is a literal SHA-like string (40 hex chars),
 // it is treated as a pinned ref. Returns *loaded with .cleanup() to call.
-func loadRemote(ctx context.Context, fetcher *fetch.Fetcher, defaultRegistry, skillName, constraint string) (*loaded, error) {
+func loadRemote(ctx context.Context, stderr io.Writer, fetcher *fetch.Fetcher, defaultRegistry, skillName, constraint string) (*loaded, error) {
 	if err := skill.ValidateName(skillName); err != nil {
 		return nil, err
 	}
@@ -99,7 +100,7 @@ func loadRemote(ctx context.Context, fetcher *fetch.Fetcher, defaultRegistry, sk
 	if res.Path != "" {
 		skillDir = filepath.Join(top, filepath.FromSlash(res.Path))
 	}
-	sk, err := loadSkillOrSynthesize(skillDir, top, skillName, res.Source.String(), ref)
+	sk, err := loadSkillOrSynthesize(stderr, skillDir, top, skillName, res.Source.String(), ref)
 	if err != nil {
 		cleanup()
 		return nil, err
@@ -124,9 +125,11 @@ func loadRemote(ctx context.Context, fetcher *fetch.Fetcher, defaultRegistry, sk
 //
 // Synthesized skills get safe defaults (bash=false, network=false,
 // fs-write=false, hooks=false) and the repo LICENSE is checked against
-// the kaijutsu compatibility allowlist. Caller should call
-// noteSynthesized to surface the safe-defaults disclaimer to the user.
-func loadSkillOrSynthesize(skillDir, repoTop, skillName, src, ref string) (*skill.Skill, error) {
+// the kaijutsu compatibility allowlist. The caller passes a stderr
+// writer so the synthesized-defaults disclaimer is surfaced (synthesis
+// is opt-in trust — the user is installing something whose authoring
+// repo didn't declare permissions explicitly).
+func loadSkillOrSynthesize(stderr io.Writer, skillDir, repoTop, skillName, src, ref string) (*skill.Skill, error) {
 	yamlPath := filepath.Join(skillDir, "skill.yaml")
 	if _, err := os.Stat(yamlPath); err == nil {
 		return skill.Load(yamlPath)
@@ -147,11 +150,16 @@ func loadSkillOrSynthesize(skillDir, repoTop, skillName, src, ref string) (*skil
 	if err != nil {
 		return nil, err
 	}
-	// The skill name encoded in the install command (skillName) and the
-	// frontmatter name should match; if they don't, the user typoed or
-	// the registry index points at the wrong path.
 	if sk.Name != skillName {
 		return nil, fmt.Errorf("synthesize: SKILL.md frontmatter name %q does not match install request %q", sk.Name, skillName)
+	}
+	if err := sk.Validate(); err != nil {
+		return nil, fmt.Errorf("synthesize: %w", err)
+	}
+	if stderr != nil {
+		fmt.Fprintf(stderr,
+			"note: %s ships only SKILL.md (no kaijutsu skill.yaml). Synthesized minimal manifest with safe defaults: bash=false, network=false, fs-write=false, hooks=false. Inspect the source repo before relying on it for sensitive work.\n",
+			sk.Name)
 	}
 	return sk, nil
 }
@@ -160,7 +168,7 @@ func loadSkillOrSynthesize(skillDir, repoTop, skillName, src, ref string) (*skil
 // the integrity against the lockfile. Used by `jutsu install` (no args).
 // path is the in-repo path stored in the lockfile; empty means try the
 // canonical core layout, then fall back to repo root.
-func loadByLockEntry(ctx context.Context, fetcher *fetch.Fetcher, skillName, src, ref, path, expectedIntegrity string) (*loaded, error) {
+func loadByLockEntry(ctx context.Context, stderr io.Writer, fetcher *fetch.Fetcher, skillName, src, ref, path, expectedIntegrity string) (*loaded, error) {
 	if err := skill.ValidateName(skillName); err != nil {
 		return nil, err
 	}
@@ -211,7 +219,7 @@ func loadByLockEntry(ctx context.Context, fetcher *fetch.Fetcher, skillName, src
 		cleanup()
 		return nil, fmt.Errorf("neither skill.yaml nor SKILL.md found for %s in fetched tarball", skillName)
 	}
-	sk, err := loadSkillOrSynthesize(skillDir, top, skillName, parsed.String(), ref)
+	sk, err := loadSkillOrSynthesize(stderr, skillDir, top, skillName, parsed.String(), ref)
 	if err != nil {
 		cleanup()
 		return nil, err

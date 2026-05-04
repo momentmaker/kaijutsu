@@ -77,7 +77,7 @@ that exceed the constraint.`,
 
 			lf.Agents = m.Agents
 			for _, c := range candidates {
-				l, err := loadByLockEntry(cmd.Context(), fetcher, c.name, c.source, c.newRef, c.path, "")
+				l, err := loadByLockEntry(cmd.Context(), cmd.ErrOrStderr(), fetcher, c.name, c.source, c.newRef, c.path, "")
 				if err != nil {
 					return fmt.Errorf("upgrade %s: %w", c.name, err)
 				}

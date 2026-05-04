@@ -33,7 +33,7 @@ func newInfoCmd() *cobra.Command {
 				if m == nil {
 					m = manifest.New([]string{"claude"})
 				}
-				l, err = loadRemote(cmd.Context(), fetch.New(), registryDefault(m), name, "")
+				l, err = loadRemote(cmd.Context(), cmd.ErrOrStderr(), fetch.New(), registryDefault(m), name, "")
 			}
 			if err != nil {
 				return err

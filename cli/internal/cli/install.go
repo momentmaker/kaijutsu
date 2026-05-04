@@ -211,7 +211,7 @@ func (s *installSession) load(name, constraint string) (*loaded, error) {
 	if s.localReg != "" {
 		return loadLocal(s.localReg, name)
 	}
-	return loadRemote(s.cmd.Context(), s.fetcher, s.defaultReg, name, constraint)
+	return loadRemote(s.cmd.Context(), s.cmd.ErrOrStderr(), s.fetcher, s.defaultReg, name, constraint)
 }
 
 // warnVersionConflict emits a stderr warning when a transitive dep is
@@ -265,7 +265,7 @@ func runSyncFromLockfile(cmd *cobra.Command, installRoot, manifestPath, lockPath
 			fmt.Fprintf(cmd.ErrOrStderr(), "skipping %s: source=local cannot be re-fetched\n", name)
 			continue
 		}
-		l, err := loadByLockEntry(cmd.Context(), fetcher, name, entry.Source, entry.Ref, entry.Path, entry.Integrity)
+		l, err := loadByLockEntry(cmd.Context(), cmd.ErrOrStderr(), fetcher, name, entry.Source, entry.Ref, entry.Path, entry.Integrity)
 		if err != nil {
 			return fmt.Errorf("sync %s: %w", name, err)
 		}

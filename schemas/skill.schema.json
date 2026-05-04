@@ -41,6 +41,11 @@
     "author": { "type": "string" },
     "homepage": { "type": "string", "format": "uri" },
     "repository": { "type": "string", "format": "uri" },
+    "upstream": {
+      "type": "string",
+      "format": "uri",
+      "description": "Optional. URL of the original source for adapted/ported skills (e.g. the upstream addyosmani/agent-skills SKILL.md). Recorded for attribution alongside `author`."
+    },
     "tags": {
       "type": "array",
       "items": { "type": "string" }
