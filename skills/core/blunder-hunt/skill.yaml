@@ -1,12 +1,15 @@
 name: blunder-hunt
-version: 0.1.0
+version: 0.2.0
 license: MIT
 layout: flat
-description: "Multi-pass adversarial critique primitive. Run a skeptic review N times in fresh contexts; deduplicate; surface only issues that survive."
+description: "Multi-pass adversarial critique. Run a skeptic review N times in fresh contexts (optionally in parallel via dispatch-parallel); deduplicate; surface only issues that survive."
 homepage: https://kaijutsu.dev/skills/blunder-hunt
 repository: https://github.com/momentmaker/kaijutsu
 tags: [primitive, review, adversarial]
 agents: [claude, codex, gemini]
+deps:
+  skills:
+    - dispatch-parallel@^0.1
 permissions:
   bash: false
   network: false

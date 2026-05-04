@@ -1,12 +1,16 @@
 name: journal
-version: 0.1.0
+version: 0.3.0
 license: MIT
 layout: flat
-description: "Monthly development journal — read git log, merged PRs, decisions, and memory; produce a structured narrative of what happened in the project."
+description: "Periodic development journal — read git/PRs/decisions/memory; produce a structured narrative; optional multi-model synthesis for the narrative voice. Themed cadences (weekly/sprint/release/monthly) and sentiment+velocity tracking."
 homepage: https://kaijutsu.dev/skills/journal
 repository: https://github.com/momentmaker/kaijutsu
 tags: [journal, retrospective, reporting]
 agents: [claude, codex, gemini]
+deps:
+  skills:
+    - multi-model-synth@^0.1
+    - project-memory@^0.1
 permissions:
   bash: true
   network: true

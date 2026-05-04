@@ -42,6 +42,28 @@ Read all files in `.claude/decisions/` (or your agent's equivalent project-scope
 
 If yes, update the old file's frontmatter to `status: superseded` and add `superseded_by: {new-decision-slug}`.
 
+### Step 3.5: Multi-model critique (high-stakes decisions)
+
+Before saving, fan out the proposed decision to a second model with the prompt:
+
+> "Here is a proposed decision: <statement>. Alternatives considered: <alternatives>. Reasoning: <why>. Tripwire: <tripwire>. Argue against this decision. What's the strongest counter-argument? What blind spot is the author missing?"
+
+If the second model surfaces a counter-argument the user hasn't addressed, present it before saving:
+
+> "Before recording, the second model raised: <counter>. Does this change anything?"
+
+Skip this step for low-stakes decisions (file naming conventions, internal-only refactors). Use it for high-stakes ones (dep changes, architecture pivots, schema changes, security-relevant choices).
+
+Composes `multi-model-synth`.
+
+### Step 3.75: Auto-tag from content
+
+Instead of asking the user for tags, infer them from the decision content + repo state:
+
+- Read package.json / go.mod / Cargo.toml etc. for stack signals → `frontend`, `backend`, `infra`, `dependencies`
+- Detect domain from path patterns in the conversation context → `auth`, `payments`, `data-model`, `api`
+- Pick 2-4 tags. Show the user, let them edit.
+
 ### Step 4: Write the Decision Record
 
 Create the decisions directory at the repo root if it doesn't exist:
@@ -70,7 +92,22 @@ tags: [{relevant-tags}]
 ```
 
 Generate the slug from the decision statement: lowercase, hyphens, max 50 chars.
-Generate tags from the domain: infrastructure, architecture, dependencies, data-model, api, ui, testing, process.
+Tags come from Step 3.75 auto-tag.
+
+Also write a project-memory entry (per `project-memory` SKILL.md):
+
+```yaml
+---
+name: <decision-slug>
+description: <one-line summary of the decision>
+type: project
+source: decide
+---
+
+<body following the decide template>
+```
+
+This makes the decision discoverable by other skills (journal reads it for retros; unstuck checks it before suggesting an approach that might contradict).
 
 ### Step 5: Confirm
 

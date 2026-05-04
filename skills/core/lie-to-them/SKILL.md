@@ -61,6 +61,32 @@ blunder-hunt N=5
       re-run pass once
 ```
 
+## Transparency footer
+
+When a parent skill's output was produced under lie-to-them pressure, append a transparency footer:
+
+```
+---
+This review was conducted under lie-to-them pressure
+(claimed minimum: <N>, actually found: <K>).
+```
+
+Why: future readers (the user, other agents reviewing the work) deserve to know that the count of findings reflects an applied pressure technique, not a natural ceiling. Transparency is what keeps the technique honest.
+
+Skip the footer for *internal* uses (where the parent skill consumes the output directly without surfacing it to a human). Always include it when the output is shown to a user or posted as a PR comment.
+
+## Calibration log (optional)
+
+Track per-project `claimed_N` vs `actually_found` over time:
+
+```
+.claude/lie-to-them-calibration.jsonl
+{"timestamp": "...", "skill": "pr-review", "claimed_N": 12, "found": 9}
+{"timestamp": "...", "skill": "polish",    "claimed_N":  5, "found": 6}
+```
+
+After 10+ samples, recalibrate the 2× heuristic. If actual-found consistently approaches claimed_N, the multiplier is well-tuned. If actual-found is far below, the multiplier is too aggressive — drop to 1.5×. If actual-found often exceeds claimed_N, raise to 3×.
+
 ## Provenance
 
 This technique is documented in Jeffrey Emanuel's "Agentic Coding Flywheel" methodology under the heading "Lie to Them." kaijutsu adopts it as a primitive so other skills can reference it without restating the rationale every time.

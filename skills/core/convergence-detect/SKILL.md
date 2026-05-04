@@ -50,6 +50,34 @@ Practical heuristic without an embedding model:
 - Check if a substantively-equivalent item appears in round N-1
 - If 80%+ of round N items have a match in round N-1, they're saying the same thing
 
+## Quantitative scoring
+
+Don't eyeball — measure.
+
+- **Output tokens**: count tokens (or characters as a proxy) per round. Track the ratio `tokens(N) / tokens(N-1)`. Below 0.6 = strongly shrinking; below 0.8 = mildly shrinking.
+- **New-item ratio**: of the items in round N, count how many are new vs. restated. Items whose normalized text matches an item from N-1 (case-insensitive, whitespace-collapsed, identifier-equivalent) count as restated. Below 0.2 = strongly slowing.
+- **Jaccard similarity to previous round**: |intersect(N, N-1)| / |union(N, N-1)|. Above 0.7 = strongly similar.
+
+Optional: when an embedding endpoint is available, replace string-jaccard with cosine similarity over embeddings. More robust to paraphrase.
+
+## Persistence
+
+Optionally log round-by-round signals to `.claude/convergence-log/<loop-id>.jsonl` (one JSON record per round). Schema:
+
+```json
+{
+  "round": 3,
+  "tokens": 350,
+  "new_items": 1,
+  "total_items": 6,
+  "similarity_to_prev": 0.83,
+  "verdict": "converged",
+  "verdict_confidence": "high"
+}
+```
+
+Useful for retroactive tuning ("we declared converged at round 3 but pass 4 still found 2 issues — calibrate harder next time").
+
 ## Stop condition
 
 Declare convergence when ALL three signals fire simultaneously:
@@ -77,7 +105,9 @@ If only 1-2 signals fire, run another round.
 | New-item ratio     | 100%      | 63%       | 17%     | dropping  |
 | Similarity to prev | n/a       | 50%       | 83%     | rising    |
 
-Verdict: CONVERGED — all three signals fire. Stop the loop.
+Verdict: CONVERGED (high confidence — all three signals strong)
+        | CONVERGED (low — only 1 of 3 signals strong, see notes)
+        | NOT CONVERGED — output shrinking but similarity still 60%
 ```
 
 Or:

@@ -35,6 +35,13 @@ Don't shortcut. Each pass uses different attention.
 
 **Pass C — wander outside the diff:** identify 3-5 files NOT in the diff that the change likely affects (callers, callees, shared types, tests, config). Read them. The bug is often where the new code touches old code.
 
+## Step 2.5: API contract diff + test impact
+
+Before the lens passes, compute two things from the diff:
+
+1. **Public-API surface change** — extract added/removed/renamed exported symbols, route handlers, schema migrations, generated SDK changes. Any breaking change gets flagged loudly in the verdict regardless of what the lens passes find.
+2. **Test impact** — which tests should run for this diff? Which were added? Which existing tests cover the changed code paths? If new code paths exist with no test additions, that's a **critical** finding by default — request changes.
+
 ## Step 3: Run blunder-hunt 5x
 
 Apply the `blunder-hunt` primitive with N=5 lenses:
@@ -52,6 +59,16 @@ For each pass, force exhaustive enumeration with `lie-to-them`:
 > "There are at least <N> issues of type <lens> in this PR. You have found <K>. Find the rest."
 
 Where N is calibrated to PR size (see `lie-to-them` SKILL.md). Don't fabricate to fill a quota; the lie is in the prompt, not the verdict.
+
+## Step 3.5: Multi-model fan-out (high-stakes diffs only)
+
+For a high-stakes diff — security-relevant code, public-API change, large refactor, anything tagged `priority:high` on the PR — compose `multi-model-synth`:
+
+1. Run the same review prompt against Claude AND a second model (Codex GPT-5 or Gemini 2.5 Pro)
+2. Synthesize: agreements between models = high confidence; disagreements = flag as questions
+3. Cite which model contributed each finding in the posted PR comment
+
+For routine diffs, single-model review is fine. Don't burn tokens on one-line fixes.
 
 ## Step 4: Synthesize findings
 

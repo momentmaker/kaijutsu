@@ -45,6 +45,19 @@ Combine with `lie-to-them` for additional pressure:
 
 Models continue searching exhaustively rather than satisficing. See `lie-to-them` SKILL.md for usage notes.
 
+## Parallel mode (recommended for N ≥ 3)
+
+When the agent platform supports parallel subagents, compose `dispatch-parallel`:
+
+1. Decompose: one subagent per lens, each with the same target but a different lens prompt.
+2. Dispatch: spawn all K subagents in a single turn.
+3. Collect: each subagent returns its findings tagged with its lens.
+4. Synthesize: dedupe across subagents (same file:line in 2+ outputs = high confidence).
+
+This is dramatically faster than sequential and produces *more independent* attention per pass — each subagent isn't anchored on the previous pass's findings.
+
+For platforms that don't support parallel subagents, fall back to sequential. Same lenses, same dedup, just one at a time.
+
 ## Default invocation
 
 If a parent skill says `run blunder-hunt with N=5 on <target>`, execute exactly that. If the user invokes directly without an N or target:
@@ -69,8 +82,31 @@ Synthesized (deduplicated, severity-sorted):
 - [MINOR]    <file>:<line> — <description>
 ```
 
+## JSON sidecar
+
+When invoked under structured-output mode, also emit:
+
+```json
+{
+  "skill": "blunder-hunt",
+  "version": "0.2.0",
+  "target": "<what was reviewed>",
+  "passes": [
+    {"pass": 1, "lens": "data-correctness", "findings": [...]},
+    ...
+  ],
+  "synthesized": [
+    {"file": "...", "line": 42, "severity": "critical",
+     "description": "...", "passes_found_in": [1, 3]}
+  ]
+}
+```
+
+Downstream tools (pr-review, polish) consume this to post structured comments.
+
 ## Hard rules
 
 - Each pass must use a different lens. If you re-run pass N with the same lens, you're cheating yourself.
 - Do not fabricate findings to fill a quota. If pass 4 finds zero, report zero — let `lie-to-them` do the pressure.
 - This skill produces findings. It does NOT take action. The parent skill (pr-review, polish, etc.) decides what to do with them.
+- In parallel mode, subagents must NOT see each other's outputs before synthesis. That defeats the independent-attention point.

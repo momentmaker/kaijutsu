@@ -1,8 +1,8 @@
 name: deslop
-version: 0.1.0
+version: 0.2.0
 license: MIT
 layout: flat
-description: "Strip AI-generated tells from a draft — emdash overuse, formulaic contrasts, pseudo-profound openers — without changing the content."
+description: "Strip AI-generated tells from a draft. Two modes: --strip edits in place; --detect reports flagged passages without editing. Reads project style guides from CLAUDE.md/AGENTS.md for project-specific term preservation."
 homepage: https://kaijutsu.dev/skills/deslop
 repository: https://github.com/momentmaker/kaijutsu
 tags: [primitive, writing, polish]

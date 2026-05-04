@@ -1,15 +1,16 @@
 name: session-retro
-version: 0.2.0
+version: 0.3.0
 license: MIT
 layout: flat
-description: "End-of-session retrospective that mines the current conversation for learnings — memory entries, skill opportunities, hooks. Uses convergence-detect to stop pulling once new signal stalls."
+description: "End-of-session retrospective. Mines the current conversation for learnings; cross-session pattern detection across recent retros; writes to project-memory; optional auto-apply mode."
 homepage: https://kaijutsu.dev/skills/session-retro
 repository: https://github.com/momentmaker/kaijutsu
 tags: [retrospective, memory, learning]
 agents: [claude, codex, gemini]
 deps:
   skills:
-    - convergence-detect@^0.1
+    - convergence-detect@^0.2
+    - project-memory@^0.1
 permissions:
   bash: true
   network: false

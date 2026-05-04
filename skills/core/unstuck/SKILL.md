@@ -7,6 +7,24 @@ description: Guided problem articulation when you're stuck. Use when the user sa
 
 Break out of unproductive loops. Articulate the problem, then either solve it through clarity or escalate systematically.
 
+## Step 0: Memory-first
+
+Before asking the user anything, check project memory for prior similar problems:
+
+1. Read `MEMORY.md` index, scan descriptions for matches against the current symptom (error message, stack trace, behavior)
+2. For any matches, read the full memory entry
+3. If a strong match exists, present it: "We've hit something like this before: <prior root cause>. Is this the same problem? If yes, the prior fix was: <fix>."
+
+If the user confirms it's the same problem, jump straight to Step 5 (Solution Capture) — the entry confirms the user already had the answer.
+
+If no match or user says it's different, proceed to Step 1.
+
+Composes `project-memory`.
+
+## Walk-away timer
+
+If `unstuck` has been invoked 2+ times in the same session on the same goal, escalate Step 4's Walk-Away level immediately. Repeated invocation = fresh-eyes problem, not articulation problem.
+
 ## Step 1: Articulate
 
 Ask these 4 questions one at a time. Do not skip any.
@@ -95,14 +113,23 @@ After the problem is resolved (at any step), ask:
 
 "What was the actual root cause?"
 
-Then write a memory entry to your agent's project-memory directory.
+Then write a project-memory entry (per `project-memory` SKILL.md):
 
-Suggested entry shape:
+```yaml
+---
+name: <symptom-slug>
+description: <symptom> -> <root cause>
+type: project
+source: unstuck
+---
 
-    **Symptom:** {what happened}
-    **Root cause:** {what was actually wrong}
-    **Fix:** {what solved it}
-    **How to apply:** {when this knowledge is useful in the future}
+**Symptom:** <what happened>
+**Root cause:** <what was actually wrong>
+**Fix:** <what solved it>
+**How to apply:** <when this knowledge is useful in the future>
+```
+
+Update `MEMORY.md` if the root cause is likely to recur. Future `unstuck` invocations will find this entry in Step 0 and short-circuit.
 
 Update the project-level memory index if the root cause is likely to recur.
 

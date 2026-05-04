@@ -68,6 +68,23 @@ Just say what's important.
 - **The author's voice.** If the original has a quirk that's intentional (a recurring metaphor, a specific tone), preserve it.
 - **Markdown structure** when load-bearing — code blocks, headings, links.
 
+## Modes
+
+### `--strip` (default)
+Edit the draft in place. Apply every category of fix. Save and report the edits.
+
+### `--detect`
+Don't edit. Scan the draft and report flagged passages with category + suggested replacement. Let the user accept/reject per item. Useful for high-stakes prose where you want human approval on each change (PR descriptions, blog posts going public, official docs).
+
+### Project-aware mode (always on)
+Before applying any edits, read the project's `CLAUDE.md` / `AGENTS.md` / contributor docs for project-specific style guidance. Honor:
+- Project-specific term preferences ("tarball" not "archive"; "skill" not "plugin")
+- Voice / tone constraints stated in the doc
+- Forbidden phrases the maintainer has called out
+- Any explicit "preserve emdash usage in X context" overrides
+
+If the project has a `.deslop.yaml` (or similar) configuration file at the repo root, that takes precedence over generic rules.
+
 ## Workflow
 
 1. Read the draft.

@@ -1,0 +1,13 @@
+name: project-memory
+version: 0.1.0
+license: MIT
+layout: flat
+description: "Cross-skill project-memory contract. Defines the schema and conventions for the per-project memory directory that decide, session-retro, unstuck, and other skills read and write."
+homepage: https://kaijutsu.dev/skills/project-memory
+repository: https://github.com/momentmaker/kaijutsu
+tags: [primitive, memory, schema]
+agents: [claude, codex, gemini]
+permissions:
+  bash: true
+  network: false
+  fs-write: scoped

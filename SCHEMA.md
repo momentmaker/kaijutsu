@@ -187,3 +187,64 @@ A single write to `~/.agents/skills/` covers both Codex and Gemini, per the [Age
 ## Global lockfile
 
 `jutsu install -g <skill>` writes to `~/.kaijutsu/global.lock.json`, same schema as the project lockfile.
+
+---
+
+## JSON sidecar pattern
+
+Skills produce human-readable markdown by default. When invoked under structured-output mode (a `--json` flag, an environment variable, or a parent skill that needs to consume the output), they MAY also emit a JSON twin alongside the markdown.
+
+The JSON twin is for downstream tools — composition by other skills, eval harnesses, dashboards — and follows a per-skill schema documented in the skill's SKILL.md "JSON sidecar" section.
+
+Conventions:
+
+- Every JSON output object includes `skill` (name) and `version` fields.
+- Field names are `lower_snake_case` for machine consumers.
+- Free-text fields appear in both the markdown and the JSON; structured fields appear only in the JSON.
+- Skills that produce findings should include a stable identifier per finding (e.g., `<file>:<line>:<short-hash>`) so downstream tools can dedupe across runs.
+
+Example skills with declared JSON sidecars:
+
+| Skill | Top-level shape |
+|---|---|
+| `blunder-hunt` | `{ skill, version, target, passes: [...], synthesized: [...] }` |
+| `dispatch-parallel` | `{ skill, version, task, synthesis, subagents: [...], synthesized: [...] }` |
+| `multi-model-synth` | `{ skill, version, models, agreements, disagreements, synthesized }` |
+| `convergence-detect` | `{ round, tokens, similarity_to_prev, verdict, verdict_confidence }` |
+
+Adopt the pattern in new skills when their output is mechanical enough to be useful to a machine. Skip it for skills whose output is fundamentally prose (README updates, journal entries) — JSON adds noise without adding value.
+
+---
+
+## Cross-skill project memory
+
+Multiple skills accumulate persistent knowledge about a project: `decide` records architectural decisions, `session-retro` extracts learnings, `unstuck` saves resolved-problem patterns, `journal` reads accumulated entries, `agent-doctor` audits for staleness. The `project-memory` skill is the **contract** they share.
+
+The schema:
+
+```
+<agent-memory-dir>/
+  MEMORY.md              # always-loaded index, one line per entry
+  <topic-slug>.md        # individual entries
+```
+
+Each topic file:
+
+```yaml
+---
+name: <one-line entry name>
+description: <one-line — used to decide relevance in future conversations>
+type: <user | feedback | project | reference>
+source: <skill-name that produced this entry>   # optional, recommended
+---
+<body>
+```
+
+Type taxonomy:
+
+- `user` — who the user is, role, preferences, knowledge
+- `feedback` — guidance the user has given about how to work — corrections, validations
+- `project` — project-specific facts, decisions, deadlines, motivations
+- `reference` — pointers to external systems where current state lives
+
+Any skill that reads or writes project memory MUST follow the conventions in the `project-memory` SKILL.md (deduplication rules, agent-platform path resolution, `MEMORY.md` index updates).

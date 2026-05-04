@@ -7,6 +7,10 @@ description: End-of-session retrospective that mines the current conversation fo
 
 Review the current conversation to surface actionable learnings, then help the user decide what to persist.
 
+## Step 0: Cross-session pattern check
+
+Before scanning the current conversation alone, look at the last 3-5 retros (if any) in `.claude/retros/` or in project-memory. If a pattern is repeating across multiple sessions — same friction, same kind of error, same skill gap — surface it specifically. Cross-session patterns are higher-signal than one-off observations.
+
 ## Step 1: Scan the Conversation
 
 Read through the full conversation and extract items in these categories:
@@ -79,11 +83,15 @@ If you've extracted findings in 2+ rounds (e.g., re-running the retro after acti
 
 If `convergence-detect` is not installed, fall back to the heuristic: stop when a fresh round produces ≤20% new findings.
 
+## Step 3.6: Auto-apply mode
+
+If the user invokes with `--yes` (or pastes "apply all"), skip per-item confirmation in Step 3 and go straight to Step 4 for every selected item. Surface a summary at the end: "Applied N items — M memory entries, K skill changes, J hooks. Skipped P items requiring user input."
+
 ## Step 4: Execute
 
 For each selected item:
 
-- **Memory entries** → Write or update files in your agent's project-memory directory. Check for existing entries first to avoid duplicates. Update the always-loaded memory index if the finding is important enough; otherwise use a topic file.
+- **Memory entries** → Write per the `project-memory` contract: frontmatter with `name`/`description`/`type` and `source: session-retro`, body in the type-specific template, dedupe against existing entries, update `MEMORY.md` index. See `project-memory` SKILL.md for details.
 - **Skill opportunities** → Draft a new SKILL.md following the [Anthropic Agent Skills](https://agentskills.io) format. Keep it lean — the user can iterate later.
 - **Skill improvements** → Read the existing skill, apply the suggested change, show a diff.
 - **Hooks / automation** → Create the hook script and add the entry to the agent's settings file, following the agent-specific schema.

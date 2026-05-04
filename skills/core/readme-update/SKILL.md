@@ -47,9 +47,37 @@ Bucket the changed files into themes:
 | Schema / data | migration files, prisma/sqlx schemas, GraphQL SDL | Schema, Data Model |
 | Docs links | `docs/**` additions or renames | Documentation, Further Reading |
 
+## Step 4.5: Check badges + image staleness
+
+While scanning, audit:
+- Version badges in the README header — does the version match the latest tag? Latest release? Latest published package?
+- License badges — match LICENSE file?
+- Build / lint badges — link still valid? Workflow still exists?
+- Embedded images / diagrams — `mtime` newer or older than the related code's `mtime`? An out-of-date architecture diagram is often worse than no diagram.
+
 ## Step 5: Read the README
 
-Parse the README's heading structure (h1/h2/h3). Map each detected theme to the matching section. If a theme has no corresponding section, note it as a candidate for a *new* section rather than an edit.
+Parse the README's heading structure (h1/h2/h3). Map each detected theme to the matching section.
+
+**Semantic match, not just header text.** A "Quickstart" section may be called "Get Started", "Hello world", "First steps", or simply have no header but lead with `npm install`. Match by content patterns:
+
+- Installation = section that contains install commands or package-manager mentions
+- Usage = section with example invocations
+- API = section with type signatures or endpoint definitions
+- Configuration = section with env vars, config keys, or settings tables
+
+If a theme has no corresponding section, propose a *new* section rather than forcing an edit into an unrelated section.
+
+## Multi-doc support
+
+This skill works on any project markdown, not just `README.md`. Apply the same anchor-on-last-touch + walk-forward pattern to:
+
+- `CONTRIBUTING.md` (contributor flow changed, new tooling required, new conventions)
+- `ARCHITECTURE.md` (major refactors, new modules, removed components)
+- `CHANGELOG.md` (releases since last touch — auto-generate entries from commits)
+- `docs/**/*.md` (any deep doc that references specific code paths)
+
+Pass the doc path explicitly: `/readme-update CONTRIBUTING.md`. Default is `README.md`.
 
 ## Step 6: Propose Concrete Edits
 

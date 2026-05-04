@@ -7,7 +7,18 @@ description: Monthly development journal. Use when the user says "journal", "mon
 
 Generate a structured narrative of what happened in this project over a month. Reads git log, merged PRs, decisions, and any project memory the agent has access to.
 
-## Step 1: Determine the Month
+## Cadences
+
+Default is monthly. Other cadences accept the same data but produce different narratives:
+
+- `/journal weekly` — last 7 days. Lighter narrative; focus on what shipped + what's next.
+- `/journal sprint` — last sprint length (default 14 days; configurable via `.claude/journal-cadence.yaml`).
+- `/journal release` — since the last git tag. Releases-as-units narrative.
+- `/journal monthly` (default) — calendar month, full retrospective.
+
+The data-gathering steps (git log, PRs, decisions, memory) are identical; only the time window and narrative emphasis differ.
+
+## Step 1: Determine the Window
 
 - If no argument: use the previous calendar month if today is day 1-7, otherwise use the current month
 - If argument is a month name (e.g., "march"): resolve to YYYY-MM using the current year
@@ -104,6 +115,22 @@ Write the following structure:
     - {Anything flagged in commit messages as TODO or pending}
 
 Omit any section that has zero content. Don't generate empty sections.
+
+## Step 4.5: Sentiment + velocity tracking
+
+While scanning, surface signals beyond the raw what-happened:
+
+- **Velocity**: commits per day, ratio vs prior period. Flag a 50%+ drop or rise.
+- **Crunch indicators**: late-night commits (after 22:00 local), weekend commits in projects that don't normally see them, commit-message tone shift toward "fix"/"hotfix"/"revert" prefixes.
+- **Demoralization signals**: long branches that never merge, repeated reverts, decision tripwires firing without acknowledgment.
+
+Present these in a separate "Signals" section of the journal — factual, no judgment. The user reads and acts.
+
+## Step 4.75: Multi-model synthesis (optional)
+
+For high-effort journals (monthly, release), optionally compose `multi-model-synth`: give the same gathered data to 2-3 models, compare narratives, synthesize the strongest. Different models emphasize different things — one might catch the velocity dip, another the architectural drift. Synthesis preserves both.
+
+Skip for weekly/sprint (cost > value at small windows).
 
 ## Step 5: Present for Review
 

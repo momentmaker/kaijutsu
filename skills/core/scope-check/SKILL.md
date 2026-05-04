@@ -39,6 +39,33 @@ Group changed files by their top-level directory or domain:
 
 If your agent keeps a session log, count sessions and estimate total time spent on this project today and yesterday.
 
+## Step 4.5: Cost-tier classification
+
+For each changed file, classify by **reasoning space** per the Agentic Coding Flywheel cost model:
+
+| Tier | What it touches | Rework cost |
+|---|---|---|
+| **plan-space** | design docs, plans, architecture markdown, ADRs | 1× |
+| **bead-space** | task lists, scope-of-work specs, project tracking | 5× |
+| **code-space** | actual implementation files, tests, configs | 25× |
+
+Tally by tier. If 80%+ of the change is **code-space** and the original intent was a small fix, that's a signal: the work drifted into expensive territory. The mirror should surface:
+
+> "Currently 12 of 15 changed files are in code-space (25× rework cost). If a piece of the original plan is still being debated, consider returning to plan-space briefly before committing more to code."
+
+## Step 4.75: Identify split-points
+
+Scan the file groups from Step 3. Look for natural seams:
+
+- Two domains that don't share imports or types → could be two PRs
+- One domain has tests + implementation; the other has only implementation → split: ship the tested one first
+- Refactor changes mixed with feature changes → split: refactor PR, then feature PR
+- Independent bug fixes bundled with the main feature → split: ship the bug fixes immediately
+
+For each candidate split-point, propose:
+
+> "Possible split: extract `<domain>` (N files, ~M LOC) as a separate PR. It has no test or runtime dependency on the rest."
+
 ## Step 5: Present the Mirror
 
 ```
@@ -54,7 +81,17 @@ If your agent keeps a session log, count sessions and estimate total time spent 
 
 **Sessions:** {count} | **Estimated time:** {hours}
 
-**Observation:** {factual description of how the scope grew — what domains were added beyond the original intent}
+### Cost tier breakdown
+| Tier | Files | Lines | Rework cost |
+|---|---|---|---|
+| plan-space | {n} | {n} | 1× |
+| bead-space | {n} | {n} | 5× |
+| code-space | {n} | {n} | 25× |
+
+### Possible split-points
+- {domain} ({n} files, ~{m} LOC) — no shared deps with the rest
+
+**Observation:** {factual description of how the scope grew — what domains were added beyond the original intent, plus the tier breakdown's implications}
 
 **Questions to consider:**
 - Could any of these domains be a separate PR?

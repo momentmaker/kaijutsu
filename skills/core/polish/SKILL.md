@@ -45,6 +45,12 @@ Look at how pieces fit together:
 
 Run `blunder-hunt` with the pass's lens on the in-scope files. The primitive handles the lie-to-them pressure and the dedup. Polish just consumes the output.
 
+### Parallel pass-runners (when supported)
+
+For a single pass with K lenses, compose `dispatch-parallel`: spawn one subagent per lens, run all in parallel, collect findings. Wall-time savings are large on big diffs. Each subagent gets the same diff but a different lens prompt; synthesis dedupes findings that surface in 2+ subagents.
+
+If the platform doesn't support parallel subagents, fall back to sequential — same lenses, same dedup, just slower.
+
 ### Fix Phase
 
 After each pass, fix every finding (not just critical). Run the project's test/lint commands. If a fix breaks something, fix that too — count as part of the same pass.
@@ -74,13 +80,26 @@ Skip code comments unless the diff specifically reworked them.
 
 If items remain after the cap, list them for the user.
 
+## Optional: branch-protected mode
+
+For long-running polish loops on critical code, optionally commit each pass as a separate commit on a `polish/<feature>` branch:
+
+1. Before pass 1, create branch `polish/<short-feature-name>` off the current HEAD
+2. After each pass's fix phase, commit with message `polish: pass N — <one-line summary>`
+3. If a later pass introduces a regression, `git bisect` over the polish commits identifies the culprit fix
+4. At the end, optionally squash before merging back to the working branch
+
+This trades commit-history noise for an auditable trail. Useful for high-stakes refactors; overkill for small fixes.
+
 ## Hard rules
 
 - DO fix issues immediately — don't just report them
 - DO run tests after each fix pass
 - DO stop when convergence-detect says converged, even before the cap
+- DO refuse to declare done if tests are failing at any point in any pass — hard test gate
 - DO commit after polish (ask user first)
 - DON'T gold-plate. Real issues only, no style refactors
 - DON'T add features. Correctness only
 - DON'T count cosmetic preferences as issues unless they violate project conventions
 - DON'T silently revert decisions the author made — if you disagree, raise it as a finding for the user to weigh in
+- DON'T parallelize the *fix phase*. Parallel review is fine; parallel writes to the same files = chaos.
