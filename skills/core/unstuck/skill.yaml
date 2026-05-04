@@ -9,7 +9,7 @@ tags: [debugging, problem-solving, workflow]
 agents: [claude, codex, gemini]
 deps:
   skills:
-    - blunder-hunt@^0.1
+    - blunder-hunt@^0.2
 permissions:
   bash: true
   network: true

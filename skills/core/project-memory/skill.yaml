@@ -1,5 +1,5 @@
 name: project-memory
-version: 0.1.0
+version: 0.2.0
 license: MIT
 layout: flat
 description: "Cross-skill project-memory contract. Defines the schema and conventions for the per-project memory directory that decide, session-retro, unstuck, and other skills read and write."

@@ -1,5 +1,5 @@
 name: multi-model-synth
-version: 0.1.0
+version: 0.2.0
 license: MIT
 layout: flat
 description: "Fan out the same task to multiple models (Claude, Codex, Gemini), compare responses, synthesize a 'best of all worlds' answer that artfully blends each model's strengths."
@@ -9,7 +9,7 @@ tags: [primitive, multi-model, synthesis, planning]
 agents: [claude, codex, gemini]
 deps:
   skills:
-    - dispatch-parallel@^0.1
+    - dispatch-parallel@^0.2
 permissions:
   bash: false
   network: true

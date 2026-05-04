@@ -9,7 +9,7 @@ tags: [primitive, review, adversarial]
 agents: [claude, codex, gemini]
 deps:
   skills:
-    - dispatch-parallel@^0.1
+    - dispatch-parallel@^0.2
 permissions:
   bash: false
   network: false

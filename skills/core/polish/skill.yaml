@@ -9,9 +9,9 @@ tags: [review, refactor, workflow]
 agents: [claude, codex, gemini]
 deps:
   skills:
-    - blunder-hunt@^0.1
-    - convergence-detect@^0.1
-    - deslop@^0.1
+    - blunder-hunt@^0.2
+    - convergence-detect@^0.2
+    - deslop@^0.2
 permissions:
   bash: true
   network: true

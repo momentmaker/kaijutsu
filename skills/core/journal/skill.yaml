@@ -9,8 +9,8 @@ tags: [journal, retrospective, reporting]
 agents: [claude, codex, gemini]
 deps:
   skills:
-    - multi-model-synth@^0.1
-    - project-memory@^0.1
+    - multi-model-synth@^0.2
+    - project-memory@^0.2
 permissions:
   bash: true
   network: true

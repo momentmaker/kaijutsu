@@ -10,9 +10,9 @@ agents: [claude, codex, gemini]
 deps:
   skills:
     - blunder-hunt@^0.2
-    - lie-to-them@^0.1
-    - dispatch-parallel@^0.1
-    - multi-model-synth@^0.1
+    - lie-to-them@^0.2
+    - dispatch-parallel@^0.2
+    - multi-model-synth@^0.2
 permissions:
   bash: true
   network: true
