@@ -246,6 +246,40 @@ func Extract(tarGzData []byte, dst string) (string, error) {
 	return filepath.Join(dst, top), nil
 }
 
+// GetReleaseAsset fetches a named asset from a GitHub release.
+// URL pattern: https://github.com/<owner>/<repo>/releases/download/<tag>/<asset>
+// Used by sigstore verify to fetch signature bundles uploaded by sign-core.yml.
+func (f *Fetcher) GetReleaseAsset(ctx context.Context, src *source.Source, tag, asset string) ([]byte, error) {
+	url := fmt.Sprintf("https://github.com/%s/%s/releases/download/%s/%s", src.Owner, src.Repo, tag, asset)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	if f.Token != "" {
+		req.Header.Set("Authorization", "Bearer "+f.Token)
+	}
+	resp, err := f.HTTP.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, os.ErrNotExist
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpError(f, "GET", url, resp)
+	}
+	limited := io.LimitReader(resp.Body, MaxFileBytes+1)
+	body, err := io.ReadAll(limited)
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(body)) > MaxFileBytes {
+		return nil, fmt.Errorf("release asset %s exceeds %d bytes", asset, MaxFileBytes)
+	}
+	return body, nil
+}
+
 // GetFile fetches a single file at a specific ref via raw.githubusercontent.com.
 // Used for cheap lookups (e.g., registry/index.json) without downloading a full tarball.
 func (f *Fetcher) GetFile(ctx context.Context, src *source.Source, ref, path string) ([]byte, error) {

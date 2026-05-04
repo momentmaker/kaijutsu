@@ -1,7 +1,6 @@
 // Package sign wraps the cosign CLI so jutsu can verify Sigstore-signed
-// skills. v0 implementation: detect cosign presence and emit advisory
-// notices. Real verify-blob enforcement arrives once Stage 5's
-// sign-core.yml workflow publishes signature bundles for skills/core.
+// skills. As of v0.3, install enforces signatures when a skill declares
+// trust.expected-signer; cli/internal/cli/verify.go drives the workflow.
 package sign
 
 import (
@@ -12,13 +11,8 @@ import (
 	"os/exec"
 )
 
-var (
-	// ErrCosignNotFound is returned when cosign isn't on PATH.
-	ErrCosignNotFound = errors.New("cosign not found in PATH")
-	// ErrNotImplemented is returned by VerifyBlob until Stage 5's signing
-	// workflow lands and signatures become fetchable as release assets.
-	ErrNotImplemented = errors.New("signature verification stub: signed releases not yet published")
-)
+// ErrCosignNotFound is returned when cosign isn't on PATH.
+var ErrCosignNotFound = errors.New("cosign not found in PATH")
 
 // Available reports whether the cosign binary is installed.
 func Available() bool {
@@ -28,17 +22,21 @@ func Available() bool {
 
 // VerifyBlob shells out to cosign verify-blob with keyless OIDC parameters.
 // blobPath must already be on disk; bundlePath is a Sigstore bundle (.sig).
-// expectedIdentity should be a regexp covering the GitHub-issued workflow
-// identity (e.g. "https://github.com/momentmaker/kaijutsu/.github/.*").
+// expectedIdentity is a regexp covering the GitHub Actions workflow identity
+// (e.g. "^https://github\.com/momentmaker/kaijutsu/\.github/workflows/sign-core\.yml@refs/tags/.*$").
+// oidcIssuer is the OIDC issuer URL (e.g. "https://token.actions.githubusercontent.com").
 //
-// v0 placeholder: returns ErrNotImplemented until publish/sign workflow
-// is producing real bundles for the user to verify against.
+// Returns nil on a verified signature; returns an error wrapping cosign's
+// stderr otherwise so the caller can surface the real failure reason.
 func VerifyBlob(ctx context.Context, blobPath, bundlePath, expectedIdentity, oidcIssuer string) error {
 	if !Available() {
 		return ErrCosignNotFound
 	}
+	if _, err := os.Stat(blobPath); err != nil {
+		return fmt.Errorf("blob %s missing: %w", blobPath, err)
+	}
 	if _, err := os.Stat(bundlePath); err != nil {
-		return ErrNotImplemented
+		return fmt.Errorf("bundle %s missing: %w", bundlePath, err)
 	}
 	cmd := exec.CommandContext(ctx, "cosign", "verify-blob",
 		"--bundle", bundlePath,

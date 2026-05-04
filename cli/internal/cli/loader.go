@@ -18,14 +18,16 @@ import (
 
 // loaded carries the materialized skill source ready for install.Install.
 type loaded struct {
-	skill    *skill.Skill
-	dir      string // path to skill directory on local filesystem
-	source   string // canonical "owner/repo", or "local" for --registry mode
-	ref      string // commit SHA for remote, or "local"
-	path     string // path inside source repo (e.g., "skills/core/decide")
-	version  string // semver if available
-	hash     string // sha256-... integrity for remote, "" for local
-	cleanup  func()
+	skill       *skill.Skill
+	dir         string // path to skill directory on local filesystem
+	source      string // canonical "owner/repo", or "local" for --registry mode
+	ref         string // commit SHA for remote, or "local"
+	path        string // path inside source repo (e.g., "skills/core/decide")
+	version     string // semver if available
+	tag         string // raw tag name (e.g., "v0.3.0") — used for sig bundle fetch
+	hash        string // sha256-... integrity for remote, "" for local
+	tarballPath string // absolute path to fetched tarball on disk; used by sigstore verify
+	cleanup     func()
 }
 
 // loadLocal materializes a skill from a local kaijutsu monorepo checkout.
@@ -74,7 +76,7 @@ func loadRemote(ctx context.Context, stderr io.Writer, fetcher *fetch.Fetcher, d
 		return nil, err
 	}
 
-	ref, version, err := resolveRef(ctx, fetcher, res.Source, constraint)
+	ref, version, tag, err := resolveRef(ctx, fetcher, res.Source, constraint)
 	if err != nil {
 		return nil, err
 	}
@@ -89,6 +91,12 @@ func loadRemote(ctx context.Context, stderr io.Writer, fetcher *fetch.Fetcher, d
 		return nil, err
 	}
 	cleanup := func() { _ = os.RemoveAll(tmp) }
+
+	tarballPath := filepath.Join(tmp, "skill.tar.gz")
+	if err := os.WriteFile(tarballPath, data, 0644); err != nil {
+		cleanup()
+		return nil, err
+	}
 
 	top, err := fetch.Extract(data, tmp)
 	if err != nil {
@@ -107,14 +115,16 @@ func loadRemote(ctx context.Context, stderr io.Writer, fetcher *fetch.Fetcher, d
 	}
 
 	return &loaded{
-		skill:   sk,
-		dir:     skillDir,
-		source:  res.Source.String(),
-		ref:     ref,
-		path:    res.Path,
-		version: version,
-		hash:    integrity,
-		cleanup: cleanup,
+		skill:       sk,
+		dir:         skillDir,
+		source:      res.Source.String(),
+		ref:         ref,
+		path:        res.Path,
+		version:     version,
+		tag:         tag,
+		hash:        integrity,
+		tarballPath: tarballPath,
+		cleanup:     cleanup,
 	}, nil
 }
 
@@ -255,19 +265,21 @@ func loadIndex(ctx context.Context, fetcher *fetch.Fetcher, src *source.Source) 
 }
 
 // resolveRef picks the commit SHA to install based on a semver constraint
-// (or "" for highest). Returns ref, version (semver string if known), error.
-func resolveRef(ctx context.Context, fetcher *fetch.Fetcher, src *source.Source, constraint string) (ref, version string, err error) {
+// (or "" for highest). Returns ref (commit SHA), version (cleaned
+// semver string), tag (raw tag name like "v0.3.0", needed for sig
+// bundle fetch), error.
+func resolveRef(ctx context.Context, fetcher *fetch.Fetcher, src *source.Source, constraint string) (ref, version, tag string, err error) {
 	tags, err := fetcher.ListTags(ctx, src)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	if len(tags) == 0 {
 		// No semver tags — fall back to default branch HEAD.
 		sha, err := fetcher.DefaultBranchSHA(ctx, src)
 		if err != nil {
-			return "", "", err
+			return "", "", "", err
 		}
-		return sha, "", nil
+		return sha, "", "", nil
 	}
 
 	chosen := ""
@@ -276,7 +288,7 @@ func resolveRef(ctx context.Context, fetcher *fetch.Fetcher, src *source.Source,
 	} else {
 		c, err := semver.NewConstraint(constraint)
 		if err != nil {
-			return "", "", fmt.Errorf("invalid version constraint %q: %w", constraint, err)
+			return "", "", "", fmt.Errorf("invalid version constraint %q: %w", constraint, err)
 		}
 		for _, t := range tags {
 			v, err := semver.NewVersion(t)
@@ -289,18 +301,18 @@ func resolveRef(ctx context.Context, fetcher *fetch.Fetcher, src *source.Source,
 			}
 		}
 		if chosen == "" {
-			return "", "", fmt.Errorf("no tag satisfies constraint %q (available: %s)", constraint, strings.Join(tags, ", "))
+			return "", "", "", fmt.Errorf("no tag satisfies constraint %q (available: %s)", constraint, strings.Join(tags, ", "))
 		}
 	}
 
 	sha, err := fetcher.ResolveTagSHA(ctx, src, chosen)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	// `chosen` was selected from ListTags, which only returns semver-parseable
 	// tags, so this parse is guaranteed to succeed.
 	v, _ := semver.NewVersion(chosen)
-	return sha, v.String(), nil
+	return sha, v.String(), chosen, nil
 }
 
 // parseSpec splits "name" or "name@constraint" into its parts.

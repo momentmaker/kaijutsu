@@ -37,10 +37,21 @@ We aim to acknowledge within 7 days. Coordinated disclosure preferred — please
 - Skill name regex `^[a-z][a-z0-9-]*[a-z0-9]$` — prevents path traversal via skill name.
 - `permissions` manifest declared in every `skill.yaml` — `bash`, `network`, `fs-write` (false / scoped / full).
 
-## Stubs not yet enforced (v0.2)
+## Sigstore signature verification — enforced (v0.3.1+)
 
-- **Sigstore signature verification**: core skills are signed in CI on each release tag, but `jutsu install` currently emits an advisory note when `expected-signer` is set, not a hard verify-fail. Enforcement lands in v0.3.
-- **Install-time permission prompts**: declared `permissions` in `skill.yaml` are visible via `jutsu info` but not enforced via runtime prompt at install time. Planned for v0.3.
+Skills that declare `trust.expected-signer` in `skill.yaml` are sigstore-verified at install time. The CLI:
+
+1. Fetches the signature bundle (`<skill>-<tag>.tar.gz.sig`) from the source release
+2. Shells out to `cosign verify-blob` against the canonical kaijutsu-core OIDC identity (or the future per-signer mapping in v0.4)
+3. Hard-fails on any mismatch — bundle missing, identity wrong, signature invalid
+
+If `cosign` is not on PATH, install hard-fails with an actionable error. Override with `--no-verify` (logs a warning to stderr) when you accept the risk — for example, when `cosign` is genuinely unavailable on a constrained system.
+
+The `dcg` (destructive command guard) skill ships with `expected-signer: kaijutsu-core@github` from v0.3.1 onward; other core skills will adopt it incrementally as we observe real-world install patterns.
+
+## Stubs not yet enforced (v0.3)
+
+- **Install-time permission prompts**: declared `permissions` in `skill.yaml` are visible via `jutsu info` but not enforced via runtime prompt at install time. Planned for v0.4.
 
 ## Intentional unsafe behavior — be aware
 

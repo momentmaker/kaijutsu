@@ -16,6 +16,9 @@ permissions:
   fs-write: false
   hooks: true
 
+trust:
+  expected-signer: kaijutsu-core@github
+
 hooks:
   - id: block-destructive-shell
     event: pre-tool-use

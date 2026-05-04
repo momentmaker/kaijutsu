@@ -32,7 +32,7 @@ Working consume-and-author loop. No bells, no eval gate, no static site.
 
 ## v0.3 — trust + automation
 
-- [ ] **Sigstore enforcement**: hard-fail `jutsu install` on signature mismatch when `expected-signer` is set; surface verified-✓ badge in `jutsu info`
+- [x] **Sigstore enforcement**: hard-fails `jutsu install` on signature mismatch when `expected-signer` is set. `dcg` skill opted in starting v0.3.1; `--no-verify` override for environments without cosign
 - [ ] **Permission prompts**: install-time prompt when a skill declares sensitive `permissions` (`bash: true`, `network: true`, `fs-write: full`) instead of advisory-only
 - [ ] **Hooks as first-class artifacts**: extend `skill.yaml` with a `hooks` block; install translates and registers hooks into `~/.<agent>/settings.json`; remove cleans them up. First user: a destructive-command-guard (DCG) hook bundle.
 - [ ] **`jutsu eval`**: per-skill eval runner that consumes `evals/cases.yaml`; CI integration via `lint-skills.yml`

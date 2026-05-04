@@ -15,7 +15,6 @@ import (
 	"github.com/momentmaker/kaijutsu/cli/internal/install"
 	"github.com/momentmaker/kaijutsu/cli/internal/manifest"
 	"github.com/momentmaker/kaijutsu/cli/internal/paths"
-	"github.com/momentmaker/kaijutsu/cli/internal/sign"
 	"github.com/momentmaker/kaijutsu/cli/internal/skill"
 	"github.com/spf13/cobra"
 )
@@ -24,6 +23,7 @@ func newInstallCmd() *cobra.Command {
 	var global bool
 	var registryPath string
 	var noHooks bool
+	var noVerify bool
 	var yes bool
 
 	cmd := &cobra.Command{
@@ -83,6 +83,7 @@ recorded sha256 integrity.`,
 				lf:          lf,
 				visited:     map[string]bool{},
 				noHooks:     noHooks,
+				noVerify:    noVerify,
 				yes:         yes,
 			}
 
@@ -102,6 +103,7 @@ recorded sha256 integrity.`,
 	cmd.Flags().BoolVarP(&global, "global", "g", false, "install globally (~/.claude/skills/, ~/.agents/skills/)")
 	cmd.Flags().StringVar(&registryPath, "registry", "", "path to a local kaijutsu monorepo checkout (skips remote fetch)")
 	cmd.Flags().BoolVar(&noHooks, "no-hooks", false, "skip hook registration even if the skill declares hooks")
+	cmd.Flags().BoolVar(&noVerify, "no-verify", false, "skip sigstore signature verification (skills with expected-signer would otherwise hard-fail when cosign verify fails or is unavailable)")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "non-interactive: skip confirmation prompts (e.g., for hook permissions)")
 	return cmd
 }
@@ -119,6 +121,7 @@ type installSession struct {
 	lf          *manifest.Lockfile
 	visited     map[string]bool
 	noHooks     bool
+	noVerify    bool
 	yes         bool
 }
 
@@ -149,7 +152,14 @@ func (s *installSession) installOne(name, constraint, parent string) error {
 		}
 	}
 
-	advisorySignerNotice(s.cmd, l.skill)
+	if !s.noVerify {
+		if err := verifySignature(s.cmd.Context(), s.cmd.ErrOrStderr(), s.fetcher, l); err != nil {
+			return err
+		}
+	} else if l.skill.Trust != nil && l.skill.Trust.ExpectedSigner != "" {
+		fmt.Fprintf(s.cmd.ErrOrStderr(), "warning: --no-verify bypassed signature verification for %s (expected-signer: %s).\n",
+			l.skill.Name, l.skill.Trust.ExpectedSigner)
+	}
 
 	if err := s.confirmHooks(l.skill); err != nil {
 		return err
@@ -409,19 +419,3 @@ func shortRef(ref string) string {
 	return ref
 }
 
-// advisorySignerNotice emits a warning line when a skill declares an
-// expected-signer but the install path can't (yet) verify the signature.
-// v0 placeholder — once sign-core.yml is publishing signature bundles
-// and skills/core/* declare an expected-signer, this should call
-// sign.VerifyBlob and hard-fail on mismatch.
-func advisorySignerNotice(cmd *cobra.Command, sk *skill.Skill) {
-	if sk.Trust == nil || sk.Trust.ExpectedSigner == "" {
-		return
-	}
-	stderr := cmd.ErrOrStderr()
-	if !sign.Available() {
-		fmt.Fprintf(stderr, "note: %s declares expected-signer %q but cosign is not on PATH; skipping verification.\n", sk.Name, sk.Trust.ExpectedSigner)
-		return
-	}
-	fmt.Fprintf(stderr, "note: %s declares expected-signer %q; v0 verify is a stub (signed releases not yet published).\n", sk.Name, sk.Trust.ExpectedSigner)
-}
