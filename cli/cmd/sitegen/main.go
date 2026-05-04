@@ -341,11 +341,13 @@ const htmlTemplate = `<!DOCTYPE html>
     .card .row {
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      align-items: flex-start;
       gap: 8px;
       font-size: 12px;
       color: var(--muted);
     }
+    .card .row h3 { line-height: 1.25; }
+    .card .row .badge { margin-top: 4px; }
     .badge {
       display: inline-block;
       padding: 2px 8px;
