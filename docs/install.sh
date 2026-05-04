@@ -8,6 +8,9 @@
 #
 # Override the install dir:
 #   curl -fsSL https://kaijutsu.dev/install.sh | KAIJUTSU_INSTALL_DIR=/usr/local/bin sh
+#
+# If you hit a GitHub API rate limit (60 req/hr unauth), set GITHUB_TOKEN:
+#   curl -fsSL https://kaijutsu.dev/install.sh | GITHUB_TOKEN=ghp_... sh
 
 set -eu
 
@@ -28,7 +31,12 @@ case "$RAW_ARCH" in
 esac
 
 # Resolve the latest release tag.
-LATEST_JSON=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest")
+AUTH_HEADER=""
+if [ -n "${GITHUB_TOKEN:-}" ]; then
+  AUTH_HEADER="-H Authorization: Bearer ${GITHUB_TOKEN}"
+fi
+# shellcheck disable=SC2086
+LATEST_JSON=$(curl -fsSL ${AUTH_HEADER} "https://api.github.com/repos/${REPO}/releases/latest")
 TAG=$(echo "$LATEST_JSON" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -1)
 if [ -z "$TAG" ]; then
   echo "kaijutsu: could not resolve latest release tag from ${REPO}" >&2

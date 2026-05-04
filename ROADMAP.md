@@ -40,6 +40,8 @@ Working consume-and-author loop. No bells, no eval gate, no static site.
 - [ ] **Cascade-aware `jutsu remove`**: dynamically compute the dep graph; warn before removing a skill another installed skill depends on; `--cascade` to remove orphans too
 - [ ] **`jutsu publish` automation**: shell out to `gh` to fork-and-PR instead of just printing instructions
 - [ ] **Trigger-conflict lint**: warn when an installed skill's trigger phrases overlap with another's
+- [ ] **Reconcile skill version vs registry tag display**: today `jutsu list` shows the registry tag (e.g., `0.2.1`) for every installed skill while `jutsu info` shows the skill's internal version from `skill.yaml` (e.g., `pr-review` is internally `0.3.0`). Lockfile schema needs a `tag` field separate from `version`; CLI should display both with clear labels.
+- [ ] **GitHub API rate-limit handling**: surface a clearer error + `GITHUB_TOKEN` hint when 403-rate-limited. install.sh already supports `GITHUB_TOKEN`; the `jutsu` CLI should too.
 - [ ] **Static skill catalog at `kaijutsu.dev`**: searchable index, agent-compat matrix, install copy-buttons; auto-built from the registry on every release
 
 ## v0.4 — community + telemetry
