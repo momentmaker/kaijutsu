@@ -36,7 +36,15 @@ Include:
 
 Hand off to `dispatch-parallel` with K subagents, each running the same prompt against a different model. Pass the model identity as part of each subagent's context so it produces output appropriate to its capabilities.
 
-If the agent platform doesn't natively support cross-model dispatch, fall back to running the same prompt sequentially in different agent sessions and pasting the outputs into a final synthesis pass.
+**Reality check on platform support** (as of v0.2):
+
+- **Claude Code** has the `Task` tool which spawns subagents within Claude — single-model. Real multi-model fan-out requires API keys for the other models and shelling out to their SDKs.
+- **OpenAI Codex CLI** runs Codex models exclusively.
+- **Google Gemini CLI** runs Gemini models exclusively.
+
+Honest fallback for v0.2: run the same prompt **sequentially** in different agent sessions (Claude Code, then Codex, then Gemini) and paste each output into a final synthesis prompt. Lossier than true parallel fan-out, but achievable today without custom orchestration.
+
+Native cross-model dispatch is on the v0.3 roadmap once the kaijutsu CLI grows API-key plumbing.
 
 ### 3. Compare
 

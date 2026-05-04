@@ -90,6 +90,7 @@ When invoked under a `--json` flag (or when the parent skill requests structured
 ## Hard rules
 
 - **Never share mutable state** between subagents. Each receives its own context, its own files-to-read, its own scratch space. Mutating shared files concurrently produces undefined results and is forbidden.
+- **Read-only of in-flux data is also racy.** If subagent A reads `file.go` while subagent B is writing it (e.g., parallel review of a workspace where some other process is editing), A may see an inconsistent snapshot. Either freeze the inputs (snapshot the directory) before dispatching, or restrict subagents to immutable inputs (specific git refs, frozen text passed via prompt).
 - **Always tag the source.** Every item in the synthesized output carries a `subagent_id` (and `lens` if the subagents had different lenses). Provenance enables debugging when synthesis goes wrong.
 - **Time-bound subagents.** A subagent that hangs blocks the whole synthesis. Set an explicit timeout (suggested default 5 min). On timeout, flag and continue with the others.
 - **Dispatch is non-recursive by default.** A subagent should not spawn more parallel subagents unless the parent skill explicitly authorizes depth > 1.

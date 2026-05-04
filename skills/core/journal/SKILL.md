@@ -20,15 +20,18 @@ The data-gathering steps (git log, PRs, decisions, memory) are identical; only t
 
 ## Step 1: Determine the Window
 
-- If no argument: use the previous calendar month if today is day 1-7, otherwise use the current month
-- If argument is a month name (e.g., "march"): resolve to YYYY-MM using the current year
-- If argument is YYYY-MM: use directly
+Resolve the time window by cadence:
 
-Compute:
-- `start_date`: first day of the month (YYYY-MM-01)
-- `end_date`: first day of the next month
+| Cadence | Window resolution |
+|---|---|
+| `monthly` (default) | Previous calendar month if today is day 1-7, otherwise current month. Argument may be a month name (`march`) or `YYYY-MM`. |
+| `weekly` | Previous ISO week if today is Mon/Tue, otherwise current ISO week. Argument may be `YYYY-WW`. |
+| `sprint` | Last sprint length ending today (default 14 days; configurable via `.claude/journal-cadence.yaml`). |
+| `release` | Since the most recent git tag (use `git describe --tags --abbrev=0`). End at HEAD. |
 
-Check if `.claude/journal/YYYY-MM.md` already exists. If so, ask: "A journal for {month} already exists. Regenerate it?"
+Compute `start_date` and `end_date` accordingly. For monthly, `start_date` = first day of month, `end_date` = first day of next month. For weekly, ISO week boundaries. For sprint, today minus sprint length. For release, the tag's commit date and HEAD's commit date.
+
+Check if the would-be filename (per Step 6's table) already exists. If so, ask: "A journal for {window-label} already exists. Regenerate it?"
 
 ## Step 2: Gather Data
 
@@ -136,7 +139,7 @@ Skip for weekly/sprint (cost > value at small windows).
 
 Show the full journal in the conversation. Ask:
 
-"Here's the journal for {month}. Anything you'd like to add, change, or remove before I save it?"
+"Here's the journal for {window-label}. Anything you'd like to add, change, or remove before I save it?"
 
 ## Step 6: Save
 
@@ -145,6 +148,13 @@ Create the journal directory if needed:
 mkdir -p "$(git rev-parse --show-toplevel)/.claude/journal"
 ```
 
-Write to `.claude/journal/YYYY-MM.md` at the repo root.
+Filename by cadence:
 
-Confirm: "Journal saved to `.claude/journal/YYYY-MM.md`."
+| Cadence | Filename |
+|---|---|
+| `monthly` (default) | `.claude/journal/YYYY-MM.md` |
+| `weekly` | `.claude/journal/YYYY-WW.md` (ISO week) |
+| `sprint` | `.claude/journal/sprint-<start-YYYY-MM-DD>.md` |
+| `release` | `.claude/journal/release-<tag>.md` |
+
+Confirm: "Journal saved to <path>."

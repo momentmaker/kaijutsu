@@ -1,5 +1,5 @@
 name: journal
-version: 0.3.0
+version: 0.2.0
 license: MIT
 layout: flat
 description: "Periodic development journal — read git/PRs/decisions/memory; produce a structured narrative; optional multi-model synthesis for the narrative voice. Themed cadences (weekly/sprint/release/monthly) and sentiment+velocity tracking."

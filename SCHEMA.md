@@ -209,7 +209,7 @@ Example skills with declared JSON sidecars:
 |---|---|
 | `blunder-hunt` | `{ skill, version, target, passes: [...], synthesized: [...] }` |
 | `dispatch-parallel` | `{ skill, version, task, synthesis, subagents: [...], synthesized: [...] }` |
-| `multi-model-synth` | `{ skill, version, models, agreements, disagreements, synthesized }` |
+| `multi-model-synth` | `{ skill, version, task, models, agreements, disagreements, unique_contributions, synthesized }` |
 | `convergence-detect` | `{ round, tokens, similarity_to_prev, verdict, verdict_confidence }` |
 
 Adopt the pattern in new skills when their output is mechanical enough to be useful to a machine. Skip it for skills whose output is fundamentally prose (README updates, journal entries) — JSON adds noise without adding value.

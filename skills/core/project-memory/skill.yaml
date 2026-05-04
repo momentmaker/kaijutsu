@@ -8,6 +8,6 @@ repository: https://github.com/momentmaker/kaijutsu
 tags: [primitive, memory, schema]
 agents: [claude, codex, gemini]
 permissions:
-  bash: true
+  bash: false
   network: false
   fs-write: scoped

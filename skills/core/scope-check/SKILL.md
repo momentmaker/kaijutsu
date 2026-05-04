@@ -45,9 +45,11 @@ For each changed file, classify by **reasoning space** per the Agentic Coding Fl
 
 | Tier | What it touches | Rework cost |
 |---|---|---|
-| **plan-space** | design docs, plans, architecture markdown, ADRs | 1× |
-| **bead-space** | task lists, scope-of-work specs, project tracking | 5× |
+| **plan-space** | design docs, plans, architecture markdown, ADRs, READMEs | 1× |
+| **bead-space** | task lists, scope-of-work specs, project tracking, IMPLEMENTATION_PLAN.md, `.beads/*` | 5× |
 | **code-space** | actual implementation files, tests, configs | 25× |
+
+**Note**: bead-space is specific to Jeffrey Emanuel's bead-based workflow. Most repos won't have a `.beads/` directory or formalized bead files — in that case, treat task-tracking markdown (like `IMPLEMENTATION_PLAN.md`, `TODO.md`) as bead-space and otherwise default to plan-vs-code.
 
 Tally by tier. If 80%+ of the change is **code-space** and the original intent was a small fix, that's a signal: the work drifted into expensive territory. The mirror should surface:
 
