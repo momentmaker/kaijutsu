@@ -49,8 +49,11 @@ func LoadLockfile(path string) (*Lockfile, error) {
 	if err := json.Unmarshal(data, &lf); err != nil {
 		return nil, fmt.Errorf("parse %s: %w", path, err)
 	}
-	if lf.Version != SchemaVersion {
-		return nil, fmt.Errorf("unsupported lockfile version %d", lf.Version)
+	if lf.Version < 1 {
+		return nil, fmt.Errorf("invalid lockfile version %d in %s (must be >= 1)", lf.Version, path)
+	}
+	if lf.Version > SchemaVersion {
+		fmt.Fprintf(os.Stderr, "warning: %s declares schema version %d but this CLI supports up to %d; some fields may be ignored. Consider upgrading jutsu.\n", path, lf.Version, SchemaVersion)
 	}
 	if lf.Skills == nil {
 		lf.Skills = map[string]LockEntry{}

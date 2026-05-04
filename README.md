@@ -23,7 +23,7 @@
 
 ---
 
-> **Status: alpha.** v0.1.0 ships the `jutsu` CLI and 9 seed skills. The install paths, skill schema, and command surface are stable for v0.x. Signature verification enforcement and the static catalog at [kaijutsu.dev](https://kaijutsu.dev) are still maturing — see [`ROADMAP.md`](./ROADMAP.md).
+> **Status: alpha.** The `jutsu` CLI works end-to-end (init / install / list / remove / upgrade / lint / search / info / publish). 16 core skills currently ship: 9 task-oriented (decide, journal, polish, unstuck, scope-check, session-retro, agent-doctor, pr-review, readme-update) and 7 composable primitives (blunder-hunt, lie-to-them, convergence-detect, deslop, dispatch-parallel, multi-model-synth, project-memory). Install paths, skill schema, and command surface are stable for v0.x. Signature-verification enforcement, hooks-as-first-class, and the public skill catalog at [kaijutsu.dev](https://kaijutsu.dev) are still maturing — see [`ROADMAP.md`](./ROADMAP.md). Security model: [`SECURITY.md`](./SECURITY.md).
 
 ## Why
 
@@ -66,9 +66,13 @@ skills/core/pr-review/
 
 Most skills only need a single `SKILL.md`. For the rare cases where Claude and Codex need different content, drop a per-agent override under `overrides/<agent>/SKILL.md`. See [`SCHEMA.md`](./SCHEMA.md) and [`docs/multi-agent.md`](./docs/multi-agent.md) for the full reference.
 
-## v0 seed skills
+## Core skills
 
-`pr-review` · `readme-update` · `decide` · `journal` · `polish` · `unstuck` · `scope-check` · `session-retro` · `agent-doctor`
+**Task-oriented** — `pr-review` · `readme-update` · `decide` · `journal` · `polish` · `unstuck` · `scope-check` · `session-retro` · `agent-doctor`
+
+**Primitives (composed by other skills via `deps.skills`)** — `blunder-hunt` · `lie-to-them` · `convergence-detect` · `deslop` · `dispatch-parallel` · `multi-model-synth` · `project-memory`
+
+Run `jutsu search <query>` to find skills by name / description / tag, or `jutsu info <skill>` for full metadata.
 
 ## Trust model
 

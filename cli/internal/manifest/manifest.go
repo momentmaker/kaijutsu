@@ -44,8 +44,11 @@ func Load(path string) (*Manifest, error) {
 	if err := json.Unmarshal(data, &m); err != nil {
 		return nil, fmt.Errorf("parse %s: %w", path, err)
 	}
-	if m.Version != SchemaVersion {
-		return nil, fmt.Errorf("unsupported manifest version %d", m.Version)
+	if m.Version < 1 {
+		return nil, fmt.Errorf("invalid manifest version %d in %s (must be >= 1)", m.Version, path)
+	}
+	if m.Version > SchemaVersion {
+		fmt.Fprintf(os.Stderr, "warning: %s declares schema version %d but this CLI supports up to %d; some fields may be ignored. Consider upgrading jutsu.\n", path, m.Version, SchemaVersion)
 	}
 	if m.Dependencies == nil {
 		m.Dependencies = map[string]string{}

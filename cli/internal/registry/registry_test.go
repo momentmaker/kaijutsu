@@ -60,11 +60,27 @@ func TestLoadAndParse(t *testing.T) {
 	}
 }
 
-func TestLoadBadVersion(t *testing.T) {
+func TestLoadFutureVersionWarnsButAccepts(t *testing.T) {
+	// Forward-compat: a registry index from a newer CLI must still parse.
+	// Newer CLIs may add fields the current CLI ignores; rejecting outright
+	// would prevent older clients from coexisting with newer-format data.
 	tmp := t.TempDir()
 	p := filepath.Join(tmp, "index.json")
-	os.WriteFile(p, []byte(`{"version": 99}`), 0644)
+	os.WriteFile(p, []byte(`{"version": 99, "skills": {}}`), 0644)
+	idx, err := Load(p)
+	if err != nil {
+		t.Fatalf("expected forward-compat acceptance, got %v", err)
+	}
+	if idx.Version != 99 {
+		t.Errorf("version round-trip lost: %d", idx.Version)
+	}
+}
+
+func TestLoadInvalidVersion(t *testing.T) {
+	tmp := t.TempDir()
+	p := filepath.Join(tmp, "index.json")
+	os.WriteFile(p, []byte(`{"version": 0, "skills": {}}`), 0644)
 	if _, err := Load(p); err == nil {
-		t.Error("expected error on unsupported version")
+		t.Error("expected error on version 0")
 	}
 }

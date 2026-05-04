@@ -44,8 +44,11 @@ func LoadFromBytes(data []byte) (*Index, error) {
 	if err := json.Unmarshal(data, &idx); err != nil {
 		return nil, fmt.Errorf("parse registry index: %w", err)
 	}
-	if idx.Version != SchemaVersion {
-		return nil, fmt.Errorf("unsupported registry version %d", idx.Version)
+	if idx.Version < 1 {
+		return nil, fmt.Errorf("invalid registry version %d (must be >= 1)", idx.Version)
+	}
+	if idx.Version > SchemaVersion {
+		fmt.Fprintf(os.Stderr, "warning: registry index declares schema version %d but this CLI supports up to %d; some fields may be ignored. Consider upgrading jutsu.\n", idx.Version, SchemaVersion)
 	}
 	if idx.Skills == nil {
 		idx.Skills = map[string]IndexEntry{}
