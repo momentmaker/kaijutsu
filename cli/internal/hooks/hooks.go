@@ -30,15 +30,6 @@ const (
 	Gemini Agent = "gemini"
 )
 
-// Plan represents the per-skill hook-install plan resolved against a
-// single agent. Skipped entries are events the agent doesn't support.
-type Plan struct {
-	Agent       Agent
-	SettingsPath string  // absolute path to the agent settings file we'll mutate
-	Entries     []Entry // hooks that will install
-	Skipped     []Skipped
-}
-
 // Entry is one hook-to-install mapping after canonical-event translation.
 type Entry struct {
 	SkillName    string

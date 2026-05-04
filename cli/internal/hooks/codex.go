@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/pelletier/go-toml/v2"
 )
@@ -123,7 +124,9 @@ func writeTOMLConfig(path string, m map[string]interface{}) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, 0644)
+	// 0600 to match the JSON settings writers — Codex config can hold
+	// API keys and other secrets alongside our hook entries.
+	return os.WriteFile(path, data, 0600)
 }
 
 func tomlGetBlockArray(cfg map[string]interface{}, key string) []interface{} {
@@ -173,7 +176,7 @@ func filterOutTOMLMarkerPrefix(arr []interface{}, prefix string) []interface{} {
 			out = append(out, item)
 			continue
 		}
-		if marker, ok := entry["_kaijutsu"].(string); ok && len(marker) >= len(prefix) && marker[:len(prefix)] == prefix {
+		if marker, ok := entry["_kaijutsu"].(string); ok && strings.HasPrefix(marker, prefix) {
 			continue
 		}
 		out = append(out, entry)

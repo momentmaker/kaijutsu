@@ -25,24 +25,27 @@ if [ -z "$command" ]; then
   command="$input"
 fi
 
-# Patterns we refuse, in priority order. Each pattern has a label and a
-# regex. Add new patterns by extending this list.
+# Patterns we refuse, in priority order. Each pattern is a label and a
+# regex separated by US (ASCII unit separator, 0x1F) — chosen because
+# regex syntax includes ":" so we can't use it as a delimiter. Add new
+# patterns by appending to this list.
+US=$'\x1f'
 patterns=(
-  "rm -rf /:^[[:space:]]*rm[[:space:]]+(-rf|-fr|-r[[:space:]]+-f|-f[[:space:]]+-r)[[:space:]]+/[[:space:]]*$"
-  "rm -rf at root:^[[:space:]]*sudo[[:space:]]+.*rm[[:space:]]+-r[fF].*[[:space:]]+/[[:space:]]*$"
-  "git reset --hard:git[[:space:]]+reset[[:space:]]+--hard"
-  "git clean -fd (force-delete untracked):git[[:space:]]+clean[[:space:]]+-([a-z]*)f([a-z]*)d|git[[:space:]]+clean[[:space:]]+-([a-z]*)d([a-z]*)f"
-  "git push --force to main/master:git[[:space:]]+push[[:space:]]+(-f|--force|--force-with-lease)?[[:space:]]+\\w+[[:space:]]+(main|master)"
-  "rm of .env or credentials:rm[[:space:]]+(-[a-zA-Z]*[[:space:]]+)*[\"']*([^\"' ]*\\.env|[^\"' ]*credentials[^\"' ]*|[^\"' ]*\\.pem|[^\"' ]*id_(rsa|ed25519))"
-  "shred / dd of disk:^[[:space:]]*(sudo[[:space:]]+)?(shred|dd)[[:space:]]+"
-  ":(){ :|:& };:: \\:\\(\\)[[:space:]]*\\{[[:space:]]*:[[:space:]]*\\|[[:space:]]*:[[:space:]]*&[[:space:]]*\\}[[:space:]]*;[[:space:]]*:"
-  "chmod 777 on home:chmod[[:space:]]+(-R[[:space:]]+)?777[[:space:]]+(\\$HOME|~|/Users/[^/]+|/home/[^/]+)"
-  "find -delete on home:find[[:space:]]+(\\$HOME|~|/Users/[^/]+|/home/[^/]+).*-delete"
+  "rm -rf /${US}^[[:space:]]*rm[[:space:]]+(-rf|-fr|-r[[:space:]]+-f|-f[[:space:]]+-r)[[:space:]]+/[[:space:]]*$"
+  "sudo rm -rf at root${US}^[[:space:]]*sudo[[:space:]]+.*rm[[:space:]]+-r[fF].*[[:space:]]+/[[:space:]]*$"
+  "git reset --hard${US}git[[:space:]]+reset[[:space:]]+--hard"
+  "git clean -fd (force-delete untracked)${US}git[[:space:]]+clean[[:space:]]+-([a-z]*)f([a-z]*)d|git[[:space:]]+clean[[:space:]]+-([a-z]*)d([a-z]*)f"
+  "git push --force to main/master${US}git[[:space:]]+push[[:space:]]+(-f|--force|--force-with-lease)?[[:space:]]+\\w+[[:space:]]+(main|master)"
+  "rm of .env or credentials${US}rm[[:space:]]+(-[a-zA-Z]*[[:space:]]+)*[\"']*([^\"' ]*\\.env|[^\"' ]*credentials[^\"' ]*|[^\"' ]*\\.pem|[^\"' ]*id_(rsa|ed25519))"
+  "shred / dd of disk${US}^[[:space:]]*(sudo[[:space:]]+)?(shred|dd)[[:space:]]+"
+  "fork bomb${US}\\:\\(\\)[[:space:]]*\\{[[:space:]]*:[[:space:]]*\\|[[:space:]]*:[[:space:]]*&[[:space:]]*\\}[[:space:]]*;[[:space:]]*:"
+  "chmod 777 on home${US}chmod[[:space:]]+(-R[[:space:]]+)?777[[:space:]]+(\\$HOME|~|/Users/[^/]+|/home/[^/]+)"
+  "find -delete on home${US}find[[:space:]]+(\\$HOME|~|/Users/[^/]+|/home/[^/]+).*-delete"
 )
 
 for entry in "${patterns[@]}"; do
-  label="${entry%%:*}"
-  regex="${entry#*:}"
+  label="${entry%%${US}*}"
+  regex="${entry#*${US}}"
   if echo "$command" | grep -E -q "$regex"; then
     cat <<EOF
 {

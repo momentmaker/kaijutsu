@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // claudeSettingsPath returns the absolute path to the Claude settings
@@ -107,6 +108,9 @@ func loadJSONSettings(path string) (map[string]interface{}, error) {
 }
 
 // writeJSONSettings writes m to path with 2-space indent and trailing newline.
+// File mode is 0600 — agent settings files often hold OAuth tokens and API
+// keys; even though we're only writing hook entries, we shouldn't tighten
+// or loosen the perm boundary asymmetrically.
 func writeJSONSettings(path string, m map[string]interface{}) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
@@ -116,7 +120,7 @@ func writeJSONSettings(path string, m map[string]interface{}) error {
 		return err
 	}
 	data = append(data, '\n')
-	return os.WriteFile(path, data, 0644)
+	return os.WriteFile(path, data, 0600)
 }
 
 func getOrCreateMap(parent map[string]interface{}, key string) map[string]interface{} {
@@ -198,7 +202,7 @@ func entryHasMarkerPrefix(entry map[string]interface{}, prefix string) bool {
 		if !ok {
 			continue
 		}
-		if marker, ok := inner["_kaijutsu"].(string); ok && len(marker) >= len(prefix) && marker[:len(prefix)] == prefix {
+		if marker, ok := inner["_kaijutsu"].(string); ok && strings.HasPrefix(marker, prefix) {
 			return true
 		}
 	}

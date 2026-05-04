@@ -3,6 +3,7 @@ package hooks
 import (
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // geminiSettingsPath returns the absolute path to the Gemini settings
@@ -107,7 +108,7 @@ func filterOutFlatMarkerPrefix(arr []interface{}, prefix string) []interface{} {
 			out = append(out, item)
 			continue
 		}
-		if marker, ok := entry["_kaijutsu"].(string); ok && len(marker) >= len(prefix) && marker[:len(prefix)] == prefix {
+		if marker, ok := entry["_kaijutsu"].(string); ok && strings.HasPrefix(marker, prefix) {
 			continue
 		}
 		out = append(out, entry)
