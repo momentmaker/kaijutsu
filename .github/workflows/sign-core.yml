@@ -57,7 +57,7 @@ jobs:
           ref: ${{ steps.resolve.outputs.tag }}
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v4
+        uses: sigstore/cosign-installer@v3
 
       - name: Sign each skills/core/* and upload to the release
         env:
