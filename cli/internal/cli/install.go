@@ -279,6 +279,10 @@ func runSyncFromLockfile(cmd *cobra.Command, installRoot, manifestPath, lockPath
 		if err != nil {
 			return fmt.Errorf("sync %s: %w", name, err)
 		}
+		if err := verifySignature(cmd.Context(), cmd.ErrOrStderr(), fetcher, l); err != nil {
+			l.cleanup()
+			return fmt.Errorf("sync %s: %w", name, err)
+		}
 		if err := install.Install(l.dir, installRoot, m.Agents, l.skill); err != nil {
 			l.cleanup()
 			return err

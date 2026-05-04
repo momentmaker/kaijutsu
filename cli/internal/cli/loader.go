@@ -18,16 +18,15 @@ import (
 
 // loaded carries the materialized skill source ready for install.Install.
 type loaded struct {
-	skill       *skill.Skill
-	dir         string // path to skill directory on local filesystem
-	source      string // canonical "owner/repo", or "local" for --registry mode
-	ref         string // commit SHA for remote, or "local"
-	path        string // path inside source repo (e.g., "skills/core/decide")
-	version     string // semver if available
-	tag         string // raw tag name (e.g., "v0.3.0") — used for sig bundle fetch
-	hash        string // sha256-... integrity for remote, "" for local
-	tarballPath string // absolute path to fetched tarball on disk; used by sigstore verify
-	cleanup     func()
+	skill   *skill.Skill
+	dir     string // path to skill directory on local filesystem
+	source  string // canonical "owner/repo", or "local" for --registry mode
+	ref     string // commit SHA for remote, or "local"
+	path    string // path inside source repo (e.g., "skills/core/decide")
+	version string // semver if available
+	tag     string // raw tag name (e.g., "v0.3.0") — used for sig bundle fetch
+	hash    string // sha256-... integrity for remote, "" for local
+	cleanup func()
 }
 
 // loadLocal materializes a skill from a local kaijutsu monorepo checkout.
@@ -92,12 +91,6 @@ func loadRemote(ctx context.Context, stderr io.Writer, fetcher *fetch.Fetcher, d
 	}
 	cleanup := func() { _ = os.RemoveAll(tmp) }
 
-	tarballPath := filepath.Join(tmp, "skill.tar.gz")
-	if err := os.WriteFile(tarballPath, data, 0644); err != nil {
-		cleanup()
-		return nil, err
-	}
-
 	top, err := fetch.Extract(data, tmp)
 	if err != nil {
 		cleanup()
@@ -115,16 +108,15 @@ func loadRemote(ctx context.Context, stderr io.Writer, fetcher *fetch.Fetcher, d
 	}
 
 	return &loaded{
-		skill:       sk,
-		dir:         skillDir,
-		source:      res.Source.String(),
-		ref:         ref,
-		path:        res.Path,
-		version:     version,
-		tag:         tag,
-		hash:        integrity,
-		tarballPath: tarballPath,
-		cleanup:     cleanup,
+		skill:   sk,
+		dir:     skillDir,
+		source:  res.Source.String(),
+		ref:     ref,
+		path:    res.Path,
+		version: version,
+		tag:     tag,
+		hash:    integrity,
+		cleanup: cleanup,
 	}, nil
 }
 

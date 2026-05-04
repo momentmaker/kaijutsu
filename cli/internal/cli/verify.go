@@ -31,9 +31,20 @@ func verifySignature(ctx context.Context, stderr io.Writer, fetcher *fetch.Fetch
 	if l.skill.Trust == nil || l.skill.Trust.ExpectedSigner == "" {
 		return nil
 	}
-	if l.tag == "" || l.source == "local" {
-		// Local registry mode skips verify; sig bundles only exist for
-		// remote tagged releases.
+	if l.source == "local" {
+		// Local registry mode: sig bundles only exist for remote tagged
+		// releases.
+		return nil
+	}
+	if l.tag == "" {
+		// No tag context — either default-branch HEAD fallback (no
+		// matching semver tag) or a lockfile sync (tag isn't stored
+		// in the v1 lockfile schema; v0.4 will add a tag field).
+		// Surface that verify was skipped despite expected-signer.
+		if stderr != nil {
+			fmt.Fprintf(stderr, "warning: skill %s declares expected-signer %q but no tag context is available (likely lockfile sync); signature verification skipped. v0.4 will store the tag in the lockfile to close this gap.\n",
+				l.skill.Name, l.skill.Trust.ExpectedSigner)
+		}
 		return nil
 	}
 	if !sign.Available() {
