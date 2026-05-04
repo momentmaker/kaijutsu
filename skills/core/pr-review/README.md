@@ -1,10 +1,14 @@
 # pr-review
 
-Reviews a pull request with confidence-filtered feedback. Reports only high-confidence issues as review comments, treats medium-confidence findings as questions, and drops style nits unless the user explicitly asks for them. Outputs a paste-ready review block and can submit via `gh` on request.
+Adversarial pull-request review. Assumes bugs exist; runs a 5x blunder hunt with a different lens per pass (data / errors / integration / invariants / hostile input); posts findings as inline PR comments via `gh` with idempotency markers so re-runs update instead of duplicate.
+
+Composes `blunder-hunt` and `lie-to-them` via `deps.skills`.
 
 Install:
 ```bash
 jutsu install pr-review
 ```
+
+`deps` are pulled in automatically.
 
 Trigger phrases: "review this PR", "code review", "review the diff", "look at PR #N", `/pr-review`.

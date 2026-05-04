@@ -22,7 +22,7 @@ func newInstallCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "install [<skill>[@constraint]]",
-		Short: "Install a skill, or sync the lockfile when run without args",
+		Short: "Install a skill (and its deps), or sync the lockfile when run without args",
 		Args:  cobra.MaximumNArgs(1),
 		Long: `Install a skill from the default kaijutsu registry, a third-party
 source listed in registry/index.json, or a local monorepo checkout.
@@ -33,6 +33,10 @@ Source resolution order:
   3. cwd looks like a kaijutsu monorepo (has skills/core/) : use cwd
   4. otherwise            : fetch from the default remote registry, falling back
                             to registry/index.json for third-party skills.
+
+Skills with deps.skills entries pull in their dependencies recursively.
+Each transitive install is recorded in kaijutsu.lock.json with
+installedAs = "dep:<parent>" so removal can warn about orphaned deps.
 
 Run without arguments inside a project to sync from kaijutsu.lock.json:
 every entry is re-fetched at its pinned ref and verified against its
@@ -63,26 +67,20 @@ recorded sha256 integrity.`,
 				return err
 			}
 
-			var l *loaded
-			if localReg != "" {
-				l, err = loadLocal(localReg, name)
-			} else {
-				defaultRegistry := registryDefault(m)
-				l, err = loadRemote(cmd.Context(), fetch.New(), defaultRegistry, name, constraint)
+			sess := &installSession{
+				cmd:         cmd,
+				fetcher:     fetch.New(),
+				localReg:    localReg,
+				defaultReg:  registryDefault(m),
+				installRoot: installRoot,
+				m:           m,
+				lf:          lf,
+				visited:     map[string]bool{},
 			}
-			if err != nil {
+
+			if err := sess.installOne(name, constraint, ""); err != nil {
 				return err
 			}
-			defer l.cleanup()
-
-			advisorySignerNotice(cmd, l.skill)
-
-			if err := install.Install(l.dir, installRoot, m.Agents, l.skill); err != nil {
-				return err
-			}
-
-			lf.Agents = m.Agents
-			recordInstall(m, lf, l, constraint)
 
 			if err := m.Save(manifestPath); err != nil {
 				return err
@@ -90,14 +88,75 @@ recorded sha256 integrity.`,
 			if err := lf.Save(lockPath); err != nil {
 				return err
 			}
-
-			fmt.Fprintf(cmd.OutOrStdout(), "Installed %s@%s (%s, %s)\n", l.skill.Name, l.skill.Version, l.source, shortRef(l.ref))
 			return nil
 		},
 	}
 	cmd.Flags().BoolVarP(&global, "global", "g", false, "install globally (~/.claude/skills/, ~/.agents/skills/)")
 	cmd.Flags().StringVar(&registryPath, "registry", "", "path to a local kaijutsu monorepo checkout (skips remote fetch)")
 	return cmd
+}
+
+// installSession bundles the per-invocation state for a recursive install.
+// visited tracks every skill name encountered in this invocation so cycles
+// (or skills already pulled in as transitive deps) install at most once.
+type installSession struct {
+	cmd         *cobra.Command
+	fetcher     *fetch.Fetcher
+	localReg    string
+	defaultReg  string
+	installRoot string
+	m           *manifest.Manifest
+	lf          *manifest.Lockfile
+	visited     map[string]bool
+}
+
+// installOne loads the named skill (locally or remotely), recurses into
+// deps.skills, then installs the skill itself. parent is "" for the
+// user-requested skill and the parent skill name for transitive deps.
+func (s *installSession) installOne(name, constraint, parent string) error {
+	if s.visited[name] {
+		return nil
+	}
+	s.visited[name] = true
+
+	l, err := s.load(name, constraint)
+	if err != nil {
+		return err
+	}
+	defer l.cleanup()
+
+	if l.skill.Deps != nil {
+		for _, depSpec := range l.skill.Deps.Skills {
+			depName, depConstraint := parseSpec(depSpec)
+			if err := s.installOne(depName, depConstraint, l.skill.Name); err != nil {
+				return fmt.Errorf("dep %s of %s: %w", depName, l.skill.Name, err)
+			}
+		}
+	}
+
+	advisorySignerNotice(s.cmd, l.skill)
+
+	if err := install.Install(l.dir, s.installRoot, s.m.Agents, l.skill); err != nil {
+		return err
+	}
+
+	s.lf.Agents = s.m.Agents
+	recordInstall(s.m, s.lf, l, constraint, parent)
+
+	suffix := ""
+	if parent != "" {
+		suffix = fmt.Sprintf(" [dep of %s]", parent)
+	}
+	fmt.Fprintf(s.cmd.OutOrStdout(), "Installed %s@%s (%s, %s)%s\n",
+		l.skill.Name, l.skill.Version, l.source, shortRef(l.ref), suffix)
+	return nil
+}
+
+func (s *installSession) load(name, constraint string) (*loaded, error) {
+	if s.localReg != "" {
+		return loadLocal(s.localReg, name)
+	}
+	return loadRemote(s.cmd.Context(), s.fetcher, s.defaultReg, name, constraint)
 }
 
 // runSyncFromLockfile re-installs every skill listed in the lockfile at
@@ -151,27 +210,49 @@ func displayVersion(version *string, ref string) string {
 // recordInstall mutates manifest dependencies + lockfile entry to reflect
 // a successful install. constraint is the user-supplied spec (e.g., "^1.0")
 // or "" — when empty, the manifest dependency uses "^<resolved-version>".
-func recordInstall(m *manifest.Manifest, lf *manifest.Lockfile, l *loaded, constraint string) {
-	depConstraint := constraint
-	if depConstraint == "" && l.version != "" {
-		depConstraint = "^" + l.version
+// parent is the skill that pulled this one in transitively, or "" for direct.
+func recordInstall(m *manifest.Manifest, lf *manifest.Lockfile, l *loaded, constraint, parent string) {
+	// Only direct installs add an entry to manifest dependencies.
+	if parent == "" {
+		depConstraint := constraint
+		if depConstraint == "" && l.version != "" {
+			depConstraint = "^" + l.version
+		}
+		if depConstraint == "" {
+			depConstraint = l.ref // SHA pin when no version available
+		}
+		m.Dependencies[l.skill.Name] = depConstraint
 	}
-	if depConstraint == "" {
-		depConstraint = l.ref // SHA pin when no version available
-	}
-	m.Dependencies[l.skill.Name] = depConstraint
 
 	var versionPtr *string
 	if l.version != "" {
 		v := l.version
 		versionPtr = &v
 	}
+
+	installedAs := "direct"
+	if parent != "" {
+		installedAs = "dep:" + parent
+	}
+
+	// Preserve "direct" if a skill is already installed directly and is
+	// being re-encountered as a transitive dep.
+	if existing, ok := lf.Skills[l.skill.Name]; ok {
+		if existing.InstalledAs == "direct" || existing.InstalledAs == "" {
+			installedAs = existing.InstalledAs
+			if installedAs == "" {
+				installedAs = "direct"
+			}
+		}
+	}
+
 	lf.Skills[l.skill.Name] = manifest.LockEntry{
-		Version:   versionPtr,
-		Source:    l.source,
-		Ref:       l.ref,
-		Path:      l.path,
-		Integrity: l.hash,
+		Version:     versionPtr,
+		Source:      l.source,
+		Ref:         l.ref,
+		Path:        l.path,
+		Integrity:   l.hash,
+		InstalledAs: installedAs,
 	}
 }
 
@@ -264,5 +345,3 @@ func advisorySignerNotice(cmd *cobra.Command, sk *skill.Skill) {
 	}
 	fmt.Fprintf(stderr, "note: %s declares expected-signer %q; v0 verify is a stub (signed releases not yet published).\n", sk.Name, sk.Trust.ExpectedSigner)
 }
-
-

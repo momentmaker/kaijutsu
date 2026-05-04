@@ -1,89 +1,86 @@
 ---
 name: polish
-description: Automated post-implementation review-and-fix loop. Use after completing a feature or implementation plan to find and fix all issues across multiple passes until the code is clean. Invoke with /polish.
+description: Automated post-implementation review-and-fix loop. Use after completing a feature or implementation plan to find and fix issues across multiple passes until convergence. Invoke with /polish. Composes blunder-hunt for the review pass, convergence-detect for the stop condition, and deslop for any user-facing prose at the end.
 ---
 
-# Polish Loop
+# polish
 
-Autonomous review-fix loop that runs until clean. This replaces the manual cycle of "review → fix them all → review again → fix them all" with a single command.
+Loops until clean. Each pass: review the diff, fix everything found, re-run tests/linters. Stop when `convergence-detect` says no new signal is appearing.
 
-## How It Works
+This skill composes:
+- `blunder-hunt` for the review (multi-pass adversarial critique)
+- `convergence-detect` for the stop condition (smarter than "ran N rounds")
+- `deslop` for any user-facing prose touched in the diff
 
-You will perform up to 4 review-fix passes. Each pass:
-1. Review all changes thoroughly
-2. Identify concrete issues
-3. Fix every issue found
-4. Verify fixes (run tests/linters)
-
-Stop early if a pass finds zero issues.
-
-## Execution
-
-### Step 0: Understand Scope
+## Step 0: Scope
 
 Determine what was implemented:
 - Read any active implementation plan if it exists
-- Run `git diff master...HEAD --stat` (or `git diff --cached --stat` / `git diff --stat` if on master)
-- Identify all files changed as part of this feature
+- `git diff master...HEAD --stat` (or `--cached --stat` / `--stat` if on master)
+- Identify all files in the change set
 
-### Step 1-4: Review-Fix Passes
+## Step 1-N: Review-Fix Passes
 
-For each pass (max 4), do ALL of the following:
+Cap at 4 passes. Stop early when `convergence-detect` says converged.
 
-**Review Phase** — Examine every changed file for:
-- Potential bugs and logic errors
-- Missing error handling at system boundaries
-- Security issues (injection, XSS, auth gaps, missing RLS)
-- Inconsistency with existing codebase patterns
-- Dead code, unused imports, leftover debug statements
-- Missing or broken tests for new functionality
-- Type safety issues
-- Race conditions or state management problems
-- Missing validation at external boundaries
-- Performance concerns (N+1 queries, missing indexes, unnecessary re-renders)
+For each pass, alternate two lenses:
 
-**Report Phase** — List findings with severity:
-```
-Pass N findings:
-- [CRITICAL] file:line — description
-- [ISSUE] file:line — description
-- [MINOR] file:line — description
-```
+### Lens A — Random Code Exploration (odd passes: 1, 3)
 
-If zero findings: announce "Pass N: Clean" and stop the loop.
+Traverse the codebase semi-randomly:
+1. Pick 5 files in the diff at random
+2. Read each in full, not just the diff hunks
+3. Look for: dead code from refactoring, leftover debug statements, missing error handling at system boundaries, security issues, race conditions, missing tests for new paths
+4. For each finding: severity + file:line + description
 
-**Fix Phase** — Fix ALL findings from this pass:
-- Fix every issue, not just critical ones
-- Run the project's test suite after fixes
-- Run linters/formatters after fixes
-- If a fix introduces a new issue, catch it in the next pass
+### Lens B — Cross-Agent Integration Review (even passes: 2, 4)
 
-**Verify Phase** — After fixes:
-- Run relevant test commands (check the project's contributor docs for test commands)
-- Run linters/analyzers
-- If tests fail, fix them before moving to next pass
+Look at how pieces fit together:
+1. List the public-API surface added or changed in the diff
+2. Find every call site of those APIs (in the diff and outside)
+3. Verify: contracts honored, error paths handled by callers, no silent type narrowing, no swallowed errors
+4. For each finding: severity + file:line + description
 
-### Step 5: Summary
+### Apply blunder-hunt to each pass
 
-After the loop completes (clean pass or 4 passes done), output:
+Run `blunder-hunt` with the pass's lens on the in-scope files. The primitive handles the lie-to-them pressure and the dedup. Polish just consumes the output.
+
+### Fix Phase
+
+After each pass, fix every finding (not just critical). Run the project's test/lint commands. If a fix breaks something, fix that too — count as part of the same pass.
+
+### Convergence check
+
+After pass 2 (need 3 rounds of data including pass-0 baseline), invoke `convergence-detect`. If it returns CONVERGED, stop. Otherwise continue to next pass.
+
+## Step F: Final deslop
+
+Before declaring done, scan the diff for user-facing prose: README sections, commit messages, doc strings, error messages shown to humans, CLI help text. Run `deslop` on each.
+
+Skip code comments unless the diff specifically reworked them.
+
+## Step Final: Summary
 
 ```
 ## Polish Summary
-- Passes completed: N
-- Issues found: X (Y critical, Z issues, W minor)
-- Issues fixed: X
-- Tests: passing/failing
-- Status: Clean / N remaining items
+- Passes completed: <N>
+- Stop reason: <converged | hit cap of 4 | clean from pass 1>
+- Issues found: <X> (<Y> critical, <Z> issue, <W> minor)
+- Issues fixed: <X>
+- Tests: <passing | failing — listed below>
+- Deslop edits: <count>
+- Status: <Clean | <N> remaining items>
 ```
 
-If items remain after 4 passes, list them for the user to decide on.
+If items remain after the cap, list them for the user.
 
-## Rules
+## Hard rules
 
 - DO fix issues immediately — don't just report them
 - DO run tests after each fix pass
-- DO stop early when a pass is clean
-- DO commit after polish is complete (ask user)
-- DON'T gold-plate — fix real issues, don't refactor for style
-- DON'T add features — this is about correctness, not enhancement
+- DO stop when convergence-detect says converged, even before the cap
+- DO commit after polish (ask user first)
+- DON'T gold-plate. Real issues only, no style refactors
+- DON'T add features. Correctness only
 - DON'T count cosmetic preferences as issues unless they violate project conventions
+- DON'T silently revert decisions the author made — if you disagree, raise it as a finding for the user to weigh in

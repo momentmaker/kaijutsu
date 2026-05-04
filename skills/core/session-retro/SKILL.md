@@ -73,6 +73,12 @@ After the table, give a one-line recommendation for the single highest-impact it
 
 Prompt: "Which items should I act on? Enter numbers by category (e.g., 'memory 1,2' or 'skill 1') — or 'all' to do everything."
 
+## Step 3.5: Convergence check (optional but recommended)
+
+If you've extracted findings in 2+ rounds (e.g., re-running the retro after acting on the first set), invoke `convergence-detect` to decide whether another extraction round is worth it. Signals: output size shrinking, new-finding ratio dropping, content similarity to the last round rising. Stop when all three fire.
+
+If `convergence-detect` is not installed, fall back to the heuristic: stop when a fresh round produces ≤20% new findings.
+
 ## Step 4: Execute
 
 For each selected item:

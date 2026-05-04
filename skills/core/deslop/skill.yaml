@@ -1,0 +1,13 @@
+name: deslop
+version: 0.1.0
+license: MIT
+layout: flat
+description: "Strip AI-generated tells from a draft — emdash overuse, formulaic contrasts, pseudo-profound openers — without changing the content."
+homepage: https://kaijutsu.dev/skills/deslop
+repository: https://github.com/momentmaker/kaijutsu
+tags: [primitive, writing, polish]
+agents: [claude, codex, gemini]
+permissions:
+  bash: false
+  network: false
+  fs-write: scoped

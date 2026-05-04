@@ -1,0 +1,13 @@
+name: convergence-detect
+version: 0.1.0
+license: MIT
+layout: flat
+description: "Detect when an iterative loop has stopped producing new signal — output shrinking, change rate slowing, content similarity rising. Composed by polish, session-retro, and any iterative refinement skill."
+homepage: https://kaijutsu.dev/skills/convergence-detect
+repository: https://github.com/momentmaker/kaijutsu
+tags: [primitive, iteration, signal]
+agents: [claude, codex, gemini]
+permissions:
+  bash: false
+  network: false
+  fs-write: false

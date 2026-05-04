@@ -12,12 +12,17 @@ import (
 // empty means the skill is at the repo root (used by single-skill third-party
 // repos). Populated from registry/index.json or set to "skills/core/<name>"
 // for the default kaijutsu monorepo.
+//
+// InstalledAs records why the skill was installed:
+//   - "" or "direct" — user installed this skill explicitly
+//   - "dep:<parent>" — pulled in to satisfy <parent>'s deps.skills
 type LockEntry struct {
-	Version   *string `json:"version"`
-	Source    string  `json:"source"`
-	Ref       string  `json:"ref"`
-	Path      string  `json:"path,omitempty"`
-	Integrity string  `json:"integrity"`
+	Version     *string `json:"version"`
+	Source      string  `json:"source"`
+	Ref         string  `json:"ref"`
+	Path        string  `json:"path,omitempty"`
+	Integrity   string  `json:"integrity"`
+	InstalledAs string  `json:"installedAs,omitempty"`
 }
 
 // Lockfile mirrors kaijutsu.lock.json.

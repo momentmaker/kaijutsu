@@ -77,6 +77,11 @@ If pivoting didn't help, work through this ladder:
 - Find the function that throws the error or produces the unexpected behavior
 - Understand what it actually does vs what you assumed
 
+**Level 2.5: Blunder hunt**
+- Invoke `blunder-hunt` on the file or function suspected to be broken
+- Five passes with different lenses (data, error handling, integration, invariants, hostile input) often surface the cause that single-lens debugging missed
+- If `blunder-hunt` is not installed, run the equivalent manually: 5 passes of skeptic critique with deliberately different attention each pass
+
 **Level 3: Walk Away**
 - Record the full problem state in your agent's persistent memory:
   - Goal, symptoms, all attempts, what was learned

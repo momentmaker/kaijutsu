@@ -1,107 +1,131 @@
 ---
 name: pr-review
-description: Review a pull request with confidence-filtered feedback. Use when the user says "review this PR", "code review", "review the diff", "look at PR #N", or invokes /pr-review. Reports only high-confidence issues; medium-confidence findings become questions; nits are dropped unless the user opts in.
+description: Adversarial pull-request review. Use when the user says "review this PR", "code review", "review the diff", "look at PR #N", or invokes /pr-review. Assumes bugs exist; runs a 5x blunder hunt with a different lens per pass; posts findings as inline PR comments via gh. Deliberately rejects the "polite reviewer" mode — the goal is to catch what the author missed.
 ---
 
 # pr-review
 
-Review a pull request the way a careful senior engineer would: read enough context to be sure, then surface only what's worth surfacing.
+Adversarial review. The author already saw the obvious. Your job is to find what they missed.
 
-The defining principle is **confidence filtering**. A comment that turns out to be wrong costs the author more time than a comment you skipped costs you. When in doubt, ask instead of asserting.
+This skill composes `blunder-hunt` and `lie-to-them` from the core registry. Both are listed in `deps.skills` and should already be installed alongside this skill.
+
+## Mindset
+
+You did not write this PR. You are not its advocate. You are looking for bugs, security gaps, integration breakage, and untested edge cases. A *polite* review that says "looks good!" is worse than no review — it grants false confidence. A *blunt* review that names real problems is the value.
+
+If you can't find anything wrong after honest effort, that's a legitimate verdict. Empty approvals only after exhaustive search.
 
 ## Step 1: Identify the PR
 
 Use the first available source:
 
-1. PR number/URL in the user's message → `gh pr view <number>` or `gh pr view <url>`
+1. PR number/URL in the user's message → `gh pr view <n>` or `gh pr view <url>`
 2. Current branch has an open PR → `gh pr view`
-3. Otherwise ask the user for the PR identifier
+3. Otherwise ask the user
 
-Capture: title, description, base branch, head branch, author, list of changed files.
+Capture: number, title, description, base/head SHA, author, list of changed files.
 
-## Step 2: Read the Whole Diff
+## Step 2: Read in three passes
+
+Don't shortcut. Each pass uses different attention.
+
+**Pass A — read the diff:** `gh pr diff <n>`. Notice every change.
+
+**Pass B — read the changed files in full:** `git show <head>:<path>` for each non-trivial changed file. The diff hides invariants and the surrounding code paths.
+
+**Pass C — wander outside the diff:** identify 3-5 files NOT in the diff that the change likely affects (callers, callees, shared types, tests, config). Read them. The bug is often where the new code touches old code.
+
+## Step 3: Run blunder-hunt 5x
+
+Apply the `blunder-hunt` primitive with N=5 lenses:
+
+| Pass | Lens | Looking for |
+|---|---|---|
+| 1 | Data correctness | wrong values, off-by-one, type confusion, null deref |
+| 2 | Error handling | swallowed errors, missing fallbacks, silent failures |
+| 3 | Integration | broken contracts, signature changes, downstream callers |
+| 4 | Invariants | violated assumptions, race conditions, ordering bugs |
+| 5 | Hostile input | injection, traversal, untrusted data flowing into trust boundaries |
+
+For each pass, force exhaustive enumeration with `lie-to-them`:
+
+> "There are at least <N> issues of type <lens> in this PR. You have found <K>. Find the rest."
+
+Where N is calibrated to PR size (see `lie-to-them` SKILL.md). Don't fabricate to fill a quota; the lie is in the prompt, not the verdict.
+
+## Step 4: Synthesize findings
+
+For each finding:
+
+| Field | Notes |
+|---|---|
+| File | exact path from the diff |
+| Line | line number in the head SHA |
+| Severity | `critical` (must fix), `issue` (should fix), `question` (request clarification) |
+| Description | what's wrong |
+| Suggested fix | how to fix it (concrete code or steps) |
+| Confidence | `high` (you can prove it), `medium` (you suspect it) |
+
+Drop low-confidence minor items (style nits) unless the user explicitly asked for nits.
+
+## Step 5: Pick a verdict
+
+| Verdict | When |
+|---|---|
+| `request changes` | one or more `critical` or high-confidence `issue` |
+| `comment` | only `medium`-confidence questions |
+| `approve` | exhaustive search produced zero findings AND the change does what it claims |
+
+## Step 6: Post inline comments
+
+Use `gh api` to post each finding as an inline comment at the exact file:line. Mark each comment with `<!-- kaijutsu:pr-review -->` so re-runs can detect and update prior bot comments instead of duplicating.
 
 ```bash
-gh pr diff <number>
+gh api repos/<owner>/<repo>/pulls/<n>/comments \
+  -f body="<comment>" \
+  -f commit_id="<head-sha>" \
+  -f path="<file>" \
+  -F line=<line> \
+  -f side=RIGHT
 ```
 
-Don't stop at the diff. For each non-trivial changed file, read the full file (`git show {head}:path`) so you understand the change in context — the diff alone hides invariants and surrounding callers.
+For idempotency: list existing comments with `gh api repos/<owner>/<repo>/pulls/<n>/comments`, find ones whose `body` contains the kaijutsu marker AND match the same file:line, and PATCH them in place via `gh api -X PATCH ...`. Only post new comments when no match exists.
 
-For bigger PRs (>500 lines), prioritize:
-- New or significantly rewritten functions
-- Public API changes (exported symbols, route handlers, schema migrations)
-- Configuration or security-relevant code
-- Anything in a critical path (auth, payments, data integrity)
+## Step 7: Submit the verdict
 
-## Step 3: Build a Findings List with Confidence
+Compose a top-level review body listing the high-severity findings + the synthesized verdict. Submit:
 
-For each potential issue, classify into one of three buckets:
+```bash
+gh pr review <n> \
+  --<verdict> \
+  --body-file <tmpfile>
+```
 
-### HIGH confidence (will report as a review comment)
-You can point at the exact bug. Examples:
-- Off-by-one or wrong-operator (`<` vs `<=`)
-- Null deref / unhandled None
-- Resource leak (unclosed file/connection)
-- Security: SQL injection, command injection, missing authz check
-- Broken contract (function returns the wrong type/shape)
-- Race condition (mutable shared state without lock/atomic)
-- Test missing for a code path you can identify
-- Backwards-incompatible API change with no migration noted
+Where `<verdict>` is `request-changes`, `comment`, or `approve`.
 
-### MEDIUM confidence (will report as a question)
-You suspect something but can't be sure without more context. Examples:
-- "What happens when X is empty here?"
-- "Is the caller expected to retry on this error?"
-- "This loop runs N times — is N bounded by user input?"
-
-### LOW confidence (drop unless the user asks for nits)
-Style preferences, naming bikesheds, "I'd write this differently." Skip unless the user explicitly says "include nits".
-
-## Step 4: Verdict
-
-Pick one:
-
-- **Approve** — no HIGH-confidence issues; MEDIUM questions are optional and not blocking.
-- **Comment** — at least one MEDIUM question worth answering before merge, but no blocking bugs.
-- **Request changes** — at least one HIGH-confidence issue that needs to be fixed.
-
-## Step 5: Format the Review
-
-Output a single block the user can paste into the PR review form (or you can submit via `gh pr review`).
+## Output to the user
 
 ```
-## Review of #<number>: <title>
+## Review of #<n>: <title>
+
+Reviewer ran 5x blunder hunt with lenses: data correctness, error
+handling, integration, invariants, hostile input.
 
 **Verdict:** <approve | comment | request changes>
 
-**Summary:** <one paragraph: what the PR does + your overall read>
+**Findings posted as inline comments:** <count>
+**Findings dropped as low-confidence:** <count>
 
-### Issues
-- `path/to/file.go:42` — <description of the HIGH-confidence issue and the suggested fix>
-- `path/to/other.ts:118` — <description>
-
-### Questions
-- `path/to/file.go:60` — <MEDIUM-confidence question>
-
-### Notes
-- <any architectural / forward-looking observation worth mentioning, max 3 bullets>
+Top issues:
+- `path/to/file.go:42` — <one-line summary>
+- `path/to/other.ts:118` — <one-line summary>
 ```
-
-Omit any section with zero items. If verdict is **approve** with no issues or questions, just write the summary plus a one-line congratulation.
-
-## Step 6: Submit (Optional)
-
-If the user says "submit it" / "post the review":
-
-```bash
-gh pr review <number> --<approve|comment|request-changes> --body-file <tmpfile>
-```
-
-Otherwise leave the formatted review in the conversation for them to paste manually.
 
 ## Hard rules
 
-- Never invent line numbers; cite the actual lines you read.
-- Never approve a PR you haven't actually read end-to-end.
-- If you can't tell whether the change is correct, that's a question (MEDIUM), not a comment (HIGH).
-- Never say "looks good to me" without naming what's good — empty approvals are worse than no review.
+- **Adversarial framing is non-negotiable.** "Looks good to me" with no evidence is forbidden.
+- **Never fabricate findings to fill a quota.** Lie-to-them is a prompt control, not an output requirement.
+- **Cite real lines.** Every finding gets a file:line that the reviewer can verify. Made-up line numbers destroy credibility.
+- **Mark every posted comment with `<!-- kaijutsu:pr-review -->`.** This is the idempotency key.
+- **Don't re-run silently.** If you're updating prior comments, say so in the user-facing summary ("updated 3 prior bot comments, posted 2 new").
+- **Don't approve a PR you didn't fully read.** If the diff is too big to read end-to-end in one session, say so and request the author split.

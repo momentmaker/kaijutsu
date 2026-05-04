@@ -1,12 +1,16 @@
 name: pr-review
-version: 0.1.0
+version: 0.2.0
 license: MIT
 layout: flat
-description: "Review a pull request with confidence-filtered feedback — only high-confidence issues surface as comments, the rest become questions or are dropped."
+description: "Adversarial PR review. Run by a different agent than the committer; assume bugs exist; surface them as inline PR comments via gh."
 homepage: https://kaijutsu.dev/skills/pr-review
 repository: https://github.com/momentmaker/kaijutsu
-tags: [code-review, pull-request, github]
+tags: [code-review, pull-request, github, adversarial]
 agents: [claude, codex, gemini]
+deps:
+  skills:
+    - blunder-hunt@^0.1
+    - lie-to-them@^0.1
 permissions:
   bash: true
   network: true
