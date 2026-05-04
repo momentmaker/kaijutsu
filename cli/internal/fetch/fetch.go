@@ -155,8 +155,7 @@ func (f *Fetcher) Tarball(ctx context.Context, src *source.Source, ref string) (
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return nil, "", fmt.Errorf("tarball %s: HTTP %d: %s", url, resp.StatusCode, strings.TrimSpace(string(body)))
+		return nil, "", httpError(f, "GET", url, resp)
 	}
 	limited := io.LimitReader(resp.Body, MaxTarballBytes+1)
 	data, err := io.ReadAll(limited)
@@ -267,8 +266,7 @@ func (f *Fetcher) GetFile(ctx context.Context, src *source.Source, ref, path str
 		return nil, os.ErrNotExist
 	}
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return nil, fmt.Errorf("GET %s: HTTP %d: %s", url, resp.StatusCode, strings.TrimSpace(string(body)))
+		return nil, httpError(f, "GET", url, resp)
 	}
 	limited := io.LimitReader(resp.Body, MaxFileBytes+1)
 	body, err := io.ReadAll(limited)
@@ -296,8 +294,23 @@ func (f *Fetcher) getJSON(ctx context.Context, url string, out interface{}) erro
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return fmt.Errorf("GET %s: HTTP %d: %s", url, resp.StatusCode, strings.TrimSpace(string(body)))
+		return httpError(f, "GET", url, resp)
 	}
 	return json.NewDecoder(resp.Body).Decode(out)
+}
+
+// httpError builds a descriptive error for non-2xx responses. Rate-limit
+// 403s are turned into actionable hints pointing at GITHUB_TOKEN.
+func httpError(f *Fetcher, method, url string, resp *http.Response) error {
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	if resp.StatusCode == http.StatusForbidden && resp.Header.Get("X-RateLimit-Remaining") == "0" {
+		hint := "set GITHUB_TOKEN to a GitHub personal access token to raise the cap from 60/hr to 5000/hr"
+		if f.Token == "" {
+			hint += ` (e.g. ` + "`export GITHUB_TOKEN=$(gh auth token)`" + `)`
+		} else {
+			hint += " — your current token is exhausted; wait until the reset window or use a different token"
+		}
+		return fmt.Errorf("%s %s: GitHub API rate limit exceeded. %s", method, url, hint)
+	}
+	return fmt.Errorf("%s %s: HTTP %d: %s", method, url, resp.StatusCode, strings.TrimSpace(string(body)))
 }

@@ -80,6 +80,34 @@ Run `jutsu search <query>` to find skills by name / description / tag, or `jutsu
 - **Community skills** (third-party repos registered in `registry/index.json`) are unsigned by default. The CLI prompts the user when a skill declares sensitive permissions (shell, network, filesystem write).
 - Every skill ships a permission manifest in `skill.yaml`.
 
+## Troubleshooting
+
+### `GitHub API rate limit exceeded`
+
+`jutsu install` and `jutsu upgrade` hit the GitHub API to resolve tags and download tarballs. Anonymous requests are capped at **60/hr per IP**; authenticated requests get **5000/hr**.
+
+Set `GITHUB_TOKEN` to a personal access token to authenticate:
+
+```sh
+# Use the token gh CLI is already holding
+export GITHUB_TOKEN=$(gh auth token)
+
+# Or set explicitly in your shell rc (~/.zshrc, ~/.bashrc, etc.)
+export GITHUB_TOKEN="ghp_..."
+```
+
+A fine-grained PAT with **public-repository read access** is sufficient. No write or admin scopes needed.
+
+The same env var works for `install.sh`:
+
+```sh
+curl -fsSL https://kaijutsu.dev/install.sh | GITHUB_TOKEN=$(gh auth token) sh
+```
+
+### `dep <X> of <Y>: skill.yaml not found at skills/core/<X> in momentmaker/kaijutsu@<sha>`
+
+You're on `v0.2.0`, which shipped broken transitive dep constraints. Upgrade to `v0.2.1` or later (`brew upgrade jutsu` or re-run `install.sh`).
+
 ## Contributing
 
 See [`CONTRIBUTING.md`](./CONTRIBUTING.md). Skill authors can submit a PR to `skills/community/` or register a third-party repo in `registry/index.json`. All contributions must be MIT-licensed (or compatible: BSD-2/3, ISC, Apache-2.0).
