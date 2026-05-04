@@ -47,9 +47,14 @@ type catalogEntry struct {
 }
 
 type catalog struct {
-	Generated string         `json:"generated_at"`
-	Total     int            `json:"total"`
-	Skills    []catalogEntry `json:"skills"`
+	// SchemaVersion is the catalog format version. Bump on breaking
+	// changes; downstream consumers can branch on it.
+	SchemaVersion int `json:"schema_version"`
+	// Total skills in the catalog.
+	Total int `json:"total"`
+	// Skills is the sorted list of every skill known at generation time
+	// (skills/core, skills/community, registry/index.json third-party).
+	Skills []catalogEntry `json:"skills"`
 }
 
 func main() {
@@ -79,26 +84,34 @@ func run(repoRoot string) error {
 }
 
 func buildCatalog(repoRoot string) (*catalog, error) {
-	cat := &catalog{Generated: "stable"} // intentionally stable for diff-friendly output
-	coreDir := filepath.Join(repoRoot, "skills", "core")
-	entries, err := os.ReadDir(coreDir)
-	if err != nil {
-		return nil, fmt.Errorf("read %s: %w", coreDir, err)
+	cat := &catalog{
+		SchemaVersion: 1,
+		Skills:        []catalogEntry{},
 	}
-	for _, e := range entries {
-		if !e.IsDir() {
-			continue
-		}
-		skillDir := filepath.Join(coreDir, e.Name())
-		yamlPath := filepath.Join(skillDir, "skill.yaml")
-		if _, err := os.Stat(yamlPath); err != nil {
-			continue
-		}
-		sk, err := skill.Load(yamlPath)
+	for _, sub := range []string{"core", "community"} {
+		dir := filepath.Join(repoRoot, "skills", sub)
+		entries, err := os.ReadDir(dir)
 		if err != nil {
-			return nil, fmt.Errorf("load %s: %w", yamlPath, err)
+			if os.IsNotExist(err) {
+				continue
+			}
+			return nil, fmt.Errorf("read %s: %w", dir, err)
 		}
-		cat.Skills = append(cat.Skills, fromSkill(sk, "core", "momentmaker/kaijutsu", "skills/core/"+sk.Name))
+		for _, e := range entries {
+			if !e.IsDir() {
+				continue
+			}
+			skillDir := filepath.Join(dir, e.Name())
+			yamlPath := filepath.Join(skillDir, "skill.yaml")
+			if _, err := os.Stat(yamlPath); err != nil {
+				continue
+			}
+			sk, err := skill.Load(yamlPath)
+			if err != nil {
+				return nil, fmt.Errorf("load %s: %w", yamlPath, err)
+			}
+			cat.Skills = append(cat.Skills, fromSkill(sk, sub, "momentmaker/kaijutsu", "skills/"+sub+"/"+sk.Name))
+		}
 	}
 
 	// Third-party entries from registry/index.json
@@ -340,6 +353,8 @@ const htmlTemplate = `<!DOCTYPE html>
       font-size: 11px;
       font-weight: 600;
       letter-spacing: 0.02em;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
     .badge-core { background: rgba(61, 220, 151, 0.15); color: var(--mint-dark); }
     .badge-third { background: rgba(193, 132, 80, 0.15); color: var(--rust); }
