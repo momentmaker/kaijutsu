@@ -1,0 +1,16 @@
+name: brainstorm
+version: 0.1.0
+license: MIT
+layout: rich
+description: "Multi-agent ideation against a free-form prompt. Runs claude / codex / gemini in parallel via `jutsu swarm brainstorm \"<prompt>\"`, each with a different angle (claude=long-horizon framing, codex=code-pattern grounding, gemini=cross-domain analogy), then synthesizes into a ranked list of approaches with tradeoffs. Designed to feed into `decide` for ADR capture or into `refactor-plan` for execution. Use when the user says \"brainstorm\", \"ideas for\", \"how should we approach\", \"options for\", or invokes /brainstorm."
+homepage: https://kaijutsu.dev/skills/brainstorm
+repository: https://github.com/momentmaker/kaijutsu
+tags: [ideation, brainstorm, multi-agent, planning]
+agents: [claude, codex, gemini]
+shared: [scripts, prompts, references]
+permissions:
+  bash: true
+  network: true
+  fs-write: scoped
+trust:
+  expected-signer: kaijutsu-core@github

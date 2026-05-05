@@ -32,6 +32,7 @@ before the synthesizer.`,
 	}
 	cmd.AddCommand(newSwarmPRReviewCmd())
 	cmd.AddCommand(newSwarmDocReviewCmd())
+	cmd.AddCommand(newSwarmBrainstormCmd())
 	return cmd
 }
 
@@ -140,6 +141,56 @@ func newSwarmDocReviewCmd() *cobra.Command {
 		},
 	}
 	bindCommonFlags(cmd, &flags, false) // no --post-comment for doc-review
+	return cmd
+}
+
+func newSwarmBrainstormCmd() *cobra.Command {
+	var flags commonSwarmFlags
+	cmd := &cobra.Command{
+		Use:   "brainstorm <prompt>",
+		Short: "Multi-agent ideation against a free-form prompt",
+		Long: `Run claude / codex / gemini in parallel against a single
+free-form prompt with three different ideation lenses, then return
+a ranked list of options.
+
+Lenses:
+  - claude: long-horizon framing — ideal end-state, ambition gap
+  - codex:  code-pattern grounding — concrete patterns + libraries
+  - gemini: cross-domain analogy — adjacent fields + prior art
+
+The prompt is a positional arg. Quote it. Cap is 8 KB; longer
+prompts abort with a "shorten" hint.
+
+Output: ranked-list markdown (recommended → alternative → risky →
+speculative) with cross-cut themes called out separately.`,
+		Args: cobra.ArbitraryArgs, // can be 0 with --replay or --grant-consent; otherwise joined
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			projectRoot, _ := os.Getwd()
+			preset, err := swarm.LoadPresetWithSkillOverrides(projectRoot, "brainstorm")
+			if err != nil {
+				return err
+			}
+			if flags.grantConsent {
+				return runGrantConsent(cmd, projectRoot, preset)
+			}
+			if flags.replayKey != "" {
+				return runReplay(ctx, cmd, projectRoot, "brainstorm", flags.replayKey, flags.synthesizer, flags.perAgentBudget, flags.timeout, false)
+			}
+			if len(args) == 0 {
+				return errors.New("brainstorm requires a prompt argument (or --replay <key>)")
+			}
+			prompt := strings.Join(args, " ")
+			ictx, err := swarm.ResolveInput(ctx, preset, swarm.InputOptions{
+				Prompt: prompt,
+			})
+			if err != nil {
+				return err
+			}
+			return runSwarmPipeline(ctx, cmd, projectRoot, preset, ictx, flags)
+		},
+	}
+	bindCommonFlags(cmd, &flags, false) // no --post-comment for brainstorm (no PR)
 	return cmd
 }
 

@@ -220,13 +220,13 @@
   <div class="controls">
     <input type="search" id="search" placeholder="Search skills by name, description, tag…" autocomplete="off">
     <div class="filter-group" id="filters">
-      <button class="filter active" data-filter="all">All (38)</button>
+      <button class="filter active" data-filter="all">All (39)</button>
       <button class="filter" data-filter="core">Core</button>
       <button class="filter" data-filter="third-party">Third-party</button>
       <button class="filter" data-filter="hooks">Hooks</button>
     </div>
   </div>
-  <p class="stats" id="stats">Showing all 38 skills.</p>
+  <p class="stats" id="stats">Showing all 39 skills.</p>
 
   <div class="grid" id="grid">
     
@@ -267,6 +267,19 @@
         
       </div>
       <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install blunder-hunt')" title="Click to copy">jutsu install blunder-hunt</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="brainstorm Multi-agent ideation against a free-form prompt. Runs claude / codex / gemini in parallel via `jutsu swarm brainstorm &#34;&lt;prompt&gt;&#34;`, each with a different angle (claude=long-horizon framing, codex=code-pattern grounding, gemini=cross-domain analogy), then synthesizes into a ranked list of approaches with tradeoffs. Designed to feed into `decide` for ADR capture or into `refactor-plan` for execution. Use when the user says &#34;brainstorm&#34;, &#34;ideas for&#34;, &#34;how should we approach&#34;, &#34;options for&#34;, or invokes /brainstorm. ideation brainstorm multi-agent planning claude codex gemini">
+      <div class="row">
+        <h3>brainstorm<span style="color:var(--muted);font-weight:normal"> 0.1.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Multi-agent ideation against a free-form prompt. Runs claude / codex / gemini in parallel via `jutsu swarm brainstorm &#34;&lt;prompt&gt;&#34;`, each with a different angle (claude=long-horizon framing, codex=code-pattern grounding, gemini=cross-domain analogy), then synthesizes into a ranked list of approaches with tradeoffs. Designed to feed into `decide` for ADR capture or into `refactor-plan` for execution. Use when the user says &#34;brainstorm&#34;, &#34;ideas for&#34;, &#34;how should we approach&#34;, &#34;options for&#34;, or invokes /brainstorm.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install brainstorm')" title="Click to copy">jutsu install brainstorm</div>
     </article>
     
     <article class="card" data-source="third-party" data-hooks="false" data-search="browser-testing-with-devtools Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install browser-testing-with-devtools`.  claude codex gemini">

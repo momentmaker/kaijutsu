@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "total": 38,
+  "total": 39,
   "skills": [
     {
       "name": "agent-doctor",
@@ -70,6 +70,33 @@
         "bash": false,
         "network": false,
         "fs_write": false
+      }
+    },
+    {
+      "name": "brainstorm",
+      "version": "0.1.0",
+      "license": "MIT",
+      "description": "Multi-agent ideation against a free-form prompt. Runs claude / codex / gemini in parallel via `jutsu swarm brainstorm \"\u003cprompt\u003e\"`, each with a different angle (claude=long-horizon framing, codex=code-pattern grounding, gemini=cross-domain analogy), then synthesizes into a ranked list of approaches with tradeoffs. Designed to feed into `decide` for ADR capture or into `refactor-plan` for execution. Use when the user says \"brainstorm\", \"ideas for\", \"how should we approach\", \"options for\", or invokes /brainstorm.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "ideation",
+        "brainstorm",
+        "multi-agent",
+        "planning"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/brainstorm",
+      "homepage": "https://kaijutsu.dev/skills/brainstorm",
+      "has_hooks": false,
+      "permissions": {
+        "bash": true,
+        "network": true,
+        "fs_write": "scoped"
       }
     },
     {
