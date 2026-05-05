@@ -7,21 +7,21 @@ import (
 
 // LoadPresetWithSkillOverrides starts from the built-in preset and
 // overlays per-agent + synthesizer + debate prompts loaded from the
-// installed pr-review skill's prompts/ directory. Falls back to the
-// built-in template silently when a file isn't present.
+// installed skill's prompts/ directory. Falls back to the built-in
+// template silently when a file isn't present.
 //
-// Skill lookup order:
-//  1. <project>/.claude/skills/pr-review/prompts/<name>.md
-//  2. <project>/.agents/skills/pr-review/prompts/<name>.md
-//  3. ~/.claude/skills/pr-review/prompts/<name>.md
-//  4. ~/.agents/skills/pr-review/prompts/<name>.md
+// Lookup order (for a preset named X):
+//  1. <project>/.claude/skills/X/prompts/<name>.md
+//  2. <project>/.agents/skills/X/prompts/<name>.md
+//  3. ~/.claude/skills/X/prompts/<name>.md
+//  4. ~/.agents/skills/X/prompts/<name>.md
+//
+// Phase 2 adds presets beyond pr-review; the lookup mechanism is
+// preset-name-agnostic to support that without code change.
 func LoadPresetWithSkillOverrides(projectRoot, presetName string) (*Preset, error) {
 	base, err := PresetFor(presetName)
 	if err != nil {
 		return nil, err
-	}
-	if presetName != "pr-review" {
-		return base, nil
 	}
 	dirs := skillPromptDirs(projectRoot, presetName)
 	out := *base // shallow copy

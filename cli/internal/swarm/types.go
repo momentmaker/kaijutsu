@@ -33,7 +33,10 @@ type AgentResult struct {
 	Agent    string    `json:"agent"`
 	Findings []Finding `json:"findings"`
 	Cost     float64   `json:"cost_usd_est"`
-	Duration time.Duration `json:"duration_ms"`
+	// Duration of the agent invocation. Encoded in JSON as int64
+	// nanoseconds (Go's default for time.Duration); divide by 1e6
+	// to get milliseconds.
+	Duration time.Duration `json:"duration_ns"`
 	Err      string    `json:"error,omitempty"`
 	Raw      string    `json:"-"` // not serialized; used for cache/replay
 }

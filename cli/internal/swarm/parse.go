@@ -139,24 +139,25 @@ func firstJSONArray(s string) string {
 }
 
 // ParseWithRetry runs the parser; on failure it asks the agent for a
-// corrected response (one round). On second failure, returns the
-// raw string wrapped as a single info-level finding so the user
-// still sees something rather than an empty review.
-func ParseWithRetry(ctx context.Context, agent Agent, prompt, raw string, budget float64) ([]Finding, string, error) {
+// corrected response (one round). On second failure, wraps the raw
+// string as a single info-level finding so the user still sees
+// something rather than an empty review. Always succeeds — the caller
+// gets either parsed findings or a non-empty fallback.
+func ParseWithRetry(ctx context.Context, agent Agent, prompt, raw string, budget float64) ([]Finding, string) {
 	findings, err := ParseFindings(raw)
 	if err == nil {
-		return findings, raw, nil
+		return findings, raw
 	}
 	correction := prompt + "\n\n---\nYour previous response was not valid JSON. Return ONLY a JSON array matching the schema. No prose, no code fences, no commentary. Previous response excerpt:\n" + truncate(raw, 400)
 	raw2, runErr := agent.Run(ctx, correction, budget)
 	if runErr != nil {
-		return fallbackFinding(raw), raw, nil
+		return fallbackFinding(raw), raw
 	}
 	findings, err = ParseFindings(raw2)
 	if err == nil {
-		return findings, raw2, nil
+		return findings, raw2
 	}
-	return fallbackFinding(raw2), raw2, nil
+	return fallbackFinding(raw2), raw2
 }
 
 func fallbackFinding(raw string) []Finding {

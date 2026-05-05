@@ -11,14 +11,13 @@ Your job:
 3. Sort by severity (blocker > issue > minor > info), break ties by
    consensus level (higher first).
 4. Output a markdown report with these sections:
-   - Top-line summary (counts by severity + consensus).
    - A "Findings" section with reasoning for each clustered finding.
    - A "Disagreements" section calling out 1/N findings — these are
      the conversation-starters worth surfacing prominently.
 
 Be terse. No filler. No restating the prompt. No prefatory paragraph.
-The disagreement table is rendered separately and prepended; do not
-duplicate it in your output.
+The disagreement table and top-line summary are rendered separately
+and prepended to your output; do NOT duplicate them.
 
 REVIEWERS' FINDINGS:
 %s

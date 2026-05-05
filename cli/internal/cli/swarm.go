@@ -74,7 +74,6 @@ func newSwarmPRReviewCmd() *cobra.Command {
 				return errors.New("diff is empty; nothing to review")
 			}
 
-			_ = projectRoot // used by EnsureConsent below
 			// Privacy gate: hard-block on secrets unless explicitly
 			// overridden.
 			hits := swarm.SecretsScan(pctx.Diff)
@@ -147,11 +146,19 @@ func newSwarmPRReviewCmd() *cobra.Command {
 					fmt.Fprintln(stderr, "warning: no synthesizer agent available; falling back to JSON dump")
 					format = "json"
 				} else {
+					// Cost gate: --max-cost is enforced BEFORE optional
+					// extra spends (debate + strict). The Pass-1 spend
+					// already happened by here; if it alone busted the
+					// cap, log + skip the optional steps.
+					overBudget := maxCostUSD > 0 && run.TotalCost > maxCostUSD
+					if overBudget {
+						fmt.Fprintf(stderr, "warning: Pass-1 cost $%.2f already exceeds --max-cost $%.2f; skipping optional debate/strict passes\n", run.TotalCost, maxCostUSD)
+					}
 					// Stage 3: --full runs a Pass-2 round-robin debate
 					// before synthesis so the synthesizer can lean on
 					// peer-tested findings.
 					effective := results
-					if mode == "full" {
+					if mode == "full" && !overBudget {
 						fmt.Fprintln(stderr, "swarm: --full mode — Pass 2 round-robin debate starting")
 						pass2 := swarm.Debate(ctx, results, preset, perAgentBudget, timeout)
 						for _, r := range pass2 {
@@ -172,7 +179,8 @@ func newSwarmPRReviewCmd() *cobra.Command {
 					}
 					// --strict: lie-to-them filter on the synthesis
 					// draft (Stage 3). One extra synthesizer call.
-					if strict && md != "" {
+					// Skipped under over-budget.
+					if strict && md != "" && !overBudget {
 						filtered, lieCost, lieErr := swarm.LieToThem(ctx, md, synthAgent, perAgentBudget, timeout)
 						if lieErr != nil {
 							fmt.Fprintf(stderr, "warning: --strict lie-to-them filter failed: %v (keeping unfiltered draft)\n", lieErr)
@@ -182,7 +190,7 @@ func newSwarmPRReviewCmd() *cobra.Command {
 						}
 					}
 					if maxCostUSD > 0 && run.TotalCost > maxCostUSD {
-						fmt.Fprintf(stderr, "warning: estimated total cost $%.2f exceeded --max-cost $%.2f\n", run.TotalCost, maxCostUSD)
+						fmt.Fprintf(stderr, "warning: total cost $%.2f exceeded --max-cost $%.2f\n", run.TotalCost, maxCostUSD)
 					}
 					md = appendMarker(md, pctx.SHA)
 					if cerr := swarm.CacheRun(projectRoot, pctx.SHA, results, md); cerr != nil {
@@ -192,7 +200,7 @@ func newSwarmPRReviewCmd() *cobra.Command {
 					if postComment {
 						if pctx.PR == 0 {
 							fmt.Fprintln(stderr, "warning: --post-comment requested but no PR detected (--diff-from-branch mode); skipping post")
-						} else if perr := swarm.PostOrUpdateComment(ctx, pctx.PR, pctx.SHA, md); perr != nil {
+						} else if perr := swarm.PostOrUpdateComment(ctx, pctx.PR, md); perr != nil {
 							fmt.Fprintf(stderr, "warning: post comment failed: %v\n", perr)
 						} else {
 							fmt.Fprintf(stderr, "posted/updated PR comment on #%d\n", pctx.PR)
@@ -212,7 +220,6 @@ func newSwarmPRReviewCmd() *cobra.Command {
 				return err
 			}
 			reportSwarmStderr(stderr, results, finished.Sub(start), run.TotalCost)
-			_ = strict
 			return nil
 		},
 	}
@@ -220,7 +227,7 @@ func newSwarmPRReviewCmd() *cobra.Command {
 	cmd.Flags().StringVar(&diffFromBranch, "diff-from-branch", "", "review the local branch vs base ref instead of a PR (e.g. origin/main)")
 	cmd.Flags().StringVar(&mode, "mode", "quick", "quick | full (Stage 3+: --full enables round-robin debate)")
 	cmd.Flags().BoolVar(&strict, "strict", false, "(Stage 3) lie-to-them filter on synthesis draft")
-	cmd.Flags().Float64Var(&maxCostUSD, "max-cost", 1.00, "warn (Stage 1) / abort (Stage 2+) if estimated total cost exceeds this many USD")
+	cmd.Flags().Float64Var(&maxCostUSD, "max-cost", 1.00, "skip optional --full/--strict spend if Pass-1 estimate already exceeds this many USD; warn at end if total exceeds")
 	cmd.Flags().Float64Var(&perAgentBudget, "per-agent-budget", 0.50, "passed to each agent's --max-budget-usd if supported")
 	cmd.Flags().StringVar(&synthesizer, "synthesizer", "claude", "(Stage 2) which agent runs the synthesis pass")
 	cmd.Flags().DurationVar(&timeout, "timeout", 180*time.Second, "per-agent invocation timeout")

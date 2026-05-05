@@ -24,16 +24,19 @@ func Marker(runID, sha string) string {
 
 // PostOrUpdateComment posts the synthesis markdown as a PR comment,
 // or edits an existing kaijutsu-pr-review comment if one is present.
-// On a SHA bump, prior comment's body is appended to a collapsible
+// When a prior comment exists, its body is appended to a collapsible
 // "Previous reviews" footer so the timeline isn't lost.
-func PostOrUpdateComment(ctx context.Context, pr int, sha string, body string) error {
+//
+// The current SHA is expected to be embedded in body's marker line
+// already (via swarm.Marker); this function does not re-marker.
+func PostOrUpdateComment(ctx context.Context, pr int, body string) error {
 	prior, priorBody, err := findPriorComment(ctx, pr)
 	if err != nil {
 		return err
 	}
 	finalBody := body
 	if priorBody != "" {
-		finalBody = body + "\n\n" + buildHistoryFooter(priorBody, sha)
+		finalBody = body + "\n\n" + buildHistoryFooter(priorBody)
 	}
 	if prior == 0 {
 		return createComment(ctx, pr, finalBody)
@@ -118,7 +121,7 @@ func updateComment(ctx context.Context, commentID int64, body string) error {
 // buildHistoryFooter wraps the previous body in a collapsible
 // <details> block. Strips the prior history footer from the prior
 // body so we don't nest details forever.
-func buildHistoryFooter(priorBody, currentSHA string) string {
+func buildHistoryFooter(priorBody string) string {
 	stripped := stripHistoryFooter(priorBody)
 	priorMarker := extractMarker(stripped)
 	heading := fmt.Sprintf("Previous review (sha %s)", priorMarker)

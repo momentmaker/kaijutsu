@@ -31,7 +31,7 @@ func TestStripHistoryFooter(t *testing.T) {
 
 func TestBuildHistoryFooter_NestsCleanly(t *testing.T) {
 	prior := "old body\n\n<!-- kaijutsu-pr-review:run-id=X sha=oldsha -->"
-	footer := buildHistoryFooter(prior, "newsha")
+	footer := buildHistoryFooter(prior)
 	if !strings.Contains(footer, "<details>") {
 		t.Fatal("missing details wrapper")
 	}

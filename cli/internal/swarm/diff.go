@@ -45,8 +45,15 @@ func FetchPRContext(ctx context.Context, pr int) (*PRContext, error) {
 	if err != nil {
 		return nil, fmt.Errorf("gh pr diff %d: %w", pr, err)
 	}
-	shaOut, _ := exec.CommandContext(ctx, "gh", "pr", "view", strconv.Itoa(pr), "--json", "headRefOid", "--jq", ".headRefOid").Output()
-	return &PRContext{PR: pr, SHA: strings.TrimSpace(string(shaOut)), Diff: string(diff)}, nil
+	shaOut, shaErr := exec.CommandContext(ctx, "gh", "pr", "view", strconv.Itoa(pr), "--json", "headRefOid", "--jq", ".headRefOid").Output()
+	if shaErr != nil {
+		return nil, fmt.Errorf("gh pr view %d (resolve head SHA): %w", pr, shaErr)
+	}
+	sha := strings.TrimSpace(string(shaOut))
+	if sha == "" {
+		return nil, fmt.Errorf("gh pr view %d returned empty headRefOid", pr)
+	}
+	return &PRContext{PR: pr, SHA: sha, Diff: string(diff)}, nil
 }
 
 // FetchBranchDiff returns the diff between the current branch and a
@@ -64,8 +71,15 @@ func FetchBranchDiff(ctx context.Context, base string) (*PRContext, error) {
 	if err != nil {
 		return nil, fmt.Errorf("git diff %s...HEAD: %w", base, err)
 	}
-	shaOut, _ := exec.CommandContext(ctx, "git", "rev-parse", "HEAD").Output()
-	return &PRContext{SHA: strings.TrimSpace(string(shaOut)), Diff: string(diff)}, nil
+	shaOut, shaErr := exec.CommandContext(ctx, "git", "rev-parse", "HEAD").Output()
+	if shaErr != nil {
+		return nil, fmt.Errorf("git rev-parse HEAD: %w", shaErr)
+	}
+	sha := strings.TrimSpace(string(shaOut))
+	if sha == "" {
+		return nil, fmt.Errorf("git rev-parse HEAD returned empty SHA")
+	}
+	return &PRContext{SHA: sha, Diff: string(diff)}, nil
 }
 
 // parsePRView extracts (number, headRefOid) from `gh pr view --json`
@@ -73,14 +87,10 @@ func FetchBranchDiff(ctx context.Context, base string) (*PRContext, error) {
 // across this seam — the format is deterministic.
 func parsePRView(s string) (int, string) {
 	var n int
-	var sha string
-	for _, key := range []string{"number"} {
-		if v := jsonScalar(s, key); v != "" {
-			fmt.Sscanf(v, "%d", &n)
-		}
+	if v := jsonScalar(s, "number"); v != "" {
+		fmt.Sscanf(v, "%d", &n)
 	}
-	sha = jsonScalar(s, "headRefOid")
-	return n, sha
+	return n, jsonScalar(s, "headRefOid")
 }
 
 // jsonScalar pulls a scalar value (string or number) for a top-level

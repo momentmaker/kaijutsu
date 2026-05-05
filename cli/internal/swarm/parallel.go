@@ -38,12 +38,9 @@ func FanOut(ctx context.Context, jobs []Job, budgetUSD float64, perAgentTimeout 
 				out[idx] = res
 				return
 			}
-			findings, finalRaw, parseErr := ParseWithRetry(subCtx, job.Agent, job.Prompt, raw, budgetUSD)
+			findings, finalRaw := ParseWithRetry(subCtx, job.Agent, job.Prompt, raw, budgetUSD)
 			res.Raw = finalRaw
 			res.Findings = findings
-			if parseErr != nil {
-				res.Err = parseErr.Error()
-			}
 			res.Cost = EstimateCostUSD(job.Agent.Name(), EstimateTokens(job.Prompt), EstimateTokens(finalRaw))
 			out[idx] = res
 		}(i, j)

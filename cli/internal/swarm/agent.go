@@ -51,14 +51,25 @@ func (codexAgent) Run(ctx context.Context, prompt string, budget float64) (strin
 	return runWithStdin(ctx, "codex", []string{"-p"}, prompt)
 }
 
-// geminiAgent passes prompt as -p arg + diff context on stdin. Stage 1
-// concatenates everything into the prompt arg and ignores stdin to
-// keep the contract identical across agents.
+// geminiAgent invokes `gemini -p`. For prompts under argSafe bytes
+// the entire prompt rides as the -p arg. For larger prompts (real PR
+// diffs easily exceed 64KB) we keep a stub instruction in -p and pipe
+// the bulk via stdin — Gemini's `-p` doc states stdin is APPENDED to
+// the prompt arg in non-interactive mode.
 type geminiAgent struct{}
+
+// argSafe is a conservative cap below the smallest ARG_MAX we expect
+// to encounter (macOS bash ~256KB; many shells stricter under
+// `xargs`-style invocation). Keeping a big margin avoids E2BIG.
+const argSafe = 32 * 1024
 
 func (geminiAgent) Name() AgentName { return AgentGemini }
 func (geminiAgent) Run(ctx context.Context, prompt string, budget float64) (string, error) {
-	return runWithStdin(ctx, "gemini", []string{"-p", prompt}, "")
+	if len(prompt) < argSafe {
+		return runWithStdin(ctx, "gemini", []string{"-p", prompt}, "")
+	}
+	stub := "Read the full prompt + DIFF on stdin. Follow the instructions in it exactly. Return ONLY the JSON array described."
+	return runWithStdin(ctx, "gemini", []string{"-p", stub}, prompt)
 }
 
 // runWithStdin executes name with args and prompt piped to stdin.
