@@ -1,39 +1,92 @@
 package swarm
 
-import "fmt"
+// InputKind describes what shape of input a preset consumes. Stage 1
+// (Phase 2) only wires InputDiff (the existing pr-review flow); the
+// other kinds are declared here so the registry shape is final and
+// Stages 2–7 can fill them in without changing this file.
+type InputKind int
+
+const (
+	// InputDiff is a unified-diff string. Cache key derives from the
+	// PR head SHA. Used by pr-review and the diff-mode of
+	// security-audit.
+	InputDiff InputKind = iota
+	// InputFiles is one-or-more file paths read from disk. Cache key
+	// derives from SHA256(preset + sorted-paths-with-section-prefix).
+	// Used by refactor-plan, doc-review, file-mode security-audit.
+	InputFiles
+	// InputPrompt is a free-form user-provided string. Cache key
+	// derives from SHA256(preset + canonicalized-prompt). Used by
+	// brainstorm.
+	InputPrompt
+)
 
 // Preset is a named bundle of per-agent prompts + a synthesizer
-// prompt. Phase 1 ships one — pr-review. Phase 2 generalizes.
+// prompt + metadata describing how the preset is invoked, cached,
+// and rendered. Phase 1 shipped one (pr-review); Phase 2 makes
+// presets first-class and ships four more.
 type Preset struct {
 	Name string
+	// Description is the one-liner shown in `jutsu swarm --help`.
+	Description string
+	// InputKind drives input handling in swarm.go (Stage 2).
+	InputKind InputKind
 	// PerAgent maps an agent to the prompt template that agent should
-	// receive in Pass 1. Templates expect %s where the diff is
-	// substituted in.
+	// receive in Pass 1. Templates expect %s where the input
+	// (diff/files/prompt) is substituted in.
 	PerAgent map[AgentName]string
 	// Synthesizer prompt template. Consumes the marshalled per-agent
 	// findings JSON via %s.
 	Synthesizer string
 	// Debate prompt template (Pass 2 critique). Used in --full mode.
 	Debate string
+	// SeverityVocab is the ordered list of valid severity strings
+	// for this preset. pr-review uses blocker|issue|minor|info;
+	// security-audit uses critical|high|medium|low|informational;
+	// brainstorm/refactor-plan use recommended|alternative|risky|
+	// speculative. Stage 1 reads but doesn't yet enforce this — Stages
+	// 5–7 wire severity-aware coercion in normalize().
+	SeverityVocab []Severity
+	// CachePathPart is the directory segment under .kaijutsu/ that
+	// holds per-input run caches. Defaults to "<Name>-runs" when
+	// empty. Used by cache.go.
+	CachePathPart string
+	// ConfigBaseName is the per-preset config file name under
+	// .kaijutsu/. Defaults to "<Name>.yaml" when empty. Used by
+	// consent.go.
+	ConfigBaseName string
 }
 
-// PresetFor returns the named preset or an error if unknown. Stage 1
-// hardcodes pr-review; Stage 5 makes prompts loadable from the
-// installed skill directory so authors can override without
-// recompiling jutsu.
-func PresetFor(name string) (*Preset, error) {
-	switch name {
-	case "pr-review":
-		return &prReviewPreset, nil
+// cachePathSegment returns the per-preset cache subdir, falling back
+// to "<Name>-runs" when CachePathPart is unset.
+func (p *Preset) cachePathSegment() string {
+	if p.CachePathPart != "" {
+		return p.CachePathPart
 	}
-	return nil, fmt.Errorf("unknown preset %q (Phase 1 supports: pr-review)", name)
+	return p.Name + "-runs"
+}
+
+// configFileName returns the per-preset config filename, falling back
+// to "<Name>.yaml" when ConfigBaseName is unset.
+func (p *Preset) configFileName() string {
+	if p.ConfigBaseName != "" {
+		return p.ConfigBaseName
+	}
+	return p.Name + ".yaml"
 }
 
 // prReviewPreset is the built-in default. The same skill that
 // invokes jutsu swarm can override these by shipping its own
 // prompts/<agent>.md (Stage 5).
 var prReviewPreset = Preset{
-	Name: "pr-review",
+	Name:          "pr-review",
+	Description:   "Multi-agent pull-request review with disagreement table.",
+	InputKind:     InputDiff,
+	SeverityVocab: []Severity{SeverityBlocker, SeverityIssue, SeverityMinor, SeverityInfo},
+	// CachePathPart + ConfigBaseName left empty so they fall back to
+	// "pr-review-runs" + "pr-review.yaml" — matching the on-disk
+	// layout from Phase 1, so existing user caches/config keep
+	// working unchanged.
 	PerAgent: map[AgentName]string{
 		AgentClaude: prReviewSharedHeader + `
 

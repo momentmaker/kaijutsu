@@ -50,11 +50,38 @@ func TestCacheDir_StaysInsideRoot(t *testing.T) {
 	// test documents the assumption by showing what filepath.Join
 	// does with a traversal attempt — it normalizes but DOES escape.
 	root := "/tmp/project"
-	dir := CacheDir(root, "../../etc")
+	preset := &Preset{Name: "pr-review"}
+	dir := CacheDir(root, preset, "../../etc")
 	if !strings.HasPrefix(filepath.Clean(dir), filepath.Clean(root)) {
 		// This is the EXPECTED failure mode: path escapes root.
 		// ValidateSHA must catch this before CacheDir is reached.
 		t.Logf("confirmed: path traversal escapes root (%q); ValidateSHA must guard the input", dir)
+	}
+}
+
+func TestCacheDir_PerPresetSegment(t *testing.T) {
+	root := "/tmp/project"
+	pr := &Preset{Name: "pr-review"}
+	doc := &Preset{Name: "doc-review"}
+	prDir := CacheDir(root, pr, "abc1234")
+	docDir := CacheDir(root, doc, "abc1234")
+	if !strings.HasSuffix(prDir, "/.kaijutsu/pr-review-runs/abc1234") {
+		t.Errorf("pr-review path wrong: %q", prDir)
+	}
+	if !strings.HasSuffix(docDir, "/.kaijutsu/doc-review-runs/abc1234") {
+		t.Errorf("doc-review path wrong: %q", docDir)
+	}
+	if prDir == docDir {
+		t.Errorf("expected per-preset segment to differ; both = %q", prDir)
+	}
+}
+
+func TestCacheDir_HonorsCachePathPartOverride(t *testing.T) {
+	root := "/tmp/project"
+	custom := &Preset{Name: "doc-review", CachePathPart: "doc-runs"}
+	dir := CacheDir(root, custom, "abc1234")
+	if !strings.HasSuffix(dir, "/.kaijutsu/doc-runs/abc1234") {
+		t.Errorf("override not honored: %q", dir)
 	}
 }
 

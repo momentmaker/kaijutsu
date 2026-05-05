@@ -25,14 +25,18 @@ type Config struct {
 	Synthesizer     string   `yaml:"synthesizer,omitempty"`
 }
 
-// configPath is the canonical location relative to the project root.
-const configPath = ".kaijutsu/pr-review.yaml"
+// configPathFor returns the .kaijutsu/<preset>.yaml path relative to
+// the project root. Generalizes from the Phase-1 hardcoded
+// "pr-review.yaml" so each preset gets its own consent + config file.
+func configPathFor(preset *Preset) string {
+	return filepath.Join(".kaijutsu", preset.configFileName())
+}
 
 // LoadConfig returns the parsed config or a zero-value Config if the
 // file does not exist. A malformed file is a hard error so the user
 // notices the problem before sending diffs to remote models.
-func LoadConfig(projectRoot string) (*Config, error) {
-	full := filepath.Join(projectRoot, configPath)
+func LoadConfig(projectRoot string, preset *Preset) (*Config, error) {
+	full := filepath.Join(projectRoot, configPathFor(preset))
 	data, err := os.ReadFile(full)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -49,9 +53,9 @@ func LoadConfig(projectRoot string) (*Config, error) {
 
 // SaveConsent writes a minimal config affirming consent. Preserves
 // existing fields when present.
-func SaveConsent(projectRoot string) error {
-	full := filepath.Join(projectRoot, configPath)
-	c, err := LoadConfig(projectRoot)
+func SaveConsent(projectRoot string, preset *Preset) error {
+	full := filepath.Join(projectRoot, configPathFor(preset))
+	c, err := LoadConfig(projectRoot, preset)
 	if err != nil {
 		return err
 	}
@@ -66,37 +70,38 @@ func SaveConsent(projectRoot string) error {
 	return os.WriteFile(full, out, 0644)
 }
 
-// EnsureConsent is the runtime check: if the project root's config
-// already has allow-multi-model: true, returns nil. Otherwise prompts
-// the user, persists the answer if they say yes, and returns an error
-// if they decline.
-func EnsureConsent(projectRoot string, in io.Reader, out io.Writer, agents []AgentName, nonInteractive bool) error {
-	c, err := LoadConfig(projectRoot)
+// EnsureConsent is the runtime check: if the project root's preset
+// config already has allow-multi-model: true, returns nil. Otherwise
+// prompts the user, persists the answer if they say yes, and returns
+// an error if they decline.
+func EnsureConsent(projectRoot string, preset *Preset, in io.Reader, out io.Writer, agents []AgentName, nonInteractive bool) error {
+	c, err := LoadConfig(projectRoot, preset)
 	if err != nil {
 		return err
 	}
 	if c.AllowMultiModel {
 		return nil
 	}
+	cfgPath := configPathFor(preset)
 	if nonInteractive {
-		return errors.New("multi-model consent not granted. Add `allow-multi-model: true` to .kaijutsu/pr-review.yaml or re-run interactively to be prompted")
+		return fmt.Errorf("multi-model consent not granted. Add `allow-multi-model: true` to %s or re-run interactively to be prompted", cfgPath)
 	}
 	providers := providerLabels(agents)
-	fmt.Fprintf(out, "\nThis run will send PR diff to %d model provider(s):\n", len(providers))
+	fmt.Fprintf(out, "\nThis run will send input to %d model provider(s):\n", len(providers))
 	for _, p := range providers {
 		fmt.Fprintf(out, "  - %s\n", p)
 	}
-	fmt.Fprintf(out, "Per-repo consent is required. Persist `allow-multi-model: true` to %s? [y/N]: ", configPath)
+	fmt.Fprintf(out, "Per-repo consent is required. Persist `allow-multi-model: true` to %s? [y/N]: ", cfgPath)
 	r := bufio.NewReader(in)
 	line, _ := r.ReadString('\n')
 	line = strings.TrimSpace(strings.ToLower(line))
 	if line != "y" && line != "yes" {
 		return errors.New("aborted: multi-model consent declined")
 	}
-	if err := SaveConsent(projectRoot); err != nil {
+	if err := SaveConsent(projectRoot, preset); err != nil {
 		return fmt.Errorf("persist consent: %w", err)
 	}
-	fmt.Fprintf(out, "saved consent to %s\n", configPath)
+	fmt.Fprintf(out, "saved consent to %s\n", cfgPath)
 	return nil
 }
 

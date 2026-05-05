@@ -93,18 +93,18 @@ func newSwarmPRReviewCmd() *cobra.Command {
 				return errors.New("no agent CLI available. Install at least one of: claude, codex, gemini, then re-run")
 			}
 
-			// Consent gate: persist user opt-in to .kaijutsu/pr-review.yaml
-			// on first run. Subsequent runs skip the prompt.
-			if cerr := swarm.EnsureConsent(projectRoot, cmd.InOrStdin(), stderr, available, yes); cerr != nil {
-				return cerr
-			}
-
-			fmt.Fprintf(stderr, "swarm: %d agent(s) available: %v\n", len(available), available)
-
 			preset, err := swarm.LoadPresetWithSkillOverrides(projectRoot, "pr-review")
 			if err != nil {
 				return err
 			}
+
+			// Consent gate: persist user opt-in to <preset>.yaml on
+			// first run. Subsequent runs skip the prompt.
+			if cerr := swarm.EnsureConsent(projectRoot, preset, cmd.InOrStdin(), stderr, available, yes); cerr != nil {
+				return cerr
+			}
+
+			fmt.Fprintf(stderr, "swarm: %d agent(s) available: %v\n", len(available), available)
 
 			jobs := make([]swarm.Job, 0, len(available))
 			for _, name := range available {
@@ -200,7 +200,7 @@ func newSwarmPRReviewCmd() *cobra.Command {
 						fmt.Fprintf(stderr, "warning: total cost $%.2f exceeded --max-cost $%.2f\n", run.TotalCost, maxCostUSD)
 					}
 					md = appendMarker(md, pctx.SHA)
-					if cerr := swarm.CacheRun(projectRoot, pctx.SHA, results, md); cerr != nil {
+					if cerr := swarm.CacheRun(projectRoot, preset, pctx.SHA, results, md); cerr != nil {
 						fmt.Fprintf(stderr, "warning: cache write failed: %v\n", cerr)
 					}
 					fmt.Fprint(out, md)
@@ -260,13 +260,13 @@ func runReplay(ctx context.Context, cmd *cobra.Command, projectRoot, sha, synthe
 	out := cmd.OutOrStdout()
 	stderr := cmd.ErrOrStderr()
 
-	results, err := swarm.LoadCachedResults(projectRoot, sha)
-	if err != nil {
-		return fmt.Errorf("--replay %s: %w", sha, err)
-	}
 	preset, err := swarm.LoadPresetWithSkillOverrides(projectRoot, "pr-review")
 	if err != nil {
 		return err
+	}
+	results, err := swarm.LoadCachedResults(projectRoot, preset, sha)
+	if err != nil {
+		return fmt.Errorf("--replay %s: %w", sha, err)
 	}
 	synthAgent := pickSynthesizer(synthesizer, results)
 	if synthAgent == nil {

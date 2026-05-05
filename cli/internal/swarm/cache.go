@@ -25,30 +25,35 @@ func ValidateSHA(sha string) error {
 	return nil
 }
 
-// CacheDir returns the on-disk path for a per-SHA run cache. Layout:
+// CacheDir returns the on-disk path for a per-key run cache. Layout:
 //
-//	<projectRoot>/.kaijutsu/pr-review-runs/<sha>/
+//	<projectRoot>/.kaijutsu/<preset.cachePathSegment()>/<key>/
 //	  claude.json
 //	  codex.json
 //	  gemini.json
 //	  synthesis.md
 //
-// Used by --replay <sha> to re-render markdown without re-calling the
-// model APIs (e.g., when iterating on the synthesis prompt).
-func CacheDir(projectRoot, sha string) string {
-	return filepath.Join(projectRoot, ".kaijutsu", "pr-review-runs", sha)
+// Used by --replay <key> to re-render markdown without re-calling
+// the model APIs. Phase 2 generalizes from the Phase-1 hardcoded
+// "pr-review-runs/" path so each preset gets its own subdir.
+func CacheDir(projectRoot string, preset *Preset, key string) string {
+	return filepath.Join(projectRoot, ".kaijutsu", preset.cachePathSegment(), key)
 }
 
 // CacheRun writes per-agent results + the synthesis markdown into
-// the per-SHA cache directory. Best-effort — cache failure should
-// not abort the run, just warn. Validates SHA shape so a
-// surprising upstream value (e.g. empty or path-traversal-y) never
-// produces a write outside the cache root.
-func CacheRun(projectRoot, sha string, results []AgentResult, synthesisMarkdown string) error {
-	if err := ValidateSHA(sha); err != nil {
+// the per-key cache directory. Best-effort — cache failure should
+// not abort the run, just warn. Validates key shape so a surprising
+// upstream value (e.g. empty or path-traversal-y) never produces a
+// write outside the cache root.
+//
+// Stage 1 only validates SHA-shaped keys (pr-review uses head SHA).
+// Stage 2 will accept hashed-input keys for InputFiles/InputPrompt
+// presets — same hex-only constraint, different generator.
+func CacheRun(projectRoot string, preset *Preset, key string, results []AgentResult, synthesisMarkdown string) error {
+	if err := ValidateSHA(key); err != nil {
 		return err
 	}
-	dir := CacheDir(projectRoot, sha)
+	dir := CacheDir(projectRoot, preset, key)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
@@ -70,14 +75,14 @@ func CacheRun(projectRoot, sha string, results []AgentResult, synthesisMarkdown 
 	return nil
 }
 
-// LoadCachedResults reads every <agent>.json from the per-SHA cache
-// directory. Used by --replay. Returns an error if the SHA is
+// LoadCachedResults reads every <agent>.json from the per-key cache
+// directory. Used by --replay. Returns an error if the key is
 // malformed, the directory doesn't exist, or no .json files inside.
-func LoadCachedResults(projectRoot, sha string) ([]AgentResult, error) {
-	if err := ValidateSHA(sha); err != nil {
+func LoadCachedResults(projectRoot string, preset *Preset, key string) ([]AgentResult, error) {
+	if err := ValidateSHA(key); err != nil {
 		return nil, err
 	}
-	dir := CacheDir(projectRoot, sha)
+	dir := CacheDir(projectRoot, preset, key)
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, fmt.Errorf("cache dir %s: %w", dir, err)
