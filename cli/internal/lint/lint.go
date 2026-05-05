@@ -193,9 +193,18 @@ func CheckTriggerConflicts(skills map[string]*skill.Skill) []TriggerConflict {
 }
 
 var (
-	slashCmdRe   = regexp.MustCompile(`/[a-z][a-z0-9-]{1,}`)
-	quotedRe     = regexp.MustCompile(`"([^"\\]{2,80})"`)
-	singleQuoted = regexp.MustCompile(`'([^'\\]{2,80})'`)
+	// slashCmdRe matches a leading "/" followed by 2+ chars at a word
+	// boundary. Group 1 captures what's before the slash (whitespace
+	// or start-of-string accept; alphanumeric/underscore/slash reject
+	// — those mean we're inside a path/url/comment). Group 3 captures
+	// what's right after the slash-cmd token; we reject matches where
+	// it's "/" (file path like /tmp/foo) or "-" extending the token.
+	slashCmdRe = regexp.MustCompile(`(^|[^A-Za-z0-9_/])(/[a-z][a-z0-9-]+)([/]|[^A-Za-z0-9_/-]|$)`)
+	// quotedRe extracts double-quoted phrases. We deliberately don't
+	// scan single-quoted phrases — English prose has too many
+	// apostrophes and contractions ("the user's flow", "don't") that
+	// the regex would mis-pair into garbage matches.
+	quotedRe = regexp.MustCompile(`"([^"\\]{2,80})"`)
 )
 
 // ExtractTriggers pulls slash-command tokens and quoted phrases out
@@ -211,13 +220,17 @@ func ExtractTriggers(description string) []string {
 		seen[p] = true
 		out = append(out, p)
 	}
-	for _, m := range slashCmdRe.FindAllString(strings.ToLower(description), -1) {
-		add(m)
+	low := strings.ToLower(description)
+	for _, m := range slashCmdRe.FindAllStringSubmatch(low, -1) {
+		// m[2] is the slash-command itself; m[3] is the next char.
+		// m[3] == "/" means we matched the head of a path like
+		// /tmp/foo — drop those.
+		if m[3] == "/" {
+			continue
+		}
+		add(m[2])
 	}
 	for _, m := range quotedRe.FindAllStringSubmatch(description, -1) {
-		add(m[1])
-	}
-	for _, m := range singleQuoted.FindAllStringSubmatch(description, -1) {
 		add(m[1])
 	}
 	return out

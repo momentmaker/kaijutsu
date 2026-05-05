@@ -12,7 +12,6 @@ import (
 	"github.com/momentmaker/kaijutsu/cli/internal/paths"
 	"github.com/momentmaker/kaijutsu/cli/internal/skill"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 )
 
 func newListCmd() *cobra.Command {
@@ -94,15 +93,11 @@ func printInstalledConflicts(cmd *cobra.Command, global bool, lf *manifest.Lockf
 		if yamlPath == "" {
 			continue
 		}
-		data, rerr := os.ReadFile(yamlPath)
-		if rerr != nil {
+		sk, lerr := skill.Load(yamlPath)
+		if lerr != nil {
 			continue
 		}
-		var sk skill.Skill
-		if uerr := yaml.Unmarshal(data, &sk); uerr != nil {
-			continue
-		}
-		skillsByName[name] = &sk
+		skillsByName[name] = sk
 	}
 	conflicts := lint.CheckTriggerConflicts(skillsByName)
 	if len(conflicts) == 0 {

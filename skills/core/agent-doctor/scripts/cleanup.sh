@@ -78,6 +78,10 @@ clean_one() {
   local AGENT_DIR="$1"
   [[ -d "$AGENT_DIR" ]] || return 0
   compute_protected "$AGENT_DIR"
+  if (( ${#PROTECTED_PATHS[@]} == 0 )); then
+    printf "%sfatal: compute_protected produced empty PROTECTED_PATHS for %s — refusing to proceed%s\n" "$C_RED" "$AGENT_DIR" "$C_RESET" >&2
+    exit 1
+  fi
   local TRASH_DIR="$AGENT_DIR/.trash"
   TRASH_BATCH=""
 
@@ -85,7 +89,10 @@ clean_one() {
     printf "\n%s%sDRY RUN%s  %s  tier=%s  target=%s\n" "$C_BOLD" "$C_YELLOW" "$C_RESET" "$AGENT_DIR" "$TIER" "$TARGET"
     printf "%s  re-run with --apply to commit%s\n" "$C_DIM" "$C_RESET"
   else
-    trash_init "$AGENT_DIR"
+    if ! trash_init "$AGENT_DIR"; then
+      printf "%sfatal: trash_init failed for %s — refusing to proceed%s\n" "$C_RED" "$AGENT_DIR" "$C_RESET" >&2
+      exit 1
+    fi
     printf "\n%s%sAPPLY%s  %s  tier=%s  target=%s\n" "$C_BOLD" "$C_RED" "$C_RESET" "$AGENT_DIR" "$TIER" "$TARGET"
     printf "%s  trash batch: %s%s\n" "$C_DIM" "$TRASH_BATCH" "$C_RESET"
   fi

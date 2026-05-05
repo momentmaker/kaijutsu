@@ -15,7 +15,6 @@ import (
 	"github.com/momentmaker/kaijutsu/cli/internal/paths"
 	"github.com/momentmaker/kaijutsu/cli/internal/skill"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 )
 
 func newRemoveCmd() *cobra.Command {
@@ -60,9 +59,9 @@ skill.yaml; the lockfile's installedAs field is informational only.`,
 
 			rev := reverseDepGraph(fwd)
 			dependents := rev[target]
-			if len(dependents) > 0 && !cascade {
+			if len(dependents) > 0 {
 				sort.Strings(dependents)
-				return fmt.Errorf("refusing to remove %s: still required by %s. Run with --cascade to remove the parent(s) too, or remove them first",
+				return fmt.Errorf("refusing to remove %s: still required by %s. Remove the parent skill(s) first (use --cascade on the parent to also clean up its other deps)",
 					target, strings.Join(dependents, ", "))
 			}
 
@@ -105,14 +104,16 @@ skill.yaml; the lockfile's installedAs field is informational only.`,
 				if m != nil {
 					delete(m.Dependencies, name)
 				}
+				// Persist after each successful removal so a mid-cascade
+				// failure leaves the lockfile consistent with disk state
+				// (no phantom entries pointing at already-deleted dirs).
+				if err := lf.Save(lockPath); err != nil {
+					return err
+				}
+				if m != nil {
+					_ = m.Save(manifestPath)
+				}
 				fmt.Fprintf(out, "Removed %s\n", name)
-			}
-
-			if err := lf.Save(lockPath); err != nil {
-				return err
-			}
-			if m != nil {
-				_ = m.Save(manifestPath)
 			}
 			return nil
 		},
@@ -135,15 +136,8 @@ func buildDepGraph(installRoot string, lf *manifest.Lockfile) (map[string][]stri
 		if yamlPath == "" {
 			continue
 		}
-		data, err := os.ReadFile(yamlPath)
-		if err != nil {
-			continue
-		}
-		var sk skill.Skill
-		if err := yaml.Unmarshal(data, &sk); err != nil {
-			continue
-		}
-		if sk.Deps == nil {
+		sk, err := skill.Load(yamlPath)
+		if err != nil || sk.Deps == nil {
 			continue
 		}
 		var deps []string

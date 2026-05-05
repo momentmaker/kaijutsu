@@ -128,6 +128,15 @@ func runAutoPublish(cmd *cobra.Command, skillDir string, sk *skill.Skill, workdi
 			return err
 		}
 		workdir = filepath.Join(tmp, "kaijutsu")
+	} else {
+		// User-supplied workdir: must be either non-existent or a
+		// git checkout. A non-empty non-git dir would make `gh repo
+		// clone` fail with a confusing error.
+		if entries, statErr := os.ReadDir(workdir); statErr == nil && len(entries) > 0 {
+			if _, gitErr := os.Stat(filepath.Join(workdir, ".git")); gitErr != nil {
+				return fmt.Errorf("--workdir %s is non-empty but not a git checkout; pick an empty path or a previous fork clone", workdir)
+			}
+		}
 	}
 	if err := os.MkdirAll(filepath.Dir(workdir), 0755); err != nil {
 		return err
@@ -141,9 +150,19 @@ func runAutoPublish(cmd *cobra.Command, skillDir string, sk *skill.Skill, workdi
 	fmt.Fprintf(out, "Plan:\n")
 	fmt.Fprintf(out, "  fork:    %s -> %s\n", upstreamRepo, forkRepo)
 	fmt.Fprintf(out, "  workdir: %s\n", workdir)
-	fmt.Fprintf(out, "  branch:  %s\n", branch)
+	fmt.Fprintf(out, "  branch:  %s (force-push: existing branch on fork will be overwritten)\n", branch)
 	fmt.Fprintf(out, "  copy:    %s -> skills/community/%s/\n", skillDir, sk.Name)
 	fmt.Fprintf(out, "  pr:      %s -- %s\n", upstreamRepo, prTitle)
+	// Fail-fast on a name collision against upstream before doing
+	// the slow clone. gh api 404s on missing paths.
+	exists, hasErr := upstreamHas(upstreamRepo, "skills/community/"+sk.Name)
+	if hasErr != nil {
+		return fmt.Errorf("collision pre-check failed: %w", hasErr)
+	}
+	if exists {
+		return fmt.Errorf("skills/community/%s already exists in %s; pick a different name or update via a manual PR against the existing dir", sk.Name, upstreamRepo)
+	}
+
 	if !yes {
 		fmt.Fprint(out, "Proceed? [y/N]: ")
 		r := bufio.NewReader(cmd.InOrStdin())
@@ -170,6 +189,13 @@ func runAutoPublish(cmd *cobra.Command, skillDir string, sk *skill.Skill, workdi
 		return err
 	}
 	if err := run(stderr, workdir, "git", "reset", "--hard", "origin/main"); err != nil {
+		return err
+	}
+	// Drop untracked files from a failed previous run — `git reset
+	// --hard` only resets tracked files. Without this, a stale
+	// skills/community/<sk.Name> from an earlier aborted run would
+	// trip the existence check below.
+	if err := run(stderr, workdir, "git", "clean", "-fd"); err != nil {
 		return err
 	}
 
@@ -207,17 +233,70 @@ func runAutoPublish(cmd *cobra.Command, skillDir string, sk *skill.Skill, workdi
 	if err != nil {
 		return fmt.Errorf("gh pr create: %w", err)
 	}
-	prURL = strings.TrimSpace(prURL)
+	// gh pr create may print warnings on stdout before the URL
+	// (e.g. "a pull request already exists: <url>"). Take the last
+	// non-empty line as the canonical URL.
+	prURL = lastNonEmptyLine(prURL)
 	fmt.Fprintf(out, "\nPR opened: %s\n", prURL)
+	return nil
+}
+
+func lastNonEmptyLine(s string) string {
+	lines := strings.Split(s, "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		l := strings.TrimSpace(lines[i])
+		if l != "" {
+			return l
+		}
+	}
+	return ""
+}
+
+// upstreamHas reports whether <repo> already contains <path>. Returns
+// (true, nil) when the path exists, (false, nil) on a clean 404, and
+// (false, err) on any other failure (auth, rate-limit, repo gone). The
+// caller MUST treat err != nil as a hard failure rather than "path
+// missing", to avoid silently skipping the collision check.
+func upstreamHas(repo, path string) (bool, error) {
+	c := exec.Command("gh", "api", fmt.Sprintf("repos/%s/contents/%s", repo, path), "--silent")
+	var stderrBuf strings.Builder
+	c.Stderr = &stderrBuf
+	if err := c.Run(); err != nil {
+		stderr := stderrBuf.String()
+		if strings.Contains(stderr, "HTTP 404") || strings.Contains(stderr, "Not Found") {
+			return false, nil
+		}
+		return false, fmt.Errorf("gh api %s: %s", repo, strings.TrimSpace(stderr))
+	}
+	return true, nil
+}
+
+// verifyForkParent asserts that <user>/kaijutsu is actually a fork of
+// upstreamRepo. Without this check, an unrelated repo with the same
+// name (e.g. a personal project the user happened to call kaijutsu)
+// would be force-pushed to and PRed against, producing a confused
+// cross-repo PR.
+func verifyForkParent(forkRepo string) error {
+	parent, err := capture("gh", "api", "repos/"+forkRepo, "--jq", ".parent.full_name")
+	if err != nil {
+		return fmt.Errorf("verify fork parent for %s: %w", forkRepo, err)
+	}
+	parent = strings.TrimSpace(parent)
+	if parent == "" {
+		return fmt.Errorf("%s exists but has no parent — it's not a fork. Rename or delete it before re-running --auto", forkRepo)
+	}
+	if parent != upstreamRepo {
+		return fmt.Errorf("%s is a fork of %s, not %s. Rename your local fork or pick a different workdir", forkRepo, parent, upstreamRepo)
+	}
 	return nil
 }
 
 func ensureFork(stderr io.Writer, user string) error {
 	forkRepo := user + "/kaijutsu"
 	if err := exec.Command("gh", "repo", "view", forkRepo).Run(); err == nil {
-		return nil
+		return verifyForkParent(forkRepo)
 	}
-	return run(stderr, "", "gh", "repo", "fork", upstreamRepo, "--clone=false", "--default-branch-only")
+	return run(stderr, "", "gh", "repo", "fork", upstreamRepo, "--clone=false")
 }
 
 func ensureClone(stderr io.Writer, forkRepo, workdir string) error {
