@@ -431,6 +431,27 @@ func runSwarmPipeline(ctx context.Context, cmd *cobra.Command, projectRoot strin
 		run.TotalCost += r.Cost
 	}
 
+	// Hard-fail when EVERY agent errored. Without this guard, a
+	// 3/3-error fan-out would proceed to synthesis with an empty
+	// findings list, render a "0 findings" markdown report, and
+	// bury the per-agent errors in a collapsed <details> block —
+	// user reads "no findings" and assumes the input was clean.
+	usable := 0
+	for _, r := range results {
+		if r.Err == "" {
+			usable++
+		}
+	}
+	if usable == 0 {
+		var b strings.Builder
+		fmt.Fprintf(&b, "all %d agent(s) errored; no synthesis performed:", len(results))
+		for _, r := range results {
+			fmt.Fprintf(&b, "\n  - %s: %s", r.Agent, r.Err)
+		}
+		reportSwarmStderr(stderr, results, finished.Sub(start), run.TotalCost)
+		return errors.New(b.String())
+	}
+
 	// JSON-only path: skip synthesis entirely.
 	if f.format == "json" {
 		if f.maxCostUSD > 0 && run.TotalCost > f.maxCostUSD {
