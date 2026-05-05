@@ -73,6 +73,13 @@ You are doing a cross-file pattern + consistency review. Focus on:
 If the diff is a one-off tactical fix, that's OK to say so and emit
 no findings.
 
+CRITICAL — TOOLS POLICY: You have NO file-system, search, or shell
+tools available for this task. The DIFF below contains every byte
+you need to review. Do NOT attempt to read files, glob paths, run
+commands, or invoke any tools. Reason solely from the DIFF text and
+return ONLY a JSON array of findings. Tool invocations will fail and
+abort your review.
+
 %s
 `,
 	},
