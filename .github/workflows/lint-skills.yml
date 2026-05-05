@@ -11,6 +11,9 @@ on:
     paths:
       - 'skills/**'
       - 'schemas/**'
+  # Allow manual dispatch so we can re-verify after a docs/ catalog
+  # regen when the prior failing run was stuck on a stale SHA.
+  workflow_dispatch:
 
 jobs:
   validate-schemas:
