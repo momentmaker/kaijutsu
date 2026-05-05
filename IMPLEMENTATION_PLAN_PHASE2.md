@@ -152,6 +152,10 @@ preset's `CachePathPart` / `ConfigBaseName` instead of hardcoded
 **Acceptance:**
 - `jutsu swarm pr-review` continues to work end-to-end with no
   observable behavior change
+- pr-review's cache directory stays at `.kaijutsu/pr-review-runs/`
+  verbatim (no migration). `Preset.CachePathPart` defaults to
+  `<Name>-runs` when empty, and `prReviewPreset` leaves it empty
+  on purpose, so existing user caches keep being read.
 - `cache.go` `CacheDir` takes preset name (or preset struct)
 - `consent.go` `LoadConfig`/`SaveConsent` parametrized by preset
 - A new `registry.go` exposes `BuiltinPresets()` + `Find(name)`
@@ -162,6 +166,10 @@ preset's `CachePathPart` / `ConfigBaseName` instead of hardcoded
   produces a clear error listing available presets
 - `jutsu swarm --help` lists registered presets via
   `BuiltinPresets()` (resolves Open Question 4)
+- `InputKind` is in-memory-only (NOT persisted in any cache JSON or
+  marshaled lockfile field). Reordering the iota constants in a
+  future stage doesn't corrupt existing caches because the cached
+  AgentResult / SwarmRun structs don't carry an InputKind field.
 
 **Out of scope this stage:** new presets, new input kinds, skill-
 shipped presets (those need a `preset.yaml` schema + signing — Phase 3).
@@ -418,7 +426,7 @@ After Stage 4: write a v0.5.0 announcement post highlighting the
 | Agents misinterpret `section:` addressing scheme for markdown | Stage 3 prompts include explicit examples + a small reference doc. |
 | security-audit severity vocab confusion with pr-review's | Document each preset's vocabulary clearly. Disagreement table renders the preset's severity strings verbatim. |
 | Phase 2 spec itself contains errors only doc-review would catch | Bootstrap: review THIS plan with `jutsu swarm pr-review --diff-from-branch origin/main` before starting Stage 1. Code-tuned lens gives ~partial signal but better than nothing. |
-| Skill-shipped per-agent prompts expand the prompt-injection surface — a malicious upstream skill could ship prompts that turn the synthesizer into a confused-deputy (e.g. embed instructions in its agent prompts that the synthesizer later reads as data) | Three layers of defense, wired during the relevant stages (NOT pre-shipped — calling these out explicitly so the threat model isn't claiming infrastructure that doesn't exist yet): (a) **Stages 3–7 acceptance includes**: each new core skill (doc-review, brainstorm, refactor-plan, security-audit) ships with `trust.expected-signer: kaijutsu-core@github` in its skill.yaml AND is added to sign-core.yml's signing manifest. After release tagging, `jutsu install <skill>` hard-fails on signature mismatch. Sigstore enforcement was wired in commit `6ed0c5c` (Stage 6g of v0.3) and extended via commit `93b1a63` to verify against the signed asset pair; `dcg` opted in at v0.3.1 + core skills generally at v0.4.0. Verifiable: `git log --oneline --grep="sigstore"`. (b) **Phase-1 INPUT-INTEGRITY block already extended in shared headers** to instruct the model to treat user-content as data; future tightening (Phase 3) will extend that wording to cover skill-loaded prompts at runtime as well. (c) **Stages 3–7 documentation deliverable**: `references/prompt-design.md` per skill includes a skill-prompt-audit recipe for users who install community skills that override prompts. |
+| Skill-shipped per-agent prompts expand the prompt-injection surface — a malicious upstream skill could ship prompts that turn the synthesizer into a confused-deputy (e.g. embed instructions in its agent prompts that the synthesizer later reads as data) | Three layers of defense, wired during the relevant stages (NOT pre-shipped — calling these out explicitly so the threat model isn't claiming infrastructure that doesn't exist yet): (a) **Stages 3–7 acceptance includes**: each new core skill (doc-review, brainstorm, refactor-plan, security-audit) ships with `trust.expected-signer: kaijutsu-core@github` in its skill.yaml AND is added to sign-core.yml's signing manifest. After release tagging, `jutsu install <skill>` hard-fails on signature mismatch. Sigstore enforcement was wired in commit `6ed0c5c` (Stage 6g of v0.3) and extended via commit `93b1a63` to verify against the signed asset pair; `dcg` opted in at v0.3.1 + core skills generally at v0.4.0. Verifiable: `git log --oneline --grep="sigstore"`. (b) **Phase-1 INPUT-INTEGRITY block already extended in shared headers** to instruct the model to treat user-content as data; future tightening (Phase 3) will extend that wording to cover skill-loaded prompts at runtime as well. (c) **Stages 3–7 documentation deliverable**: each new skill ships a `references/lens-design.md` (or `prompt-design.md` — same content, name varies by what the skill calls it) that includes a skill-prompt-audit recipe for users who install community skills that override prompts. doc-review (Stage 3) has shipped `references/lens-design.md`; the same pattern is reused by Stages 5–7. |
 | `gemini -p` invokes file-read tools mid-prompt and aborts on missing paths | **Mitigated in Stage 0** (Phase-1 polish). `cli/internal/swarm/agent.go` runs gemini with `--approval-mode plan` (read-only sandbox, auto-approves reads, blocks writes) + the gemini lens prompt explicitly instructs "no tools, reason from input only". Future regression risk if a new preset routes through a different gemini invocation; tests should assert `--approval-mode plan` survives the build. |
 
 ---
@@ -468,6 +476,38 @@ After Stage 4: write a v0.5.0 announcement post highlighting the
    `MaxCostUSD`).
 
 ---
+
+## Convergence note (post-bootstrap)
+
+This plan went through 6 swarm-review rounds during the bootstrap
+phase (3 with code-tuned `pr-review`, 3 with `doc-review` once it
+shipped). Findings per round:
+
+| Round | Lens | Findings | Notes |
+|-------|------|----------|-------|
+| 1 | pr-review | 6 | Initial draft; cache-key + severity vocab gaps |
+| 2 | pr-review | 4 | Round 1 fixes + gemini participation |
+| 3 | pr-review | 4 | Drift + reality fixes |
+| 4 | doc-review | 17 | Lens specialization paying off — 4× pr-review's findings at same cost |
+| 5 | doc-review | 16 | Convergence pass; meta-policy on testability added |
+| 6 | doc-review | 17 | Plateau — same pattern surfacing different angles |
+
+Round 6 confirmed the spec hit the noise floor — each fresh review
+surfaces ~15 nits that aren't strictly contradictions but are
+plausible polish items. We're declaring convergence here. Open
+items from round 6 that aren't fixed inline are tracked in the
+v0.5.x backlog (in ROADMAP.md).
+
+The exit criterion ("doc-review surfaces ≥1 finding pr-review
+missed") was satisfied in round 4 (the cache-key contradiction +
+preset-struct missing-cap-field findings were both gemini-only on
+doc-review and not raised by any pr-review pass).
+
+Implementation flow from here:
+- Stages 1–3 already shipped (commits a5cbd2c, 7ba65a4, 3b05626).
+- Stage 4 (migrate spec/plan/decide skills) is next.
+- Stages 5–7 (brainstorm, refactor-plan, security-audit) follow.
+- A v0.5.0 announcement post + tag wraps Phase 2.
 
 ## Bootstrap action items
 
