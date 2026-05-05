@@ -66,17 +66,24 @@ func newSwarmPRReviewCmd() *cobra.Command {
 				return runReplay(ctx, cmd, projectRoot, replaySHA, synthesizer, perAgentBudget, timeout, postComment)
 			}
 
-			pctx, err := resolveSwarmDiff(ctx, pr, diffFromBranch)
+			preset, err := swarm.LoadPresetWithSkillOverrides(projectRoot, "pr-review")
 			if err != nil {
 				return err
 			}
-			if strings.TrimSpace(pctx.Diff) == "" {
-				return errors.New("diff is empty; nothing to review")
+
+			ictx, err := swarm.ResolveInput(ctx, preset, swarm.InputOptions{
+				PR:             pr,
+				DiffFromBranch: diffFromBranch,
+			})
+			if err != nil {
+				return err
 			}
 
 			// Privacy gate: hard-block on secrets unless explicitly
-			// overridden.
-			hits := swarm.SecretsScan(pctx.Diff)
+			// overridden. Only InputDiff/InputFiles inputs are
+			// scanned — free-form prompts (InputPrompt) are user-
+			// authored and don't go through the diff scanner.
+			hits := swarm.SecretsScan(ictx.Body)
 			if len(hits) > 0 && !allowSecrets {
 				fmt.Fprintf(stderr, "secrets pre-flight scan blocked %d match(es):\n", len(hits))
 				for _, h := range hits {
@@ -91,11 +98,6 @@ func newSwarmPRReviewCmd() *cobra.Command {
 			available := swarm.AvailableAgents()
 			if len(available) == 0 {
 				return errors.New("no agent CLI available. Install at least one of: claude, codex, gemini, then re-run")
-			}
-
-			preset, err := swarm.LoadPresetWithSkillOverrides(projectRoot, "pr-review")
-			if err != nil {
-				return err
 			}
 
 			// Consent gate: persist user opt-in to <preset>.yaml on
@@ -115,7 +117,7 @@ func newSwarmPRReviewCmd() *cobra.Command {
 				}
 				jobs = append(jobs, swarm.Job{
 					Agent:  swarm.AgentFor(name),
-					Prompt: fmt.Sprintf(tmpl, pctx.Diff),
+					Prompt: fmt.Sprintf(tmpl, ictx.Body),
 				})
 			}
 			if len(jobs) == 0 {
@@ -128,8 +130,8 @@ func newSwarmPRReviewCmd() *cobra.Command {
 
 			run := swarm.SwarmRun{
 				Preset:     "pr-review",
-				PR:         pctx.PR,
-				SHA:        pctx.SHA,
+				PR:         ictx.PR,
+				SHA:        ictx.SHA,
 				Mode:       mode,
 				Agents:     results,
 				StartedAt:  start,
@@ -199,18 +201,18 @@ func newSwarmPRReviewCmd() *cobra.Command {
 					if maxCostUSD > 0 && run.TotalCost > maxCostUSD {
 						fmt.Fprintf(stderr, "warning: total cost $%.2f exceeded --max-cost $%.2f\n", run.TotalCost, maxCostUSD)
 					}
-					md = appendMarker(md, pctx.SHA)
-					if cerr := swarm.CacheRun(projectRoot, preset, pctx.SHA, results, md); cerr != nil {
+					md = appendMarker(md, ictx.SHA)
+					if cerr := swarm.CacheRun(projectRoot, preset, ictx.SHA, results, md); cerr != nil {
 						fmt.Fprintf(stderr, "warning: cache write failed: %v\n", cerr)
 					}
 					fmt.Fprint(out, md)
 					if postComment {
-						if pctx.PR == 0 {
+						if ictx.PR == 0 {
 							fmt.Fprintln(stderr, "warning: --post-comment requested but no PR detected (--diff-from-branch mode); skipping post")
-						} else if perr := swarm.PostOrUpdateComment(ctx, pctx.PR, md); perr != nil {
+						} else if perr := swarm.PostOrUpdateComment(ctx, ictx.PR, md); perr != nil {
 							fmt.Fprintf(stderr, "warning: post comment failed: %v\n", perr)
 						} else {
-							fmt.Fprintf(stderr, "posted/updated PR comment on #%d\n", pctx.PR)
+							fmt.Fprintf(stderr, "posted/updated PR comment on #%d\n", ictx.PR)
 						}
 					}
 					reportSwarmStderr(stderr, results, finished.Sub(start), run.TotalCost)
@@ -316,12 +318,3 @@ func reportSwarmStderr(stderr interface{ Write(p []byte) (int, error) }, results
 	}
 }
 
-// resolveSwarmDiff figures out which diff to review based on flags.
-// --diff-from-branch wins; --pr uses gh; otherwise auto-detect a PR
-// for the current branch.
-func resolveSwarmDiff(ctx context.Context, pr int, diffFromBranch string) (*swarm.PRContext, error) {
-	if diffFromBranch != "" {
-		return swarm.FetchBranchDiff(ctx, diffFromBranch)
-	}
-	return swarm.FetchPRContext(ctx, pr)
-}
