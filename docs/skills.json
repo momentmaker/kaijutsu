@@ -249,9 +249,9 @@
     },
     {
       "name": "decide",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "license": "MIT",
-      "description": "Decision journal — record architectural decisions with reasoning + tripwires; multi-model critique on record; auto-tag from content; surface recorded decisions when about to contradict one. Writes to project-memory.",
+      "description": "Decision journal — record architectural decisions with reasoning + tripwires; high-stakes decisions get a multi-agent review pass via `jutsu swarm doc-review` before commit; auto-tag from content; surface recorded decisions when about to contradict one. Writes to project-memory.",
       "agents": [
         "claude",
         "codex",
@@ -572,9 +572,9 @@
     },
     {
       "name": "planning-and-task-breakdown",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "license": "MIT",
-      "description": "Decompose a spec into a verifiable task list — vertical slices, explicit dependencies, acceptance criteria per task. Final review pass via blunder-hunt + scope-check before tasks are considered ready for implementation.",
+      "description": "Decompose a spec into a verifiable task list — vertical slices, explicit dependencies, acceptance criteria per task. Final review pass via `jutsu swarm doc-review`; cost-tier classification per slice via scope-check.",
       "agents": [
         "claude",
         "codex",
@@ -826,9 +826,9 @@
     },
     {
       "name": "spec-driven-development",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "license": "MIT",
-      "description": "Author a PRD-style spec before writing implementation. Produce a written, reviewable artifact (problem statement, scope, non-goals, acceptance criteria, open questions) that survives the agent session and gets reviewed by a fresh-eyes pass before unblocking implementation.",
+      "description": "Author a PRD-style spec before writing implementation. Produce a written, reviewable artifact (problem statement, scope, non-goals, acceptance criteria, open questions) that survives the agent session and gets reviewed by `jutsu swarm doc-review` before unblocking implementation.",
       "agents": [
         "claude",
         "codex",

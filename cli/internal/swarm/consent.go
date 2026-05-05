@@ -2,7 +2,6 @@ package swarm
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -102,10 +101,16 @@ func EnsureConsent(projectRoot string, preset *Preset, in io.Reader, out io.Writ
 	}
 	fmt.Fprintf(out, "Per-repo consent is required. Persist `allow-multi-model: true` to %s? [y/N]: ", cfgPath)
 	r := bufio.NewReader(in)
-	line, _ := r.ReadString('\n')
+	line, readErr := r.ReadString('\n')
+	// EOF before any byte was written = no human at the keyboard
+	// (parent agent piped /dev/null, or stdin was closed). Surface
+	// the actionable hint instead of the generic "declined" message.
+	if readErr == io.EOF && line == "" {
+		return fmt.Errorf("no input received on stdin (likely running headless from inside an agent CLI session or pipe). %s", hint)
+	}
 	line = strings.TrimSpace(strings.ToLower(line))
 	if line != "y" && line != "yes" {
-		return errors.New("aborted: multi-model consent declined")
+		return fmt.Errorf("aborted: multi-model consent declined. %s", hint)
 	}
 	if err := SaveConsent(projectRoot, preset); err != nil {
 		return fmt.Errorf("persist consent: %w", err)

@@ -1,6 +1,6 @@
 ---
 name: decide
-description: Decision journal — record and query architectural decisions. Use when the user says "decide", "record decision", "why did we", "let's decide", invokes "/decide {statement}" to record, or invokes "/decide" without arguments to list active decisions. Also check .claude/decisions/ proactively before suggesting approaches that might contradict recorded decisions.
+description: Decision journal — record and query architectural decisions. Use when the user says "decide", "record decision", "why did we", "let's decide", invokes "/decide {statement}" to record, or invokes "/decide" without arguments to list active decisions. High-stakes decisions get a multi-agent review pass via `jutsu swarm doc-review` before commit. Also check .claude/decisions/ proactively before suggesting approaches that might contradict recorded decisions.
 ---
 
 # Decision Journal
@@ -42,21 +42,7 @@ Read all files in `.claude/decisions/` (or your agent's equivalent project-scope
 
 If yes, update the old file's frontmatter to `status: superseded` and add `superseded_by: {new-decision-slug}`.
 
-### Step 3.5: Multi-model critique (high-stakes decisions)
-
-Before saving, fan out the proposed decision to a second model with the prompt:
-
-> "Here is a proposed decision: <statement>. Alternatives considered: <alternatives>. Reasoning: <why>. Tripwire: <tripwire>. Argue against this decision. What's the strongest counter-argument? What blind spot is the author missing?"
-
-If the second model surfaces a counter-argument the user hasn't addressed, present it before saving:
-
-> "Before recording, the second model raised: <counter>. Does this change anything?"
-
-Skip this step for low-stakes decisions (file naming conventions, internal-only refactors). Use it for high-stakes ones (dep changes, architecture pivots, schema changes, security-relevant choices).
-
-Composes `multi-model-synth`.
-
-### Step 3.75: Auto-tag from content
+### Step 3.5: Auto-tag from content
 
 Instead of asking the user for tags, infer them from the decision content + repo state:
 
@@ -64,7 +50,7 @@ Instead of asking the user for tags, infer them from the decision content + repo
 - Detect domain from path patterns in the conversation context → `auth`, `payments`, `data-model`, `api`
 - Pick 2-4 tags. Show the user, let them edit.
 
-### Step 4: Write the Decision Record
+### Step 4: Write the Decision Record (Draft)
 
 Create the decisions directory at the repo root if it doesn't exist:
 ```bash
@@ -76,7 +62,7 @@ Write to `.claude/decisions/YYYY-MM-DD-{slug}.md`:
 ```markdown
 ---
 date: {YYYY-MM-DD}
-status: active
+status: draft
 tags: [{relevant-tags}]
 ---
 # {Decision Statement}
@@ -91,10 +77,36 @@ tags: [{relevant-tags}]
 {from question 3}
 ```
 
-Generate the slug from the decision statement: lowercase, hyphens, max 50 chars.
-Tags come from Step 3.75 auto-tag.
+Generate the slug from the decision statement: lowercase, hyphens, max 50 chars. Status is `draft` until Step 5 finalizes.
 
-Also write a project-memory entry (per `project-memory` SKILL.md):
+### Step 5: Multi-agent review (high-stakes decisions only)
+
+For high-stakes decisions (dep changes, architecture pivots, schema changes, security-relevant choices), run the draft through `doc-review` — kaijutsu's universal QA gate that orchestrates claude / codex / gemini in parallel:
+
+```bash
+jutsu swarm doc-review .claude/decisions/YYYY-MM-DD-{slug}.md
+```
+
+(or via the skill wrapper: `~/.claude/skills/doc-review/scripts/run.sh .claude/decisions/<filename>.md`)
+
+Three lenses each surface different decision-record failure modes:
+- **claude (completeness)** — is the tripwire concrete and observable? are alternatives genuinely exhaustive? is the "why" specific enough to disambiguate from the alternatives?
+- **codex (implementability)** — can the tripwire be objectively measured (vs vague "if it gets slow")? is the chosen approach actionable in this codebase?
+- **gemini (consistency)** — does this decision contradict prior records in `.claude/decisions/`? does the reasoning align with the project's stated patterns?
+
+Iterate findings:
+1. Read the disagreement table FIRST. 1/N findings are the "argue against" voice — investigate the lone-flagger's reasoning before dismissing.
+2. Fix issue-level findings + consensus minors inline (edit the draft).
+3. Re-run via `--replay <key>` (free) for synthesis-prompt tuning, or fresh run if content changed.
+4. Stop when zero issue-level findings remain or only contested-minor / info rows.
+
+If `jutsu swarm doc-review` fails with "unknown preset", the doc-review skill isn't installed — `jutsu install doc-review` and retry. (doc-review is in this skill's `deps.skills` so a full `jutsu install decide` should pull it transitively.)
+
+For LOW-stakes decisions (file naming conventions, internal-only refactors, throwaway-experiment choices), skip Step 5 — go directly to Step 6.
+
+### Step 6: Finalize
+
+Update the draft's frontmatter from `status: draft` to `status: active`. Also write a project-memory entry (per `project-memory` SKILL.md):
 
 ```yaml
 ---
@@ -109,7 +121,7 @@ source: decide
 
 This makes the decision discoverable by other skills (journal reads it for retros; unstuck checks it before suggesting an approach that might contradict).
 
-### Step 5: Confirm
+### Step 7: Confirm
 
 "Decision recorded at `.claude/decisions/{filename}`. This will surface when tripwires may have been reached or when you suggest contradicting approaches."
 
@@ -148,3 +160,15 @@ When this skill's description is loaded (at the start of any session where it's 
 - Check if `.claude/decisions/` exists in the current project
 - If it does, keep the decision titles in mind when suggesting approaches
 - If about to suggest something that contradicts a recorded decision, mention the decision first: "There's a recorded decision about this: {title}. The reasoning was {why}. Do you want to proceed differently, or does the original reasoning still hold?"
+
+## Composes
+
+- `doc-review` — universal multi-agent QA gate; replaces the previous ad-hoc "fan out to second model with argue-against prompt" pattern. Three prose-tuned lenses give a richer signal than a single counter-argument call.
+- `project-memory` — decisions are written to project-memory so other skills surface them.
+
+## When NOT to use Step 5 (multi-agent review)
+
+- Throwaway experiments
+- File-naming / formatting / style conventions  
+- Decisions reversible in <1 hour
+- Anything where the cost of being wrong is bounded by a single function-level rewrite

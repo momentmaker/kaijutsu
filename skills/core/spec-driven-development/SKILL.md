@@ -1,11 +1,11 @@
 ---
 name: spec-driven-development
-description: Author a PRD-style spec before writing implementation. Use when the user says "write a spec", "PRD", "design doc", "spec out", "let's plan this", or invokes /spec. Produce a written, reviewable artifact (problem, scope, non-goals, acceptance criteria, open questions). Run a fresh-eyes review before declaring done.
+description: Author a PRD-style spec before writing implementation. Use when the user says "write a spec", "PRD", "design doc", "spec out", "let's plan this", or invokes /spec. Produce a written, reviewable artifact (problem, scope, non-goals, acceptance criteria, open questions). End with `jutsu swarm doc-review <spec.md>` to surface gaps before declaring done.
 ---
 
 # Spec-Driven Development
 
-> Adapted from [`addyosmani/agent-skills`](https://github.com/addyosmani/agent-skills/blob/main/skills/spec-driven-development) under the MIT License. Copyright (c) Addy Osmani. Modifications by kaijutsu maintainers — wrapped in the kaijutsu schema, composed with `blunder-hunt` and `decide`, and given a final review pass.
+> Adapted from [`addyosmani/agent-skills`](https://github.com/addyosmani/agent-skills/blob/main/skills/spec-driven-development) under the MIT License. Copyright (c) Addy Osmani. Modifications by kaijutsu maintainers — wrapped in the kaijutsu schema, composed with `decide` for ADR capture, and the final review pass migrated to `jutsu swarm doc-review` (the Phase-2 universal QA gate).
 
 A spec is a workflow artifact, not an essay. The deliverable is a markdown file that the user (and future agent sessions) can read in 5 minutes and act on.
 
@@ -78,20 +78,28 @@ docs/specs/YYYY-MM-DD-<short-slug>.md
 
 (or wherever the project's spec convention dictates — read CLAUDE.md / AGENTS.md / contributing docs).
 
-### Step 6: Final review (DO NOT skip)
+### Step 6: Multi-agent review (DO NOT skip)
 
-The reason this skill ships with `deps.skills: blunder-hunt`. Before declaring the spec done:
+Run the spec through `doc-review` — kaijutsu's universal QA gate that orchestrates claude / codex / gemini in parallel with prose-tuned lenses (completeness, implementability, consistency):
 
-1. Invoke `blunder-hunt` on the spec file with these lenses:
-   - **Internal contradictions** — does Section A claim something Section B disallows?
-   - **Hidden assumptions** — what's implicit that should be explicit?
-   - **Unfalsifiable criteria** — any "improve UX" / "make it better" lurking?
-   - **Scope leakage** — anything in scope that should be a separate spec?
-   - **Missing rollback / kill-switch** — what's the un-do plan if this ships and goes wrong?
-2. Apply findings inline. Re-save.
-3. If the spec touched architectural decisions, also invoke `decide` to record them as ADRs (decision journal entries).
+```bash
+jutsu swarm doc-review docs/specs/<filename>.md
+```
 
-A spec without a fresh-eyes review pass is a draft, not a spec.
+(or the equivalent skill wrapper: `~/.claude/skills/doc-review/scripts/run.sh docs/specs/<filename>.md`)
+
+The output is a synthesized markdown review with a disagreement table. Iterate findings:
+
+1. Read the disagreement table FIRST. 1/N findings (lone-wolf) are highest-leverage — the one agent that flagged it either saw a real gap others missed OR hallucinated. Investigate before dismissing.
+2. Fix issue-level findings (consensus or not). Fix consensus minor findings.
+3. Re-save the spec. Re-run `jutsu swarm doc-review` if the changes were substantive (note: NEW content = new cache key = re-spend; same content = `--replay <key>` is free).
+4. Stop when the disagreement table shows zero issue-level findings or only contested-minor / info-level rows.
+
+If `jutsu swarm doc-review` fails with "unknown preset", the doc-review skill isn't installed — `jutsu install doc-review` and retry. (doc-review is in this skill's `deps.skills` so a full `jutsu install spec-driven-development` should pull it transitively.)
+
+### Step 7: ADR capture (if architectural)
+
+If the spec touched architectural decisions, also invoke `decide` to record them as ADRs (decision journal entries). Decisions made during spec authoring deserve the same record-keeping as decisions made during implementation.
 
 ## Anti-rationalization table
 
@@ -102,11 +110,12 @@ A spec without a fresh-eyes review pass is a draft, not a spec.
 | "We'll add acceptance criteria during implementation" | Implicit criteria become political fights at PR review. Write them upfront, fight about them once. |
 | "Open questions can be resolved later" | Unresolved questions usually compile into bugs or shipping the wrong thing. Resolve them now. |
 | "It's a small change, I don't need a spec" | If it's actually small (one file, one obvious step), agreed — skip. If you're rationalizing, it's not small. |
+| "doc-review costs money / I'll skip it" | The cost is bounded by `--max-cost` (defaults to $1.00) and you'll usually spend 1–3× less than the iteration time you'd waste on a spec gap caught at PR review. Skip only on genuinely tiny specs. |
 
 ## Hard rules
 
 - **The spec is the deliverable of this skill.** Implementation happens in a separate session, after the user signs off on the spec.
-- **Never skip the final review pass.** A spec that hasn't been blunder-hunted is a draft, period.
+- **Never skip the doc-review pass.** A spec that hasn't been multi-agent-reviewed is a draft, period.
 - **Save to disk before declaring done.** Conversation specs vanish; file specs survive.
 - **Acceptance criteria must be checkable.** Drop anything that depends on subjective judgment.
 - **Non-goals are not optional.** Every spec has at least 3 explicit non-goals or it's not finished.
@@ -117,15 +126,15 @@ A spec without a fresh-eyes review pass is a draft, not a spec.
 ## Spec: <short title>
 
 **Saved to:** `docs/specs/<filename>.md`
-**Reviewed by:** blunder-hunt (5-lens), decide (if architectural)
+**Reviewed by:** doc-review (`jutsu swarm doc-review`)
 **Open questions:** <count> blocking, <count> non-blocking
 **Status:** ready for review / needs user input / implementation green-light
 ```
 
 ## Composes
 
-- `blunder-hunt` — final-review lens application before declaring the spec done
-- `decide` — record any architectural decisions surfaced during spec authoring
+- `doc-review` — universal multi-agent QA gate; ships the prose-tuned lenses (completeness / implementability / consistency) the final review uses.
+- `decide` — record any architectural decisions surfaced during spec authoring as ADRs.
 
 ## When NOT to use
 
