@@ -102,6 +102,8 @@ Iterate findings:
 
 If `jutsu swarm doc-review` fails with "unknown preset", the doc-review skill isn't installed — `jutsu install doc-review` and retry. (doc-review is in this skill's `deps.skills` so a full `jutsu install decide` should pull it transitively.)
 
+**Version constraint note**: this skill's `deps.skills` pins `doc-review@^0.1`. When doc-review v0.2.0 ships, transitive installs of this skill won't pick it up automatically. If you need the newer version, install it explicitly with `jutsu install doc-review@^0.2`.
+
 For LOW-stakes decisions (file naming conventions, internal-only refactors, throwaway-experiment choices), skip Step 5 — go directly to Step 6.
 
 ### Step 6: Finalize

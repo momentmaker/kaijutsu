@@ -132,17 +132,23 @@ func resolveFilesInput(preset *Preset, opts InputOptions) (*InputContext, error)
 }
 
 func resolvePromptInput(preset *Preset, opts InputOptions) (*InputContext, error) {
-	prompt := strings.TrimSpace(opts.Prompt)
-	if prompt == "" {
+	// Canonicalize first, THEN cap-check on the canonical form so the
+	// cap matches what gets stored in Body and what gets hashed into
+	// CacheKey. Pre-canonicalize cap-check would let a prompt with
+	// lots of internal whitespace pass at 8 KB raw but produce a much
+	// shorter canonicalized body — inconsistent and confusing for the
+	// "shorten the prompt" hint.
+	canonical := CanonicalizePrompt(opts.Prompt)
+	if canonical == "" {
 		return nil, fmt.Errorf("preset %q requires a non-empty prompt argument", preset.Name)
 	}
-	if len(prompt) > maxBytesPrompt {
-		return nil, fmt.Errorf("prompt is %d bytes — exceeds %d-byte cap. Shorten the prompt", len(prompt), maxBytesPrompt)
+	if len(canonical) > maxBytesPrompt {
+		return nil, fmt.Errorf("prompt is %d bytes (after whitespace normalization) — exceeds %d-byte cap. Shorten the prompt", len(canonical), maxBytesPrompt)
 	}
 	return &InputContext{
 		Preset:    preset,
 		InputKind: InputPrompt,
-		Body:      CanonicalizePrompt(prompt),
-		CacheKey:  CacheKeyForPrompt(preset, prompt),
+		Body:      canonical,
+		CacheKey:  CacheKeyForPrompt(preset, opts.Prompt),
 	}, nil
 }

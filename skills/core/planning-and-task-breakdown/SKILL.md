@@ -85,6 +85,8 @@ After doc-review converges, compose `scope-check` to classify each slice by reas
 
 If `jutsu swarm doc-review` fails with "unknown preset", the doc-review skill isn't installed — `jutsu install doc-review` and retry. (doc-review is in this skill's `deps.skills` so a full `jutsu install planning-and-task-breakdown` should pull it transitively.)
 
+**Version constraint note**: this skill's `deps.skills` pins `doc-review@^0.1`. When doc-review v0.2.0 ships, transitive installs of this skill won't pick it up automatically. If you need the newer version, install it explicitly with `jutsu install doc-review@^0.2`.
+
 ## Anti-rationalization table
 
 | Excuse | Rebuttal |

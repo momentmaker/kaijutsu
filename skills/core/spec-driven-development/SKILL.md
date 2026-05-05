@@ -97,6 +97,8 @@ The output is a synthesized markdown review with a disagreement table. Iterate f
 
 If `jutsu swarm doc-review` fails with "unknown preset", the doc-review skill isn't installed — `jutsu install doc-review` and retry. (doc-review is in this skill's `deps.skills` so a full `jutsu install spec-driven-development` should pull it transitively.)
 
+**Version constraint note**: this skill's `deps.skills` pins `doc-review@^0.1`, which means ">=0.1.0, <0.2.0" per semver. When doc-review v0.2.0 ships, transitive installs of this skill won't pick it up automatically. If you need the newer doc-review, either upgrade this skill to a version whose constraint matches OR install doc-review explicitly with `jutsu install doc-review@^0.2`.
+
 ### Step 7: ADR capture (if architectural)
 
 If the spec touched architectural decisions, also invoke `decide` to record them as ADRs (decision journal entries). Decisions made during spec authoring deserve the same record-keeping as decisions made during implementation.

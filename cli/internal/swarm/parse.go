@@ -83,6 +83,13 @@ func normalize(in []Finding) []Finding {
 //
 // A handful of cross-vocabulary aliases (fatal → blocker, warning →
 // issue) handle agents that emit close-but-not-exact terms.
+//
+// NOTE: cross-vocab leakage is NOT prevented. A pr-review agent that
+// mistakenly emits "high" (CVSS vocab) gets coerced to SeverityHigh
+// and renders verbatim in the disagreement table alongside
+// "blocker"/"issue"/"minor"/"info". UX-quality concern, not a crash.
+// Phase-3 work could add an in-vocab guard that coerces out-of-vocab
+// severities to the closest in-vocab match per Preset.SeverityVocab.
 func coerceSeverity(s string) Severity {
 	switch strings.ToLower(strings.TrimSpace(s)) {
 	// Review vocab (pr-review, doc-review)

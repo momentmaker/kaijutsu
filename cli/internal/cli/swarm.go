@@ -116,7 +116,12 @@ func newSwarmDocReviewCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "doc-review <path>",
 		Short: "Multi-agent review of a markdown artifact (spec, plan, decision record)",
-		Args:  cobra.MinimumNArgs(0), // 0 args allowed when --replay is set
+		// ArbitraryArgs allows any count including 0; the no-args case
+		// is enforced inside RunE so --replay / --grant-consent can
+		// short-circuit without requiring positional paths. cobra
+		// validators run before RunE so a stricter Args here would
+		// also block the short-circuit paths.
+		Args: cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			projectRoot, _ := os.Getwd()
@@ -320,6 +325,20 @@ the preset name is part of the cache-key salt.`,
 				// Override InputKind on a per-invocation copy so
 				// resolveFilesInput is called even though the preset
 				// metadata says InputDiff.
+				//
+				// Safety note: this is a shallow copy. PerAgent (a map)
+				// is shared by reference between filesPreset and preset.
+				// Today this is safe because:
+				//   (a) LoadPresetWithSkillOverrides above already
+				//       returned a freshly-allocated map (skill_prompts.go
+				//       deep-copies into a new map for every Find call)
+				//       so `preset` is NOT the registry singleton; AND
+				//   (b) nothing in this function or in runSwarmPipeline
+				//       mutates PerAgent.
+				// If a future caller stops going through
+				// LoadPresetWithSkillOverrides AND introduces PerAgent
+				// mutation, the map share becomes a registry-corruption
+				// hazard. Re-allocate the map here at that point.
 				filesPreset := *preset
 				filesPreset.InputKind = swarm.InputFiles
 				ictx, resolveErr = swarm.ResolveInput(ctx, &filesPreset, swarm.InputOptions{
