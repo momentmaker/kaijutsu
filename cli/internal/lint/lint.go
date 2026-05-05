@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/momentmaker/kaijutsu/cli/internal/skill"
@@ -149,6 +150,77 @@ func checkRichLayout(r *Result, skillDir string, sk *skill.Skill) {
 			})
 		}
 	}
+}
+
+// TriggerConflict pairs two skills with an overlapping trigger phrase.
+type TriggerConflict struct {
+	Phrase string
+	Skills []string // sorted, len >= 2
+}
+
+// CheckTriggerConflicts compares the trigger phrases extracted from
+// each skill's description and reports any phrase shared by two or
+// more skills. Triggers are slash-command tokens (/foo) and
+// double-quoted phrases inside the description string. Use this when
+// you're linting a set of skills that will be installed together.
+func CheckTriggerConflicts(skills map[string]*skill.Skill) []TriggerConflict {
+	owners := map[string]map[string]bool{}
+	for name, sk := range skills {
+		if sk == nil {
+			continue
+		}
+		for _, p := range ExtractTriggers(sk.Description) {
+			if owners[p] == nil {
+				owners[p] = map[string]bool{}
+			}
+			owners[p][name] = true
+		}
+	}
+	var out []TriggerConflict
+	for phrase, names := range owners {
+		if len(names) < 2 {
+			continue
+		}
+		list := make([]string, 0, len(names))
+		for n := range names {
+			list = append(list, n)
+		}
+		sort.Strings(list)
+		out = append(out, TriggerConflict{Phrase: phrase, Skills: list})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Phrase < out[j].Phrase })
+	return out
+}
+
+var (
+	slashCmdRe   = regexp.MustCompile(`/[a-z][a-z0-9-]{1,}`)
+	quotedRe     = regexp.MustCompile(`"([^"\\]{2,80})"`)
+	singleQuoted = regexp.MustCompile(`'([^'\\]{2,80})'`)
+)
+
+// ExtractTriggers pulls slash-command tokens and quoted phrases out
+// of a skill description. Phrases are lowercased for comparison.
+func ExtractTriggers(description string) []string {
+	seen := map[string]bool{}
+	var out []string
+	add := func(p string) {
+		p = strings.ToLower(strings.TrimSpace(p))
+		if p == "" || seen[p] {
+			return
+		}
+		seen[p] = true
+		out = append(out, p)
+	}
+	for _, m := range slashCmdRe.FindAllString(strings.ToLower(description), -1) {
+		add(m)
+	}
+	for _, m := range quotedRe.FindAllStringSubmatch(description, -1) {
+		add(m[1])
+	}
+	for _, m := range singleQuoted.FindAllStringSubmatch(description, -1) {
+		add(m[1])
+	}
+	return out
 }
 
 var frontmatterDelim = regexp.MustCompile(`(?m)^---\s*$`)

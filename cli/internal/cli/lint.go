@@ -6,8 +6,10 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/momentmaker/kaijutsu/cli/internal/lint"
+	"github.com/momentmaker/kaijutsu/cli/internal/skill"
 	"github.com/spf13/cobra"
 )
 
@@ -33,6 +35,7 @@ Exits with code 1 if any error-severity issue is reported.`,
 			out := cmd.OutOrStdout()
 			anyError := false
 			anyResult := false
+			skillsByName := map[string]*skill.Skill{}
 			for _, root := range roots {
 				results, err := lintTree(root)
 				if err != nil {
@@ -44,11 +47,20 @@ Exits with code 1 if any error-severity issue is reported.`,
 						anyError = true
 					}
 					printResult(out, r)
+					if sk, lerr := skill.Load(filepath.Join(r.SkillDir, "skill.yaml")); lerr == nil {
+						skillsByName[sk.Name] = sk
+					}
 				}
 			}
 			if !anyResult {
 				fmt.Fprintln(out, "no skills found")
 				return nil
+			}
+			if conflicts := lint.CheckTriggerConflicts(skillsByName); len(conflicts) > 0 {
+				fmt.Fprintf(out, "\ntrigger conflicts:\n")
+				for _, c := range conflicts {
+					fmt.Fprintf(out, "  warn   %q overlaps across: %s\n", c.Phrase, strings.Join(c.Skills, ", "))
+				}
 			}
 			if anyError {
 				return fmt.Errorf("lint failed")

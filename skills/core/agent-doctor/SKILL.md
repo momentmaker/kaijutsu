@@ -13,21 +13,33 @@ This is a multi-agent generalization of the original Claude-Code-only `claude-do
 
 Running `/agent-doctor` with no args = **read-only health report**. Never modifies anything. Safe to run anytime.
 
-## Detect installed agents
+## Layout (rich)
 
-Check which agent dirs exist and report each one separately:
-
-```bash
-for dir in ~/.claude ~/.codex ~/.gemini ~/.agents; do
-  [ -d "$dir" ] && echo "$dir present"
-done
+```
+agent-doctor/
+├── SKILL.md                       (this file — workflow + decision rules)
+├── skill.yaml
+├── scripts/
+│   ├── lib.sh                     shared helpers (color, sizing, protected-path check, trash, path resolver)
+│   ├── doctor.sh                  read-only report (default subcommand)
+│   └── cleanup.sh                 staged cleanup with dry-run default, trash-not-delete
+├── references/
+│   ├── directory-map.md           per-agent inventory of subdirectories + cleanup status
+│   ├── cleanup-tiers.md           safe/aggressive rule table + cutoff rationale
+│   └── protected-paths.md         never-touch list + how to extend
+└── runbooks/
+    └── recover-from-trash.md      restoring a trashed item
 ```
 
-The cleanup tiers below apply per-directory; rules differ slightly per agent because each agent uses a different layout.
+The agent should follow this SKILL.md as the spec. Scripts in `scripts/` are the canonical implementation; the agent can either invoke them directly or run equivalent shell inline. References are loaded on demand when the agent needs the exact rules / cutoffs.
+
+## Detect installed agents
+
+The scripts probe `~/.claude`, `~/.codex`, `~/.gemini`, `~/.agents` and skip any that don't exist. The `compute_protected()` helper in `lib.sh` builds the per-agent protected-path list. Override the scan list with `AGENT_DIRS=path1:path2`, or limit cleanup to one agent with `AGENT_DIR=path`.
 
 ## What it looks at
 
-Common subdirectories the agent runtimes commonly create:
+Common subdirectories the agent runtimes commonly create (see `references/directory-map.md` for the full per-agent table):
 
 ```
 ~/.<agent>/
@@ -40,7 +52,7 @@ Common subdirectories the agent runtimes commonly create:
 └── .trash/                            quarantine (created by this skill on apply)
 ```
 
-Not all agents create all of these. The skill should `du -sh` whatever exists and skip the rest silently.
+Not all agents create all of these. The skill `du -sh`s whatever exists and skips the rest silently.
 
 ## Cleanup tiers
 
@@ -49,32 +61,36 @@ Not all agents create all of these. The skill should `du -sh` whatever exists an
 | **safe** (default) | telemetry >7d, paste-cache >30d, image-cache >30d, file-history >90d, stale ephemeral state files >14d, **orphaned project dirs** (repos no longer on disk) |
 | **aggressive** | safe + session jsonls >180d compressed with `zstd` + trash >30d hard-deleted |
 
+Full table + rationale in `references/cleanup-tiers.md`.
+
 ## Protected paths (never touched)
 
-Across every agent: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `MEMORY.md` (anywhere), `agents/`, `skills/`, `rules/`, `hooks/`, `identities/`, `plans/`, `settings.json`, `settings.local.json`, `keybindings.json`.
+Across every agent: `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `MEMORY.md` (anywhere), `agents/`, `skills/`, `rules/`, `hooks/`, `identities/`, `plans/`, `settings.json`, `settings.local.json`, `keybindings.json`, `config.toml` (Codex). Full list + how to extend in `references/protected-paths.md`.
 
 If a user requests removing something protected, refuse and explain why. Suggest they edit the file directly if they want a finer-grained change.
 
 ## Trash, not delete
 
-Everything goes to `~/.<agent>/.trash/YYYY-MM-DD-HHMMSS/<original-relative-path>` first. Hard-delete only happens when `--tier aggressive --apply` runs and a trash batch is older than 30 days.
+Everything goes to `~/.<agent>/.trash/YYYY-MM-DD-HHMMSS/<original-relative-path>` first. Hard-delete only happens when `--tier aggressive --apply` runs and a trash batch is older than 30 days. Restoration runbook: `runbooks/recover-from-trash.md`.
 
 ## Workflow
 
 When the user invokes this skill:
 
-1. **First time / no args** — run the audit (`du -sh` per subdir of every detected agent dir, plus age-based candidate counts). Report findings. Highlight the safe-tier recoverable total. Suggest next step (`cleanup --dry-run`).
-2. **User says "clean it up"** — run the cleanup logic with `--dry-run` (always dry-run first). Show what would move. Ask for confirmation before `--apply`.
-3. **User confirms** — run with `--apply`. Report what got trashed + total reclaimed.
-4. **User says "I deleted X by accident"** — walk through recovery: list trash batches by date, locate the file, copy it back to its original path, optionally remove from trash.
-5. **User asks for aggressive cleanup** — explain what aggressive does (jsonl compression + 30d trash purge), confirm explicitly, then run with `--tier aggressive`.
+1. **First time / no args** — run `scripts/doctor.sh`. Report findings. Highlight the safe-tier recoverable total. Suggest next step (`scripts/cleanup.sh --dry-run`).
+2. **User says "clean it up"** — run `scripts/cleanup.sh --dry-run` (always dry-run first). Show what would move. Ask for confirmation before `--apply`.
+3. **User confirms** — run `scripts/cleanup.sh --apply --yes` (or `--apply` for the interactive APPLY prompt). Report what got trashed + total reclaimed.
+4. **User says "I deleted X by accident"** — open `runbooks/recover-from-trash.md` and walk through.
+5. **User asks for aggressive cleanup** — explain what aggressive does (jsonl compression + 30d trash purge), confirm explicitly, then run `scripts/cleanup.sh --apply --tier aggressive`.
 
 ## Detecting orphaned project dirs
 
-Each agent encodes the project path differently. Where the encoding is reversible (replace `-` with `/` doesn't always work — repo names containing `-` are ambiguous), best-effort resolve:
-- Try to recover the original path
-- `[ -d "$resolved" ]` — if the directory still exists, it's not orphaned
-- Show the user the resolved path so they can sanity-check before confirming
+Each agent encodes the project path differently but they all share a `<leading-dash> + slashes-to-dashes` convention (e.g., `-Users-foo-bar` ↔ `/Users/foo/bar`). The `resolve_project_dir()` helper in `lib.sh` does best-effort decoding:
+- Try the most-slashes partition first
+- Progressively glue rightmost segments back with `-` and re-test
+- Returns the first existing dir, or non-zero if no candidate path exists on disk
+
+Where the encoding is ambiguous (repo names containing `-` are always ambiguous), always show the resolved path before confirming.
 
 ## Hard rules
 
@@ -84,16 +100,18 @@ Each agent encodes the project path differently. Where the encoding is reversibl
 - For orphaned project dirs: heuristic resolution is fragile. Always show the resolved path before confirming.
 - Errors in the audit ≠ silent failures. If `find` returns nothing, that's "0 items," not "broken." Report 0 honestly.
 
-## What's missing in this v0 port
+## Invocation examples
 
-The original `claude-doctor` shipped a rich layout with `scripts/`, `references/`, and `runbooks/`. This v0 skill is the flat equivalent: the SKILL.md describes the workflow, and the agent runs ad-hoc shell commands to execute it. A future v0.1 release should re-introduce:
+```bash
+# Read-only audit across every detected agent dir
+scripts/doctor.sh
 
-- `scripts/lib.sh` — shared helpers (color, sizing, protected-path check, trash, path resolver)
-- `scripts/doctor.sh` — read-only report
-- `scripts/cleanup.sh` — staged cleanup
-- `references/directory-map.md` — per-agent directory inventory
-- `references/cleanup-tiers.md` — rule table + rationale per cutoff
-- `references/protected-paths.md` — never-touch list + how to extend
-- `runbooks/recover-from-trash.md` — restoring trashed items
+# Dry-run safe cleanup, all agents
+scripts/cleanup.sh --dry-run
 
-Until then, the skill works by leaning on the agent's own ability to run shell commands inline and follow this SKILL.md as the spec.
+# Apply safe cleanup, only Claude
+AGENT_DIR=~/.claude scripts/cleanup.sh --apply --yes
+
+# Aggressive cleanup with interactive confirm
+scripts/cleanup.sh --apply --tier aggressive
+```

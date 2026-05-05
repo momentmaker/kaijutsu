@@ -83,6 +83,13 @@ func intersect(a, b []string) []string {
 	return out
 }
 
+// CopyTree recursively copies src into dst. Re-exports the internal
+// helper for callers (e.g. publish) that need to stage a skill into
+// a working tree.
+func CopyTree(src, dst string) error {
+	return copyDir(src, dst)
+}
+
 func copyDir(src, dst string) error {
 	return filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {

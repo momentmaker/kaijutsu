@@ -161,6 +161,10 @@ func (s *installSession) installOne(name, constraint, parent string) error {
 			l.skill.Name, l.skill.Trust.ExpectedSigner)
 	}
 
+	if err := s.confirmPermissions(l.skill); err != nil {
+		return err
+	}
+
 	if err := s.confirmHooks(l.skill); err != nil {
 		return err
 	}
@@ -185,6 +189,55 @@ func (s *installSession) installOne(name, constraint, parent string) error {
 	fmt.Fprintf(s.cmd.OutOrStdout(), "Installed %s@%s (%s, %s)%s\n",
 		l.skill.Name, l.skill.Version, l.source, shortRef(l.ref), suffix)
 	return nil
+}
+
+// confirmPermissions prompts the user before installing a skill that
+// declares sensitive permissions: bash:true (skill scripts may run
+// shell), network:true (skill scripts may make network calls),
+// fs-write:full (skill scripts may write anywhere on disk). Signed-core
+// skills still prompt — sigstore proves provenance, not safety.
+// The --yes flag bypasses. Non-interactive sessions abort on sensitive
+// perms (matching confirmHooks).
+func (s *installSession) confirmPermissions(sk *skill.Skill) error {
+	if s.yes {
+		return nil
+	}
+	sensitive := sensitivePermissions(sk)
+	if len(sensitive) == 0 {
+		return nil
+	}
+	out := s.cmd.OutOrStdout()
+	fmt.Fprintf(out, "\n%s declares sensitive permission(s):\n", sk.Name)
+	for _, p := range sensitive {
+		fmt.Fprintf(out, "  - %s — %s\n", p.name, p.what)
+	}
+	fmt.Fprint(out, "Install? [y/N]: ")
+	r := bufio.NewReader(s.cmd.InOrStdin())
+	line, err := r.ReadString('\n')
+	if err != nil {
+		return errors.New("install declined (no input); pass --yes to accept sensitive permissions non-interactively")
+	}
+	line = strings.TrimSpace(strings.ToLower(line))
+	if line != "y" && line != "yes" {
+		return errors.New("install declined")
+	}
+	return nil
+}
+
+type permEntry struct{ name, what string }
+
+func sensitivePermissions(sk *skill.Skill) []permEntry {
+	var out []permEntry
+	if sk.Permissions.Bash {
+		out = append(out, permEntry{"bash: true", "skill scripts may execute shell commands"})
+	}
+	if sk.Permissions.Network {
+		out = append(out, permEntry{"network: true", "skill scripts may make outbound network calls"})
+	}
+	if v, ok := sk.Permissions.FsWrite.(string); ok && v == "full" {
+		out = append(out, permEntry{"fs-write: full", "skill scripts may write anywhere on disk (not just within scoped paths)"})
+	}
+	return out
 }
 
 // confirmHooks prompts the user before installing a skill that ships
