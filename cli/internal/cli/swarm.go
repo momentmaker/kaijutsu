@@ -50,6 +50,7 @@ type commonSwarmFlags struct {
 	allowSecrets   bool
 	yes            bool
 	replayKey      string
+	grantConsent   bool
 }
 
 func bindCommonFlags(cmd *cobra.Command, f *commonSwarmFlags, supportsPostComment bool) {
@@ -63,6 +64,7 @@ func bindCommonFlags(cmd *cobra.Command, f *commonSwarmFlags, supportsPostCommen
 	cmd.Flags().BoolVar(&f.allowSecrets, "allow-secrets", false, "bypass the pre-flight secrets scan (DANGEROUS — input will be sent to remote model providers)")
 	cmd.Flags().BoolVarP(&f.yes, "yes", "y", false, "non-interactive: skip the consent prompt; require .kaijutsu/<preset>.yaml has allow-multi-model: true")
 	cmd.Flags().StringVar(&f.replayKey, "replay", "", "re-run synthesis on cached per-agent findings for a key (SHA for diff presets, hash for files/prompt) without calling model APIs")
+	cmd.Flags().BoolVar(&f.grantConsent, "grant-consent", false, "persist `allow-multi-model: true` to .kaijutsu/<preset>.yaml and exit (no swarm run). Use this once per repo when running headless / from inside an agent CLI session.")
 	if supportsPostComment {
 		cmd.Flags().BoolVar(&f.postComment, "post-comment", false, "after synthesis, post the markdown as a PR comment via gh (edits prior kaijutsu-pr-review comment if found)")
 	}
@@ -80,12 +82,15 @@ func newSwarmPRReviewCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
 			projectRoot, _ := os.Getwd()
-			if flags.replayKey != "" {
-				return runReplay(ctx, cmd, projectRoot, "pr-review", flags.replayKey, flags.synthesizer, flags.perAgentBudget, flags.timeout, flags.postComment)
-			}
 			preset, err := swarm.LoadPresetWithSkillOverrides(projectRoot, "pr-review")
 			if err != nil {
 				return err
+			}
+			if flags.grantConsent {
+				return runGrantConsent(cmd, projectRoot, preset)
+			}
+			if flags.replayKey != "" {
+				return runReplay(ctx, cmd, projectRoot, "pr-review", flags.replayKey, flags.synthesizer, flags.perAgentBudget, flags.timeout, flags.postComment)
 			}
 			ictx, err := swarm.ResolveInput(ctx, preset, swarm.InputOptions{
 				PR:             pr,
@@ -112,15 +117,18 @@ func newSwarmDocReviewCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			projectRoot, _ := os.Getwd()
+			preset, err := swarm.LoadPresetWithSkillOverrides(projectRoot, "doc-review")
+			if err != nil {
+				return err
+			}
+			if flags.grantConsent {
+				return runGrantConsent(cmd, projectRoot, preset)
+			}
 			if flags.replayKey != "" {
 				return runReplay(ctx, cmd, projectRoot, "doc-review", flags.replayKey, flags.synthesizer, flags.perAgentBudget, flags.timeout, false)
 			}
 			if len(args) == 0 {
 				return errors.New("doc-review requires at least one markdown path argument (or --replay <key>)")
-			}
-			preset, err := swarm.LoadPresetWithSkillOverrides(projectRoot, "doc-review")
-			if err != nil {
-				return err
 			}
 			ictx, err := swarm.ResolveInput(ctx, preset, swarm.InputOptions{
 				Files: args,
@@ -337,6 +345,19 @@ func runReplay(ctx context.Context, cmd *cobra.Command, projectRoot, presetName,
 		fmt.Fprintln(stderr, "warning: --post-comment + --replay requires the original PR number; resolve manually")
 	}
 	fmt.Fprintf(stderr, "\nreplay done · preset=%s · synthesizer=%s\n", presetName, synthAgent.Name())
+	return nil
+}
+
+// runGrantConsent persists allow-multi-model: true for the named
+// preset's per-repo config and exits. Used when the user knows
+// they're about to run swarm headless (from inside an agent CLI
+// session, CI, etc.) and wants to skip the interactive consent
+// prompt that would otherwise block.
+func runGrantConsent(cmd *cobra.Command, projectRoot string, preset *swarm.Preset) error {
+	if err := swarm.SaveConsent(projectRoot, preset); err != nil {
+		return fmt.Errorf("persist consent for %s: %w", preset.Name, err)
+	}
+	fmt.Fprintf(cmd.OutOrStdout(), "Consent granted for preset %q. Subsequent runs of `jutsu swarm %s` will skip the prompt.\n", preset.Name, preset.Name)
 	return nil
 }
 

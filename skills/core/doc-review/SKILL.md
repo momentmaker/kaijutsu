@@ -36,6 +36,18 @@ doc-review/
 
 The CLI loads prompts from `prompts/` at runtime and falls back to built-in defaults when a file is missing. Per-repo overrides go in `<project>/.claude/skills/doc-review/prompts/<lens>.md`.
 
+## First-run consent
+
+Before the first invocation in a repo, `doc-review` (like every swarm preset) requires explicit per-repo consent because input goes to remote model providers (Anthropic, OpenAI, Google).
+
+If you run interactively from a TTY, the first invocation prompts and persists the answer. If you run headless (from inside an agent CLI session, from CI, or piped), the prompt has nothing to read from and the run aborts with a hint. Pre-grant consent with:
+
+```bash
+jutsu swarm doc-review --grant-consent
+```
+
+This writes `allow-multi-model: true` to `.kaijutsu/doc-review.yaml` and exits without running the swarm. Subsequent runs in the same repo work non-interactively.
+
 ## When to invoke
 
 Common entry points:

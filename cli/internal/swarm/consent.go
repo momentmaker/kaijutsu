@@ -72,8 +72,13 @@ func SaveConsent(projectRoot string, preset *Preset) error {
 
 // EnsureConsent is the runtime check: if the project root's preset
 // config already has allow-multi-model: true, returns nil. Otherwise
-// prompts the user, persists the answer if they say yes, and returns
-// an error if they decline.
+// prompts the user (interactive only), persists the answer if they
+// say yes, and returns an error if they decline.
+//
+// The non-interactive AND no-tty paths both give the same actionable
+// hint: run `jutsu swarm <preset> --grant-consent` once interactively
+// to persist consent, then re-run. This solves the "ran swarm from
+// inside an agent CLI session and got a hang" failure mode.
 func EnsureConsent(projectRoot string, preset *Preset, in io.Reader, out io.Writer, agents []AgentName, nonInteractive bool) error {
 	c, err := LoadConfig(projectRoot, preset)
 	if err != nil {
@@ -83,8 +88,12 @@ func EnsureConsent(projectRoot string, preset *Preset, in io.Reader, out io.Writ
 		return nil
 	}
 	cfgPath := configPathFor(preset)
+	hint := fmt.Sprintf("Run `jutsu swarm %s --grant-consent` once interactively to persist consent, OR add `allow-multi-model: true` to %s manually.", preset.Name, cfgPath)
 	if nonInteractive {
-		return fmt.Errorf("multi-model consent not granted. Add `allow-multi-model: true` to %s or re-run interactively to be prompted", cfgPath)
+		return fmt.Errorf("multi-model consent not granted. %s", hint)
+	}
+	if !stdinIsTTY() {
+		return fmt.Errorf("multi-model consent not granted and stdin is not a terminal (running headless or piped). %s", hint)
 	}
 	providers := providerLabels(agents)
 	fmt.Fprintf(out, "\nThis run will send input to %d model provider(s):\n", len(providers))
@@ -103,6 +112,18 @@ func EnsureConsent(projectRoot string, preset *Preset, in io.Reader, out io.Writ
 	}
 	fmt.Fprintf(out, "saved consent to %s\n", cfgPath)
 	return nil
+}
+
+// stdinIsTTY reports whether os.Stdin is connected to a terminal
+// (vs piped, redirected, or being driven by a parent agent CLI).
+// Used by EnsureConsent to give a clearer hint instead of blocking
+// on a prompt that nothing can answer.
+func stdinIsTTY() bool {
+	fi, err := os.Stdin.Stat()
+	if err != nil {
+		return false
+	}
+	return (fi.Mode() & os.ModeCharDevice) != 0
 }
 
 // providerLabels maps agent names to human-readable provider names
