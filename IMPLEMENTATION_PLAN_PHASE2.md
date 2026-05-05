@@ -1,10 +1,17 @@
 # Phase 2 — `jutsu swarm` pluggable presets + the doc-review flywheel
 
 Phase 1 hardcoded one preset (`pr-review`) into the binary. Phase 2
-makes presets first-class, ships four new ones, and migrates existing
-spec/plan/decision skills to use a shared `doc-review` preset for
-their final review pass — turning `jutsu swarm` into the universal
-QA gate for kaijutsu artifacts.
+makes presets first-class, ships four new ones (doc-review,
+brainstorm, refactor-plan, security-audit), and migrates the three
+artifact-producing skills (spec-driven-development,
+planning-and-task-breakdown, decide) to use the shared `doc-review`
+preset for their final review pass.
+
+**flywheel** (used throughout this doc): the pattern where every
+artifact-producing skill in kaijutsu calls `jutsu swarm doc-review
+<artifact>` at the end of its workflow, getting multi-agent QA for
+free without re-inventing review mechanisms. See "The flywheel
+insight" section below.
 
 ---
 
@@ -13,12 +20,12 @@ QA gate for kaijutsu artifacts.
 | Q | Choice |
 |---|---|
 | Output assembler | **Built-in Go**, not skill-shipped. Skill ships per-agent prompts + synthesizer prompt + debate prompt only. Avoids skill-template DSL scope creep + skill-shipped-XSS risk in PR comments. |
-| Cache key for non-diff inputs | **SHA256(preset + canonicalized_input) truncated to 12 chars.** Canonicalization rules: (a) `InputFiles` — sort paths lexically before concat, prefix each section with `--- <path>\n` so file order doesn't change the hash; (b) `InputPrompt` — `strings.TrimSpace` + collapse runs of internal whitespace to single space + Unicode NFC normalize. Both rules pinned before Stage 2 lands. |
-| Input byte caps per kind | `InputDiff`: 200 KB (matches gemini -p stdin fallback threshold + leaves room for prompt overhead). `InputFiles`: 200 KB total across all paths. `InputPrompt`: 8 KB. Over-cap aborts with "narrow scope, split files, or shorten prompt" hint. Tunable per-preset via skill metadata in Stage 1. |
+| Cache key for non-diff inputs | **First 12 lowercase hex chars of SHA256(preset-name + NUL + canonicalized_input)** — applies to both `InputFiles` and `InputPrompt` and to all non-diff presets (doc-review, brainstorm, refactor-plan, file-mode security-audit). Canonicalization rules: (a) `InputFiles` — sort paths lexically before concat, prefix each section with `--- <path>\n` so file order doesn't change the hash; (b) `InputPrompt` — `strings.TrimSpace` + collapse runs of internal whitespace to single space + Unicode NFC normalize. Truncation to 12 chars (48 bits) is fine for single-repo cache history; on collision the second run overwrites the first (last-write-wins, no error). Each preset's stage acceptance section MUST reference these rules verbatim, NOT re-state simpler ones. |
+| Input byte caps per kind | `InputDiff`: 200 KB (matches gemini -p stdin fallback threshold + leaves room for prompt overhead). `InputFiles`: 200 KB total across all paths. `InputPrompt`: 8 KB. Over-cap aborts with "narrow scope, split files, or shorten prompt" hint. Phase 2 ships fixed defaults; per-preset override via skill metadata is deferred to Phase 3 (would require a `MaxBytes int` field on the Preset struct + plumbing through ResolveInput). Tracked as Open Question 5. |
 | refactor-plan multi-file input | **Single concatenated prompt** (with sorted paths per the canonicalization rule above). Cross-file refactors require cross-file context. Cap from the row above applies. |
 | security-audit vs `pr-review --lens security` | **Standalone preset.** Different inputs (design docs, not just diffs), different severity taxonomy (CVSS-flavored), different output (threat model with attack vectors), different defaults (`--full` ON). |
 | Auto-install missing presets | **No silent install at swarm time.** `jutsu swarm <preset>` with the preset uninstalled hard-errors with `jutsu install <preset>` hint. Note: this is distinct from `deps.skills` transitive install at `jutsu install` time, which IS user-initiated (the user typed `jutsu install spec-driven-development` and accepts the dep tree). The two consent gates are separate: install-time perms prompt (Phase 1) vs swarm-time multi-model consent (Phase 1). Both fire once per repo. Stage 4 documents this in each migrated skill's SKILL.md so users aren't surprised. |
-| `--post-comment` for non-PR presets | **pr-review-only.** brainstorm/refactor-plan/security-audit/doc-review print + cache. Generic `--output-to file\|gist\|issue\|slack` deferred to Phase 3. |
+| `--post-comment` for non-PR presets | **pr-review-only flag.** Implementation: subcommands for non-PR presets do NOT register the `--post-comment` flag at all (Phase-2 wired). If a user has a stale alias that passes it, cobra rejects with "unknown flag". Output for non-PR presets is print to stdout + cache write — that's the "print + cache" model. Generic `--output-to file\|gist\|issue\|slack` deferred to Phase 3. |
 | doc-review section addressing | **Section path + paragraph index** (e.g. `section: "Acceptance Criteria"`, `paragraph: 3`) instead of file:line. Markdown-aware. |
 | Severity taxonomy per preset | Each preset declares its own. pr-review/doc-review keep `blocker\|issue\|minor\|info`. security-audit uses `critical\|high\|medium\|low\|informational` (CVSS-aligned). brainstorm/refactor-plan use `recommended\|alternative\|risky\|speculative` (4 levels — `speculative` covers wild ideas worth recording but not yet defensible). |
 
@@ -73,7 +80,7 @@ loaded prompt overrides (already wired in Phase 1's
 type Preset struct {
     Name             string
     Description      string
-    InputKind        InputKind  // diff | prompt | files | markdown
+    InputKind        InputKind  // diff | files | prompt
     PerAgent         map[AgentName]string
     Synthesizer      string
     Debate           string
@@ -93,16 +100,46 @@ const (
 type AssemblerFn func(results []AgentResult, synthDraft string, clusters []FindingGroup) string
 ```
 
-`PresetRegistry.Find(name)` walks: built-in → installed skill (with
-`preset.yaml` declaring metadata) → error.
+`PresetRegistry.Find(name)` walks: built-in registry → skill-loaded
+prompt overrides on top → error if name unregistered. Built-in always
+wins on the metadata fields (`InputKind`, `SeverityVocab`,
+`CachePathPart`, `ConfigBaseName`); the skill can ONLY override the
+prompt strings (`PerAgent[*]`, `Synthesizer`, `Debate`). This
+prevents a malicious skill from altering input-shape or severity
+semantics by shipping a malformed `preset.yaml`.
 
-Skill-installed presets ship a `preset.yaml` alongside `prompts/` so
-the orchestrator knows the input kind + severity vocabulary without
-recompiling.
+Phase-2 scope: `preset.yaml` is RESERVED — no schema defined yet.
+Built-in presets register themselves via Go init(); skill-shipped
+presets are deferred to Phase 3 once a schema + signing story is
+specified. Until then, every preset is built-in.
 
 ---
 
 ## Stages
+
+### Stage 0 — Foundation already shipped (no work) ✅
+
+Listed for traceability — these Phase-1 items are prerequisites that
+Stages 1–7 build on. Nothing to deliver here; verify before starting
+Stage 1.
+
+- **gemini tool-call abort fix** — `--approval-mode plan` flag wired
+  in `cli/internal/swarm/agent.go` (Phase-1 polish, commit 5ef038e)
+  + the no-tools instruction in the gemini lens prompt. Without
+  these, gemini in `-p` mode tries to invoke its file-read tool,
+  blocks waiting for approval on stdin, hits the 180s timeout. The
+  fix lets gemini participate in every Stage 3–7 preset that uses
+  InputFiles or InputDiff.
+- **`--grant-consent` flag** — wired in commit 9a9eb9f. Without it,
+  Stage 4's migrated skills (running headless from inside an agent
+  CLI session) hang on the first-run consent prompt. Each migrated
+  skill's SKILL.md (Stage 4) tells users to pre-grant consent.
+- **`--approval-mode plan` is a belt-and-suspenders for gemini
+  specifically**; if a future Stage 5–7 preset uses a different
+  agent invocation pattern (e.g. routing prompts through a custom
+  binary), re-evaluate this assumption.
+
+---
 
 ### Stage 1 — Preset registry refactor
 
@@ -119,8 +156,14 @@ preset's `CachePathPart` / `ConfigBaseName` instead of hardcoded
 - A new `registry.go` exposes `BuiltinPresets()` + `Find(name)`
 - Existing `swarm.go` swapped to use registry
 - Tests cover registry lookup + cache-path generation per preset
+- `Find(name)` precedence pinned in code comment + test: built-in
+  registry is the source of truth for metadata; missing-name
+  produces a clear error listing available presets
+- `jutsu swarm --help` lists registered presets via
+  `BuiltinPresets()` (resolves Open Question 4)
 
-**Out of scope this stage:** new presets, new input kinds.
+**Out of scope this stage:** new presets, new input kinds, skill-
+shipped presets (those need a `preset.yaml` schema + signing — Phase 3).
 
 ---
 
@@ -155,6 +198,9 @@ reviewed by both pr-review and security-audit).
   `refactor-plan b.go a.go` produce the same cache key; `brainstorm
   "  hi   world  "` and `brainstorm "hi world"` produce the same
   cache key.
+- Tests verify byte-cap enforcement: an `InputFiles` invocation
+  with total bytes > 200 KB returns the "narrow scope" abort error
+  before any agent is invoked; same for `InputPrompt` > 8 KB.
 
 **Out of scope:** the actual new presets — those land in Stages 3–7.
 
@@ -174,16 +220,21 @@ markdown artifacts:
 
 Severity vocab: `blocker | issue | minor | info` (same as pr-review).
 
-Findings reference `section:"..."` + `paragraph:N` instead of file:line.
-Custom assembler renders these in the disagreement table. Markdown
-parser extracts headings + paragraph counts; agents are asked to
-report findings by section+paragraph.
+Findings reference markdown file + line range using the existing
+`file` + `line_range` schema fields. The skill's per-agent prompts
+ask the model to MENTION the section name in its `reasoning` text
+when relevant ("In **Acceptance Criteria** at line 42, ..."), but
+the structured fields stay file:line for disagreement-table parity
+with pr-review. A future Phase-3 enhancement could add explicit
+`section`/`paragraph` fields with a markdown-aware assembler;
+deferred to keep Stage 3 scope tight.
 
-Output: same disagreement-table + synthesis structure as pr-review,
-adapted for section addressing.
+Output: same disagreement-table + synthesis structure as pr-review.
 
-CLI: `jutsu swarm doc-review <path-to-markdown>` (positional arg).
-Cache key: SHA256 of file contents.
+CLI: `jutsu swarm doc-review <path-to-markdown>` (one or more
+positional args; multi-file uses Stage 2's InputFiles canonicalization).
+Cache key uses the canonicalization rules from the locked-decisions
+row above (NOT a re-stated simpler rule).
 
 **Acceptance:**
 - `jutsu swarm doc-review IMPLEMENTATION_PLAN_PHASE2.md` produces
@@ -191,25 +242,40 @@ Cache key: SHA256 of file contents.
 - Skill ships prompts/{claude,codex,gemini}.md +
   synthesizer.md + debate.md
 - Cache + replay work
-- references/section-addressing.md documents the addressing scheme
+- Per-repo prompt overrides honored (re-uses Phase-1 loader)
 
 **Stage 3 exit criterion (closes the bootstrap loop):**
 Re-review THIS plan with `jutsu swarm doc-review IMPLEMENTATION_PLAN_PHASE2.md`
-once the preset is shipping. Compare findings against the bootstrap
-pr-review pass (which used code-tuned lenses). Any genuinely new
-findings doc-review surfaces validate the lens specialization.
-Address those findings before declaring Stage 3 done; treat them as
-the canonical signal that doc-review is working as designed.
+once the preset is shipping. Pass condition: doc-review produces
+≥1 finding NOT raised by the bootstrap pr-review pass — concrete
+proof that the prose-tuned lens adds signal the code-tuned lens
+missed. Address all issue-level findings (consensus or not) and
+the consensus minor findings before declaring Stage 3 done.
+Contested-minor and info-level findings get triaged as v0.5.x
+backlog if they don't block flywheel adoption.
 
 ---
 
 ### Stage 4 — Migrate spec/plan/decide skills to call `doc-review`
 
+Resolution of Open Q1 (delete vs keep fallback): **REPLACE, not
+fallback.** The migrated skills' SKILL.md sections that previously
+described ad-hoc review mechanisms get replaced with a single line
+pointing at doc-review. Reasons: (a) the ad-hoc mechanisms were
+unmaintained (each invented different terminology); (b) keeping
+them as fallback grows the skill complexity for an edge case where
+doc-review isn't installed; (c) doc-review is a transitive dep, so
+"not installed" only happens if the user explicitly removed it,
+which already breaks the parent skill — fallback wouldn't recover
+that. Users running the parent skill with doc-review missing get
+a clear error pointing at `jutsu install doc-review`.
+
 Update SKILL.md workflows for:
 
 - `spec-driven-development`: replace "fresh-eyes pass" section with
   "Run `jutsu swarm doc-review <spec.md>` before implementation.
-  Iterate until disagreement table is clean."
+  Iterate until disagreement table shows only consensus minors or
+  zero issue-level findings."
 - `planning-and-task-breakdown`: replace "Final review pass via
   blunder-hunt + scope-check" with `jutsu swarm doc-review`.
 - `decide`: replace "multi-model critique on record" with
@@ -219,9 +285,14 @@ Add `doc-review` to each skill's `deps.skills` so it auto-installs.
 
 **Acceptance:**
 - Each migrated skill bumped a minor version (1.x → 1.x+1)
-- Each skill's SKILL.md has the new workflow
+- Each skill's SKILL.md has the new workflow + drops the old
+  ad-hoc review section
 - `jutsu install spec-driven-development` pulls doc-review transitively
+  (lockfile shows `installedAs: dep:spec-driven-development`)
 - README highlights "all artifact-producing skills now share doc-review"
+- Each migrated skill's SKILL.md notes that running the parent skill
+  with doc-review uninstalled produces a clear error pointing at
+  `jutsu install doc-review` (not silent fallback)
 
 ---
 
@@ -258,13 +329,27 @@ lenses:
 - gemini: pattern consistency — does the proposed shape match
   existing patterns in the repo?
 
-Severity vocab: `recommended | alternative | risky`. Output assembler:
-ordered step list with risk column + estimated effort.
+Severity vocab: `recommended | alternative | risky | speculative`
+(matches the locked-decisions row above; `speculative` covers
+ambitious approaches worth recording but not yet defensible).
+Output assembler: ordered step list with risk column + estimated
+effort.
 
 CLI: `jutsu swarm refactor-plan path1.go path2.go --goal "extract HTTP handler into service"`.
+The `--goal` flag is REQUIRED (cobra `MarkFlagRequired`); missing-
+goal invocation hard-errors with a usage hint.
+
+Goal text counts against the InputFiles 200 KB cap (it's prepended
+to the file body before canonicalization). Practical effect: the
+goal gets ~few hundred bytes; cap impact negligible. Tests cover
+both: empty `--goal` rejected; goal + files near 200 KB triggers
+the byte-cap abort with "narrow scope" hint.
 
 **Acceptance:**
 - Skill installable
+- `--goal` flag required; tests cover the missing-goal error path
+- Goal + files combined respects the 200 KB cap; over-cap test
+  asserts the abort fires before any agent invocation
 - Output is consumable by `planning-and-task-breakdown` as input
 
 ---
@@ -285,10 +370,28 @@ prioritized recommendations.
 `--full` defaults ON for this preset (security is high-stakes).
 
 CLI: `jutsu swarm security-audit --pr 42` or `jutsu swarm security-audit cmd/server/`.
+Dual input mode: `--pr <n>` / `--diff-from-branch <ref>` selects
+InputDiff path (reuses pr-review's resolver); positional file/dir
+paths select InputFiles path. Mutual exclusivity enforced — passing
+both errors with a "pick one" hint.
+
+Cache-key salting: the preset name (`security-audit`) is included
+in the SHA256 input per the locked-decisions canonicalization rule,
+so a security-audit run on PR #42 doesn't collide with a pr-review
+run on the same SHA. Test asserts distinct cache dirs:
+`.kaijutsu/security-audit-runs/<key>/` vs
+`.kaijutsu/pr-review-runs/<key>/`.
 
 **Acceptance:**
 - Skill installable
 - Output references CVSS taxonomy where applicable
+- Both input modes (PR mode + files mode) tested end-to-end with
+  mocked agents
+- Mutual-exclusivity flag check tested
+- Cache-collision-prevention test asserts security-audit + pr-review
+  on the same diff produce distinct cache dirs
+- `--full` mode default verified (a `--quick` invocation must be
+  explicit to override)
 
 ---
 
@@ -317,7 +420,7 @@ After Stage 4: write a v0.5.0 announcement post highlighting the
 | security-audit severity vocab confusion with pr-review's | Document each preset's vocabulary clearly. Disagreement table renders the preset's severity strings verbatim. |
 | Phase 2 spec itself contains errors only doc-review would catch | Bootstrap: review THIS plan with `jutsu swarm pr-review --diff-from-branch origin/main` before starting Stage 1. Code-tuned lens gives ~partial signal but better than nothing. |
 | Skill-shipped per-agent prompts expand the prompt-injection surface — a malicious upstream skill could ship prompts that turn the synthesizer into a confused-deputy (e.g. embed instructions in its agent prompts that the synthesizer later reads as data) | Three layers of defense, wired during the relevant stages (NOT pre-shipped — calling these out explicitly so the threat model isn't claiming infrastructure that doesn't exist yet): (a) **Stages 3–7 acceptance includes**: each new core skill (doc-review, brainstorm, refactor-plan, security-audit) ships with `trust.expected-signer: kaijutsu-core@github` in its skill.yaml AND is added to sign-core.yml's signing manifest. After release tagging, `jutsu install <skill>` hard-fails on signature mismatch (sigstore enforcement, already wired for v0.3.1+ core skills). (b) **Phase-1 INPUT-INTEGRITY block already extended in shared headers** to instruct the model to treat user-content as data; future tightening (Phase 3) will extend that wording to cover skill-loaded prompts at runtime as well. (c) **Stages 3–7 documentation deliverable**: `references/prompt-design.md` per skill includes a skill-prompt-audit recipe for users who install community skills that override prompts. |
-| `gemini -p` invokes file-read tools mid-prompt and aborts on missing paths (observed during the bootstrap review) | Stage 0 follow-up: investigate whether `--json-mode` or an explicit `--no-tools` flag exists for gemini headless mode. If not, document the limitation + add a runtime probe that catches "Error executing tool" stderr signals and treats them as a soft-fail (record + skip the agent rather than blocking the run). |
+| `gemini -p` invokes file-read tools mid-prompt and aborts on missing paths | **Mitigated in Stage 0** (Phase-1 polish). `cli/internal/swarm/agent.go` runs gemini with `--approval-mode plan` (read-only sandbox, auto-approves reads, blocks writes) + the gemini lens prompt explicitly instructs "no tools, reason from input only". Future regression risk if a new preset routes through a different gemini invocation; tests should assert `--approval-mode plan` survives the build. |
 
 ---
 
@@ -337,25 +440,33 @@ After Stage 4: write a v0.5.0 announcement post highlighting the
 
 1. **Should the existing review-pass logic in spec/plan/decide skills
    be DELETED or kept as fallback when doc-review isn't installed?**
-   Lean toward fallback: graceful degradation if user has the skill
-   but not the preset.
+   **RESOLVED → DELETE.** Stage 4 replaces (not supplements). Reasons
+   in Stage 4 body. doc-review is a transitive dep so "missing" only
+   happens after explicit `jutsu remove`, which already breaks the
+   parent skill.
 
 2. **doc-review on a draft markdown that imports/links to other
    files — should those linked files be loaded into context?**
-   Phase 2 says no (single-file input). Phase 3 could add link
-   resolution.
+   **DEFERRED to Phase 3.** Phase 2 = single-file (or multi-file
+   concatenated via Stage 2's InputFiles). Link resolution adds a
+   crawl mechanism with its own risks (cycles, off-tree paths).
 
 3. **brainstorm + decide chain — should `decide` invoke brainstorm
-   automatically?** Probably no; user chooses. But document the chain
-   pattern in decide's SKILL.md.
+   automatically?** **DEFERRED.** User chooses. Document the chain
+   pattern in decide's SKILL.md (Stage 4) so users know the option.
 
 4. **Should `jutsu swarm` print preset-discovery output on `--help`?**
-   `jutsu swarm --help` listing installed presets + their input kinds
-   is high-value UX. Add to Stage 1.
+   **RESOLVED → YES, in Stage 1 acceptance.** `jutsu swarm --help`
+   lists registered presets via `BuiltinPresets()`.
 
-5. **Per-preset `--max-cost` defaults?** security-audit + refactor-plan
-   are higher-stakes; might warrant a higher default budget. Stage 7
-   will tune.
+5. **Per-preset input byte caps + `--max-cost` defaults — tunable
+   via skill metadata?** **DEFERRED to Phase 3.** Phase 2 ships
+   fixed defaults (200 KB / 200 KB / 8 KB; $1.00 max-cost).
+   security-audit + refactor-plan are higher-stakes and may warrant
+   higher caps once observed in the wild. Stage 7 will recommend
+   adjustments based on real usage but won't ship the tunability
+   plumbing — that's a Phase-3 Preset-struct addition (`MaxBytes`,
+   `MaxCostUSD`).
 
 ---
 
