@@ -122,11 +122,13 @@ func runAutoPublish(cmd *cobra.Command, skillDir string, sk *skill.Skill, workdi
 	}
 	forkRepo := user + "/kaijutsu"
 
+	var tmpRoot string
 	if workdir == "" {
 		tmp, err := os.MkdirTemp("", "kaijutsu-fork-")
 		if err != nil {
 			return err
 		}
+		tmpRoot = tmp
 		workdir = filepath.Join(tmp, "kaijutsu")
 	} else {
 		// User-supplied workdir: must be either non-existent or a
@@ -180,6 +182,13 @@ func runAutoPublish(cmd *cobra.Command, skillDir string, sk *skill.Skill, workdi
 		return err
 	}
 	if err := ensureClone(stderr, forkRepo, workdir); err != nil {
+		return err
+	}
+	// Catastrophic-failure guard: if --workdir points at the upstream
+	// source checkout (origin = upstreamRepo) instead of the user's
+	// fork, every subsequent op (reset --hard, force-push) would
+	// destroy upstream history. Verify origin matches the fork.
+	if err := verifyWorkdirOrigin(workdir, forkRepo); err != nil {
 		return err
 	}
 	if err := run(stderr, workdir, "git", "fetch", "origin"); err != nil {
@@ -238,6 +247,11 @@ func runAutoPublish(cmd *cobra.Command, skillDir string, sk *skill.Skill, workdi
 	// non-empty line as the canonical URL.
 	prURL = lastNonEmptyLine(prURL)
 	fmt.Fprintf(out, "\nPR opened: %s\n", prURL)
+	// Clean up the auto-allocated temp dir on success only — leak
+	// on failure so the user can inspect the partial state.
+	if tmpRoot != "" {
+		_ = os.RemoveAll(tmpRoot)
+	}
 	return nil
 }
 
@@ -297,6 +311,35 @@ func ensureFork(stderr io.Writer, user string) error {
 		return verifyForkParent(forkRepo)
 	}
 	return run(stderr, "", "gh", "repo", "fork", upstreamRepo, "--clone=false")
+}
+
+// verifyWorkdirOrigin asserts that <workdir>'s `origin` remote points
+// at <forkRepo>. If a user passes --workdir pointing at the upstream
+// source checkout (or any unrelated kaijutsu clone), this catches it
+// before the destructive `git reset --hard` and force-push.
+func verifyWorkdirOrigin(workdir, forkRepo string) error {
+	c := exec.Command("git", "remote", "get-url", "origin")
+	c.Dir = workdir
+	out, err := c.Output()
+	if err != nil {
+		return fmt.Errorf("verify workdir origin: %w", err)
+	}
+	url := strings.TrimSpace(string(out))
+	// Match either ssh (git@github.com:owner/repo.git) or https
+	// (https://github.com/owner/repo[.git]).
+	want := []string{
+		"git@github.com:" + forkRepo + ".git",
+		"git@github.com:" + forkRepo,
+		"https://github.com/" + forkRepo + ".git",
+		"https://github.com/" + forkRepo,
+	}
+	for _, w := range want {
+		if url == w {
+			return nil
+		}
+	}
+	return fmt.Errorf("--workdir %s has origin %q but expected the fork at %s. Refusing to proceed — would force-push to the wrong repo. Pick a different --workdir, or remove the existing one to let --auto re-clone the fork",
+		workdir, url, forkRepo)
 }
 
 func ensureClone(stderr io.Writer, forkRepo, workdir string) error {

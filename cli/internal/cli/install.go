@@ -261,7 +261,7 @@ func (s *installSession) confirmHooks(sk *skill.Skill) error {
 	r := bufio.NewReader(s.cmd.InOrStdin())
 	line, err := r.ReadString('\n')
 	if err != nil {
-		return errors.New("hook install declined (no input)")
+		return errors.New("hook install declined (no input); re-run with --yes to accept hooks non-interactively or --no-hooks to skip them")
 	}
 	line = strings.TrimSpace(strings.ToLower(line))
 	if line != "y" && line != "yes" {
