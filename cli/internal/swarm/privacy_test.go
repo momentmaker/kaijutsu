@@ -78,16 +78,17 @@ func TestSecretsScan_OpenAIClassicKey(t *testing.T) {
 }
 
 func TestSecretsScan_OpenAIClassicNoFalsePositiveOnEmbedded(t *testing.T) {
-	// Words ending in `-sk` or starting `sk` followed by long
-	// alphanumerics in code (e.g., variable names) should NOT
-	// trigger. The leading-char anchor enforces a delimiter.
+	// `sk-` preceded by `-` (a non-delimiter char in the leading
+	// anchor `[ \t"'=:;,]`) should NOT match. Real-world shapes
+	// this guards against include `task-sk-...`, `repo-sk-...`,
+	// kebab-case identifiers that end in -sk- midword.
 	diff := `diff --git a/foo.go b/foo.go
 +++ b/foo.go
-+var taskSkAbcd1234EfghIjkl5678MnopQrst9012UvwxYzab3456 = 1`
++var taskID = "task-sk-Abcd1234EfghIjkl5678MnopQrst9012UvwxYzab3456"`
 	hits := SecretsScan(diff)
 	for _, h := range hits {
 		if strings.Contains(h.Reason, "classic") {
-			t.Errorf("false positive on embedded sk-like substring: %+v", h)
+			t.Errorf("false positive on hyphen-prefixed sk- substring: %+v", h)
 		}
 	}
 }
