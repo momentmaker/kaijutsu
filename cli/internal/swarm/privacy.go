@@ -73,12 +73,26 @@ var contentPatterns = []struct {
 	// GitHub PAT (classic + fine-grained)
 	{regexp.MustCompile(`ghp_[A-Za-z0-9]{36,}`), "GitHub personal access token"},
 	{regexp.MustCompile(`github_pat_[A-Za-z0-9_]{60,}`), "GitHub fine-grained token"},
-	// Google API key
+	// Google API key (covers Gemini API keys — same prefix shape)
 	{regexp.MustCompile(`AIza[0-9A-Za-z_\-]{35}`), "Google API key"},
 	// Slack token
 	{regexp.MustCompile(`xox[baprs]-[A-Za-z0-9-]{10,}`), "Slack token"},
 	// Stripe live secret
 	{regexp.MustCompile(`sk_live_[A-Za-z0-9]{24,}`), "Stripe live secret"},
+	// Anthropic API key. Real shape is sk-ant-api03-<long>. Match
+	// any sk-ant- prefix conservatively to also catch test/staging
+	// variants. Important for kaijutsu specifically — accidental
+	// leak goes back through claude itself.
+	{regexp.MustCompile(`sk-ant-api\d+-[A-Za-z0-9_\-]{20,}`), "Anthropic API key"},
+	// OpenAI: project keys (sk-proj-...), service-account keys
+	// (sk-svcacct-...), classic user keys (sk-...). Classic shape
+	// is sk- followed by ~48 alphanumerics; require 40+ so short
+	// tokens like "sk-1" in test fixtures don't false-positive.
+	// Anchor classic pattern with a non-word leading char so
+	// `task-skXXXX` and similar don't trigger.
+	{regexp.MustCompile(`sk-proj-[A-Za-z0-9_\-]{40,}`), "OpenAI project API key"},
+	{regexp.MustCompile(`sk-svcacct-[A-Za-z0-9_\-]{40,}`), "OpenAI service-account API key"},
+	{regexp.MustCompile(`(?:^|[ \t"'=:;,])sk-[A-Za-z0-9]{40,}`), "OpenAI API key (classic)"},
 	// Generic PEM block
 	{regexp.MustCompile(`-----BEGIN (RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY-----`), "private key block"},
 }

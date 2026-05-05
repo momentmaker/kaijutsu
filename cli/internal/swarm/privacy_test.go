@@ -29,6 +29,69 @@ func TestSecretsScan_PrivateKeyContent(t *testing.T) {
 	}
 }
 
+func TestSecretsScan_AnthropicKey(t *testing.T) {
+	diff := `diff --git a/cfg.toml b/cfg.toml
++++ b/cfg.toml
++ANTHROPIC_API_KEY=sk-ant-api03-abc123_def-XYZ789-abc123def456ghi789jkl0`
+	hits := SecretsScan(diff)
+	found := false
+	for _, h := range hits {
+		if strings.Contains(h.Reason, "Anthropic") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected Anthropic key hit, got %+v", hits)
+	}
+}
+
+func TestSecretsScan_OpenAIProjectKey(t *testing.T) {
+	diff := `diff --git a/cfg.toml b/cfg.toml
++++ b/cfg.toml
++OPENAI_KEY=sk-proj-abc123def456_ghi789-jkl012mno345pqr678stu901vwx234yz5`
+	hits := SecretsScan(diff)
+	found := false
+	for _, h := range hits {
+		if strings.Contains(h.Reason, "OpenAI project") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected OpenAI project key hit, got %+v", hits)
+	}
+}
+
+func TestSecretsScan_OpenAIClassicKey(t *testing.T) {
+	diff := `diff --git a/cfg.toml b/cfg.toml
++++ b/cfg.toml
++key="sk-Abcd1234EfghIjkl5678MnopQrst9012UvwxYzab3456"`
+	hits := SecretsScan(diff)
+	found := false
+	for _, h := range hits {
+		if strings.Contains(h.Reason, "classic") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected OpenAI classic key hit, got %+v", hits)
+	}
+}
+
+func TestSecretsScan_OpenAIClassicNoFalsePositiveOnEmbedded(t *testing.T) {
+	// Words ending in `-sk` or starting `sk` followed by long
+	// alphanumerics in code (e.g., variable names) should NOT
+	// trigger. The leading-char anchor enforces a delimiter.
+	diff := `diff --git a/foo.go b/foo.go
++++ b/foo.go
++var taskSkAbcd1234EfghIjkl5678MnopQrst9012UvwxYzab3456 = 1`
+	hits := SecretsScan(diff)
+	for _, h := range hits {
+		if strings.Contains(h.Reason, "classic") {
+			t.Errorf("false positive on embedded sk-like substring: %+v", h)
+		}
+	}
+}
+
 func TestSecretsScan_AwsAccessKey(t *testing.T) {
 	diff := `diff --git a/cfg.toml b/cfg.toml
 +++ b/cfg.toml

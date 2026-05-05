@@ -2,6 +2,7 @@ package swarm
 
 import (
 	"os/exec"
+	"sync"
 )
 
 // AgentName is one of the CLI agents kaijutsu orchestrates.
@@ -17,6 +18,16 @@ const (
 // table-column ordering.
 var AllAgents = []AgentName{AgentClaude, AgentCodex, AgentGemini}
 
+// availabilityCache memoizes Available() results within a single
+// process. The codex probe shells out (~1s per call) and there are
+// multiple call sites per `jutsu swarm` invocation (Available,
+// AvailableAgents, pickSynthesizer). Without caching, those add up.
+var (
+	availabilityCache   = map[AgentName]bool{}
+	availabilityCacheMu sync.Mutex
+	availabilityCached  = map[AgentName]bool{}
+)
+
 // Available reports whether the named CLI is installed AND has a
 // usable session. Auth probe per agent:
 //   - claude: binary on PATH (the `-p` invocation will fail loudly
@@ -27,7 +38,39 @@ var AllAgents = []AgentName{AgentClaude, AgentCodex, AgentGemini}
 // We deliberately don't probe deeper for claude/gemini because their
 // auth state lives in user-config dirs that change across versions and
 // re-running a stale probe regularly produces false negatives.
+//
+// Result is cached for the lifetime of the process. Auth state can
+// change mid-run (e.g., user runs `claude /logout` in another shell)
+// but jutsu invocations are short-lived enough that probing once is
+// the right tradeoff.
 func Available(name AgentName) bool {
+	availabilityCacheMu.Lock()
+	if availabilityCached[name] {
+		v := availabilityCache[name]
+		availabilityCacheMu.Unlock()
+		return v
+	}
+	availabilityCacheMu.Unlock()
+
+	v := probeAvailable(name)
+
+	availabilityCacheMu.Lock()
+	availabilityCache[name] = v
+	availabilityCached[name] = true
+	availabilityCacheMu.Unlock()
+	return v
+}
+
+// ResetAvailabilityCache clears the cached probes. Exposed for tests
+// + future commands that explicitly re-check (e.g. `jutsu doctor`).
+func ResetAvailabilityCache() {
+	availabilityCacheMu.Lock()
+	defer availabilityCacheMu.Unlock()
+	availabilityCache = map[AgentName]bool{}
+	availabilityCached = map[AgentName]bool{}
+}
+
+func probeAvailable(name AgentName) bool {
 	switch name {
 	case AgentClaude:
 		_, err := exec.LookPath("claude")

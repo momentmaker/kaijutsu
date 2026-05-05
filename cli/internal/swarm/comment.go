@@ -29,6 +29,12 @@ func Marker(runID, sha string) string {
 //
 // The current SHA is expected to be embedded in body's marker line
 // already (via swarm.Marker); this function does not re-marker.
+//
+// Why we don't use `gh pr comment --edit-last`: that flag edits the
+// last comment by the AUTHENTICATED USER regardless of body. If the
+// user comments manually after a bot run, --edit-last would clobber
+// the human comment instead of the bot's. The marker + PATCH-by-id
+// flow correctly targets only kaijutsu-marked comments.
 func PostOrUpdateComment(ctx context.Context, pr int, body string) error {
 	prior, priorBody, err := findPriorComment(ctx, pr)
 	if err != nil {
