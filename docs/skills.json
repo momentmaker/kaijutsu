@@ -4,9 +4,9 @@
   "skills": [
     {
       "name": "agent-doctor",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "license": "MIT",
-      "description": "Diagnostic + cleanup tool for AI agent state directories. Audits ~/.claude, ~/.codex, ~/.gemini, ~/.agents; surfaces stale sessions, orphaned cache, broken hook refs; reclaims space safely (trash-not-delete, 30-day recovery).",
+      "description": "Diagnostic + cleanup tool for AI agent state directories. Audits ~/.claude, ~/.codex, ~/.gemini, ~/.agents; surfaces stale sessions, orphaned cache, broken hook refs; reclaims space safely (trash-not-delete, 30-day recovery). Ships scripts/{lib,doctor,cleanup}.sh, references/{directory-map,cleanup-tiers,protected-paths}.md, runbooks/recover-from-trash.md.",
       "agents": [
         "claude",
         "codex",
@@ -600,9 +600,9 @@
     },
     {
       "name": "pr-review",
-      "version": "0.3.0",
+      "version": "1.0.0",
       "license": "MIT",
-      "description": "Adversarial PR review. Run by a different agent than the committer; assume bugs exist; surface them as inline PR comments via gh. Optional multi-model fan-out for high-stakes diffs.",
+      "description": "Adversarial multi-agent PR review. Runs claude / codex / gemini in parallel via `jutsu swarm pr-review`, each with a tailored prompt, then synthesizes into a single markdown review with a disagreement table. --full mode adds a Pass-2 round-robin debate. Posts the result as a PR comment when --post-comment is set.",
       "agents": [
         "claude",
         "codex",
@@ -612,6 +612,7 @@
         "code-review",
         "pull-request",
         "github",
+        "multi-agent",
         "adversarial"
       ],
       "source": "core",
@@ -622,7 +623,7 @@
       "permissions": {
         "bash": true,
         "network": true,
-        "fs_write": false
+        "fs_write": "scoped"
       }
     },
     {

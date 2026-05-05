@@ -230,12 +230,12 @@
 
   <div class="grid" id="grid">
     
-    <article class="card" data-source="core" data-hooks="false" data-search="agent-doctor Diagnostic &#43; cleanup tool for AI agent state directories. Audits ~/.claude, ~/.codex, ~/.gemini, ~/.agents; surfaces stale sessions, orphaned cache, broken hook refs; reclaims space safely (trash-not-delete, 30-day recovery). maintenance cleanup disk-space claude codex gemini">
+    <article class="card" data-source="core" data-hooks="false" data-search="agent-doctor Diagnostic &#43; cleanup tool for AI agent state directories. Audits ~/.claude, ~/.codex, ~/.gemini, ~/.agents; surfaces stale sessions, orphaned cache, broken hook refs; reclaims space safely (trash-not-delete, 30-day recovery). Ships scripts/{lib,doctor,cleanup}.sh, references/{directory-map,cleanup-tiers,protected-paths}.md, runbooks/recover-from-trash.md. maintenance cleanup disk-space claude codex gemini">
       <div class="row">
-        <h3>agent-doctor<span style="color:var(--muted);font-weight:normal"> 0.1.0</span></h3>
+        <h3>agent-doctor<span style="color:var(--muted);font-weight:normal"> 0.2.0</span></h3>
         <span class="badge badge-core">CORE</span>
       </div>
-      <p class="desc">Diagnostic &#43; cleanup tool for AI agent state directories. Audits ~/.claude, ~/.codex, ~/.gemini, ~/.agents; surfaces stale sessions, orphaned cache, broken hook refs; reclaims space safely (trash-not-delete, 30-day recovery).</p>
+      <p class="desc">Diagnostic &#43; cleanup tool for AI agent state directories. Audits ~/.claude, ~/.codex, ~/.gemini, ~/.agents; surfaces stale sessions, orphaned cache, broken hook refs; reclaims space safely (trash-not-delete, 30-day recovery). Ships scripts/{lib,doctor,cleanup}.sh, references/{directory-map,cleanup-tiers,protected-paths}.md, runbooks/recover-from-trash.md.</p>
       <div class="row">
         <span class="agents">claude · codex · gemini</span>
         
@@ -568,12 +568,12 @@
       <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install polish')" title="Click to copy">jutsu install polish</div>
     </article>
     
-    <article class="card" data-source="core" data-hooks="false" data-search="pr-review Adversarial PR review. Run by a different agent than the committer; assume bugs exist; surface them as inline PR comments via gh. Optional multi-model fan-out for high-stakes diffs. code-review pull-request github adversarial claude codex gemini">
+    <article class="card" data-source="core" data-hooks="false" data-search="pr-review Adversarial multi-agent PR review. Runs claude / codex / gemini in parallel via `jutsu swarm pr-review`, each with a tailored prompt, then synthesizes into a single markdown review with a disagreement table. --full mode adds a Pass-2 round-robin debate. Posts the result as a PR comment when --post-comment is set. code-review pull-request github multi-agent adversarial claude codex gemini">
       <div class="row">
-        <h3>pr-review<span style="color:var(--muted);font-weight:normal"> 0.3.0</span></h3>
+        <h3>pr-review<span style="color:var(--muted);font-weight:normal"> 1.0.0</span></h3>
         <span class="badge badge-core">CORE</span>
       </div>
-      <p class="desc">Adversarial PR review. Run by a different agent than the committer; assume bugs exist; surface them as inline PR comments via gh. Optional multi-model fan-out for high-stakes diffs.</p>
+      <p class="desc">Adversarial multi-agent PR review. Runs claude / codex / gemini in parallel via `jutsu swarm pr-review`, each with a tailored prompt, then synthesizes into a single markdown review with a disagreement table. --full mode adds a Pass-2 round-robin debate. Posts the result as a PR comment when --post-comment is set.</p>
       <div class="row">
         <span class="agents">claude · codex · gemini</span>
         
