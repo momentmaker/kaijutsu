@@ -42,6 +42,7 @@ func newSwarmPRReviewCmd() *cobra.Command {
 		perAgentBudget float64
 		timeout        time.Duration
 		diffFromBranch string
+		format         string
 	)
 	cmd := &cobra.Command{
 		Use:   "pr-review",
@@ -102,31 +103,43 @@ func newSwarmPRReviewCmd() *cobra.Command {
 			for _, r := range results {
 				run.TotalCost += r.Cost
 			}
+			// Synthesis pass — Stage 2 default. --format json skips it
+			// and dumps the raw multi-agent results instead.
+			if format != "json" {
+				synthAgent := pickSynthesizer(synthesizer, results)
+				if synthAgent == nil {
+					fmt.Fprintln(stderr, "warning: no synthesizer agent available; falling back to JSON dump")
+					format = "json"
+				} else {
+					synth, synthErr := swarm.Synthesize(ctx, results, synthAgent, preset, perAgentBudget, timeout)
+					if synth != nil {
+						run.TotalCost += synth.Cost
+					}
+					if maxCostUSD > 0 && run.TotalCost > maxCostUSD {
+						fmt.Fprintf(stderr, "warning: estimated total cost $%.2f exceeded --max-cost $%.2f\n", run.TotalCost, maxCostUSD)
+					}
+					if synthErr != nil {
+						fmt.Fprintf(stderr, "warning: synthesis: %v (using deterministic fallback markdown)\n", synthErr)
+					}
+					if synth != nil {
+						fmt.Fprint(out, synth.Markdown)
+					}
+					reportSwarmStderr(stderr, results, finished.Sub(start), run.TotalCost)
+					_ = strict
+					return nil
+				}
+			}
+
 			if maxCostUSD > 0 && run.TotalCost > maxCostUSD {
 				fmt.Fprintf(stderr, "warning: estimated total cost $%.2f exceeded --max-cost $%.2f\n", run.TotalCost, maxCostUSD)
 			}
-
 			enc := json.NewEncoder(out)
 			enc.SetIndent("", "  ")
 			if err := enc.Encode(run); err != nil {
 				return err
 			}
-
-			fmt.Fprintf(stderr, "\nswarm done in %s · est cost $%.2f\n",
-				finished.Sub(start).Round(time.Millisecond), run.TotalCost)
-			for _, r := range results {
-				if r.Err != "" {
-					fmt.Fprintf(stderr, "  %s: ERROR %s\n", r.Agent, r.Err)
-				} else {
-					fmt.Fprintf(stderr, "  %s: %d finding(s) · %s\n", r.Agent, len(r.Findings), r.Duration.Round(time.Millisecond))
-				}
-			}
-
-			// Stages 2–3 plug in here: synthesize results into markdown,
-			// optionally run a Pass-2 debate first, optionally lie-to-them
-			// filter the synthesis draft.
+			reportSwarmStderr(stderr, results, finished.Sub(start), run.TotalCost)
 			_ = strict
-			_ = synthesizer
 			return nil
 		},
 	}
@@ -138,7 +151,35 @@ func newSwarmPRReviewCmd() *cobra.Command {
 	cmd.Flags().Float64Var(&perAgentBudget, "per-agent-budget", 0.50, "passed to each agent's --max-budget-usd if supported")
 	cmd.Flags().StringVar(&synthesizer, "synthesizer", "claude", "(Stage 2) which agent runs the synthesis pass")
 	cmd.Flags().DurationVar(&timeout, "timeout", 180*time.Second, "per-agent invocation timeout")
+	cmd.Flags().StringVar(&format, "format", "markdown", "markdown (default — synthesized review) | json (raw multi-agent dump, no synthesis)")
 	return cmd
+}
+
+// pickSynthesizer chooses which agent runs the synthesis pass.
+// Prefers the user-requested name if available; otherwise falls back
+// to the first agent that produced findings.
+func pickSynthesizer(want string, results []swarm.AgentResult) swarm.Agent {
+	if want != "" && swarm.Available(swarm.AgentName(want)) {
+		return swarm.AgentFor(swarm.AgentName(want))
+	}
+	for _, r := range results {
+		if r.Err == "" && swarm.Available(swarm.AgentName(r.Agent)) {
+			return swarm.AgentFor(swarm.AgentName(r.Agent))
+		}
+	}
+	return nil
+}
+
+func reportSwarmStderr(stderr interface{ Write(p []byte) (int, error) }, results []swarm.AgentResult, dur time.Duration, totalCost float64) {
+	fmt.Fprintf(stderr, "\nswarm done in %s · est cost $%.2f\n",
+		dur.Round(time.Millisecond), totalCost)
+	for _, r := range results {
+		if r.Err != "" {
+			fmt.Fprintf(stderr, "  %s: ERROR %s\n", r.Agent, r.Err)
+		} else {
+			fmt.Fprintf(stderr, "  %s: %d finding(s) · %s\n", r.Agent, len(r.Findings), r.Duration.Round(time.Millisecond))
+		}
+	}
 }
 
 // resolveSwarmDiff figures out which diff to review based on flags.
