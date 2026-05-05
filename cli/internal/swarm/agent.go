@@ -75,8 +75,16 @@ func (geminiAgent) Run(ctx context.Context, prompt string, budget float64) (stri
 // runWithStdin executes name with args and prompt piped to stdin.
 // Returns the captured stdout. stderr is captured into the error on
 // non-zero exit. Respects ctx cancellation/timeout.
+//
+// WaitDelay (Go 1.20+) ensures that if the agent's main process exits
+// after ctx-cancellation but child processes (e.g., update-checkers)
+// keep stdout/stderr pipes open, the goroutine doesn't hang waiting
+// for those pipes to drain. After 5 seconds beyond cancellation, Go
+// SIGKILLs the process group and returns from Wait(). Without this,
+// a hung daemon child holds the FanOut goroutine indefinitely.
 func runWithStdin(ctx context.Context, name string, args []string, stdin string) (string, error) {
 	c := exec.CommandContext(ctx, name, args...)
+	c.WaitDelay = 5 * time.Second
 	if stdin != "" {
 		c.Stdin = bytes.NewBufferString(stdin)
 	}

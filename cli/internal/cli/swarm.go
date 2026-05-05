@@ -156,17 +156,24 @@ func newSwarmPRReviewCmd() *cobra.Command {
 					}
 					// Stage 3: --full runs a Pass-2 round-robin debate
 					// before synthesis so the synthesizer can lean on
-					// peer-tested findings.
-					effective := results
+					// peer-tested findings. SynthesizeWithDebate merges
+					// Pass-1 + Pass-2 — agents whose Pass-2 erred or
+					// returned no findings keep their Pass-1 results,
+					// so a flaky debate round doesn't lose signal.
+					var (
+						synth    *swarm.Synthesis
+						synthErr error
+					)
 					if mode == "full" && !overBudget {
 						fmt.Fprintln(stderr, "swarm: --full mode — Pass 2 round-robin debate starting")
 						pass2 := swarm.Debate(ctx, results, preset, perAgentBudget, timeout)
 						for _, r := range pass2 {
 							run.TotalCost += r.Cost
 						}
-						effective = pass2
+						synth, synthErr = swarm.SynthesizeWithDebate(ctx, results, pass2, synthAgent, preset, perAgentBudget, timeout)
+					} else {
+						synth, synthErr = swarm.Synthesize(ctx, results, synthAgent, preset, perAgentBudget, timeout)
 					}
-					synth, synthErr := swarm.Synthesize(ctx, effective, synthAgent, preset, perAgentBudget, timeout)
 					if synth != nil {
 						run.TotalCost += synth.Cost
 					}

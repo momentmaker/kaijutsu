@@ -5,8 +5,25 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
+
+// shaRe matches a 7-to-64-char lowercase hex string. CacheDir and
+// LoadCachedResults reject anything else so a hostile `--replay` arg
+// cannot escape the cache root via path traversal (e.g.
+// `--replay ../../../etc`).
+var shaRe = regexp.MustCompile(`^[0-9a-f]{7,64}$`)
+
+// ValidateSHA returns an error if sha is not in the form expected for
+// a git commit hash (lowercase hex, 7–64 chars). Exposed so callers
+// can fail-fast on user-supplied input before computing paths.
+func ValidateSHA(sha string) error {
+	if !shaRe.MatchString(sha) {
+		return fmt.Errorf("invalid SHA %q: must be lowercase hex, 7–64 chars", sha)
+	}
+	return nil
+}
 
 // CacheDir returns the on-disk path for a per-SHA run cache. Layout:
 //
@@ -24,8 +41,13 @@ func CacheDir(projectRoot, sha string) string {
 
 // CacheRun writes per-agent results + the synthesis markdown into
 // the per-SHA cache directory. Best-effort — cache failure should
-// not abort the run, just warn.
+// not abort the run, just warn. Validates SHA shape so a
+// surprising upstream value (e.g. empty or path-traversal-y) never
+// produces a write outside the cache root.
 func CacheRun(projectRoot, sha string, results []AgentResult, synthesisMarkdown string) error {
+	if err := ValidateSHA(sha); err != nil {
+		return err
+	}
 	dir := CacheDir(projectRoot, sha)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
@@ -49,9 +71,12 @@ func CacheRun(projectRoot, sha string, results []AgentResult, synthesisMarkdown 
 }
 
 // LoadCachedResults reads every <agent>.json from the per-SHA cache
-// directory. Used by --replay. Returns an error if the directory
-// doesn't exist or has no .json files inside.
+// directory. Used by --replay. Returns an error if the SHA is
+// malformed, the directory doesn't exist, or no .json files inside.
 func LoadCachedResults(projectRoot, sha string) ([]AgentResult, error) {
+	if err := ValidateSHA(sha); err != nil {
+		return nil, err
+	}
 	dir := CacheDir(projectRoot, sha)
 	entries, err := os.ReadDir(dir)
 	if err != nil {
