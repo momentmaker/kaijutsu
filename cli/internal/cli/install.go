@@ -227,29 +227,39 @@ func (s *installSession) load(name, constraint string) (*loaded, error) {
 // warnVersionConflict emits a stderr warning when a transitive dep is
 // requested under a constraint the already-resolved tag doesn't satisfy.
 // First-resolved wins; this just makes the conflict visible. Constraints
-// from deps.skills resolve against REGISTRY TAGS (see resolveRef), so we
-// compare against entry.Tag, not entry.Version (which is the skill's
-// internal version since v0.3.2).
+// from deps.skills resolve against REGISTRY TAGS (see resolveRef).
+//
+// For v0.3.2+ lockfiles entry.Tag is the registry tag and is the right
+// thing to check against. For legacy lockfiles (pre-6h, no tag field)
+// entry.Version held the resolved tag's semver — we fall back to it
+// rather than silently dropping the warning.
 func (s *installSession) warnVersionConflict(name, requested, parent string) {
 	if requested == "" || parent == "" {
 		return
 	}
 	entry, ok := s.lf.Skills[name]
-	if !ok || entry.Tag == "" {
+	if !ok {
+		return
+	}
+	pinned := entry.Tag
+	if pinned == "" && entry.Version != nil {
+		pinned = *entry.Version
+	}
+	if pinned == "" {
 		return
 	}
 	c, err := semver.NewConstraint(requested)
 	if err != nil {
 		return
 	}
-	v, err := semver.NewVersion(entry.Tag)
+	v, err := semver.NewVersion(pinned)
 	if err != nil {
 		return
 	}
 	if !c.Check(v) {
 		fmt.Fprintf(s.cmd.ErrOrStderr(),
 			"warning: %s wants %s@%s but the lockfile pinned %s@%s — replacing the pin with a freshly-resolved version.\n",
-			parent, name, requested, name, entry.Tag)
+			parent, name, requested, name, pinned)
 	}
 }
 

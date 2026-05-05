@@ -81,6 +81,10 @@ that exceed the constraint.`,
 				if err != nil {
 					return fmt.Errorf("upgrade %s: %w", c.name, err)
 				}
+				if err := verifySignature(cmd.Context(), cmd.ErrOrStderr(), fetcher, l); err != nil {
+					l.cleanup()
+					return fmt.Errorf("upgrade %s: %w", c.name, err)
+				}
 				if err := install.Install(l.dir, installRoot, m.Agents, l.skill); err != nil {
 					l.cleanup()
 					return err
@@ -144,10 +148,9 @@ type upgradeCandidate struct {
 	path       string
 	oldRef     string
 	oldTag     string // registry tag the lockfile pinned (e.g. "v0.2.1")
-	oldVersion string // skill's internal version from the lockfile (e.g. "0.3.0")
+	oldVersion string // skill-internal version (post-6h) or tag-semver (legacy lockfile)
 	newRef     string
 	newTag     string // registry tag we'd upgrade to (e.g. "v0.3.1")
-	newVersion string // semver-cleaned form of newTag (e.g. "0.3.1")
 }
 
 func planUpgrades(cmd *cobra.Command, fetcher *fetch.Fetcher, m *manifest.Manifest, lf *manifest.Lockfile, names []string, only string, major bool) ([]upgradeCandidate, error) {
@@ -204,24 +207,30 @@ func planUpgrades(cmd *cobra.Command, fetcher *fetch.Fetcher, m *manifest.Manife
 		if entry.Version != nil {
 			oldV = *entry.Version
 		}
-		if oldTag != "" {
+		switch {
+		case oldTag != "":
 			oldTV, oerr := semver.NewVersion(oldTag)
 			newTV, nerr := semver.NewVersion(newTag)
 			if oerr == nil && nerr == nil && !newTV.GreaterThan(oldTV) {
 				continue
 			}
-		} else if oldV != "" {
-			// Legacy lockfile (no tag field). Best-effort fallback:
-			// treat the skill's internal version as a proxy for the
-			// release. Imperfect when internal-version != tag-version
-			// (the case that motivated this whole refactor), but
-			// better than always reporting an upgrade. Re-running
-			// `jutsu install <skill>` repopulates the tag field.
+		case oldV != "":
+			// Legacy v0.3.1 lockfile (no tag field). Pre-6h
+			// recordInstall stored the resolved tag's semver in
+			// Version, so this comparison is correct for genuine
+			// legacy entries. For corrupted post-6h entries (Tag
+			// stripped but Version is skill-internal) the
+			// comparison may suppress an upgrade — re-running
+			// `jutsu install <skill>` rebuilds the entry.
 			oldSV, oerr := semver.NewVersion(oldV)
 			newSV, nerr := semver.NewVersion(newVersion)
 			if oerr == nil && nerr == nil && !newSV.GreaterThan(oldSV) {
 				continue
 			}
+		default:
+			// Neither Tag nor Version recorded — show as
+			// candidate so the user can heal the lockfile by
+			// applying the upgrade.
 		}
 		newRef, err := fetcher.ResolveTagSHA(cmd.Context(), src, newTag)
 		if err != nil {
@@ -236,7 +245,6 @@ func planUpgrades(cmd *cobra.Command, fetcher *fetch.Fetcher, m *manifest.Manife
 			oldVersion: oldV,
 			newRef:     newRef,
 			newTag:     newTag,
-			newVersion: newVersion,
 		})
 	}
 	return out, nil
