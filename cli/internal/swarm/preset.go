@@ -61,6 +61,11 @@ findings you'd stake your reputation on.
 
 %s
 `,
+		// Note: the gemini lens prompt is duplicated in
+		// skills/core/pr-review/prompts/gemini.md so the skill-shipped
+		// override stays in sync with this fallback. When editing
+		// either, update the other in the same change. A future polish
+		// pass should add a sync-test asserting the bytes match.
 		AgentGemini: prReviewSharedHeader + `
 
 You are doing a cross-file pattern + consistency review. Focus on:

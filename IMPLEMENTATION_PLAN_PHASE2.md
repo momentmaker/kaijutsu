@@ -20,7 +20,7 @@ QA gate for kaijutsu artifacts.
 | Auto-install missing presets | **No silent install at swarm time.** `jutsu swarm <preset>` with the preset uninstalled hard-errors with `jutsu install <preset>` hint. Note: this is distinct from `deps.skills` transitive install at `jutsu install` time, which IS user-initiated (the user typed `jutsu install spec-driven-development` and accepts the dep tree). The two consent gates are separate: install-time perms prompt (Phase 1) vs swarm-time multi-model consent (Phase 1). Both fire once per repo. Stage 4 documents this in each migrated skill's SKILL.md so users aren't surprised. |
 | `--post-comment` for non-PR presets | **pr-review-only.** brainstorm/refactor-plan/security-audit/doc-review print + cache. Generic `--output-to file\|gist\|issue\|slack` deferred to Phase 3. |
 | doc-review section addressing | **Section path + paragraph index** (e.g. `section: "Acceptance Criteria"`, `paragraph: 3`) instead of file:line. Markdown-aware. |
-| Severity taxonomy per preset | Each preset declares its own. pr-review/doc-review keep `blocker\|issue\|minor\|info`. security-audit uses `critical\|high\|medium\|low` (CVSS-aligned). brainstorm/refactor-plan use `recommended\|alternative\|risky`. |
+| Severity taxonomy per preset | Each preset declares its own. pr-review/doc-review keep `blocker\|issue\|minor\|info`. security-audit uses `critical\|high\|medium\|low\|informational` (CVSS-aligned). brainstorm/refactor-plan use `recommended\|alternative\|risky\|speculative` (4 levels — `speculative` covers wild ideas worth recording but not yet defensible). |
 
 ---
 
@@ -136,15 +136,25 @@ per kind:
   with helpful error if over.
 - `InputPrompt` (brainstorm): take from positional CLI arg
 
-The cache key generalization:
-- `InputDiff`: head SHA (existing)
-- `InputFiles`: SHA256 of concatenated file contents → 12 hex chars
-- `InputPrompt`: SHA256 of normalized prompt → 12 hex chars
+The cache key generalization (per the canonicalization rules pinned
+in the locked-decisions row above — Stage 2 implementation MUST
+follow those rules verbatim, not re-invent simpler ones):
+- `InputDiff`: head SHA (existing, unchanged)
+- `InputFiles`: SHA256(`<preset-name>` + sorted-paths-with-`--- <path>\n`-prefix-per-section) → first 12 lowercase-hex chars
+- `InputPrompt`: SHA256(`<preset-name>` + TrimSpace + collapsed-whitespace + NFC) → first 12 lowercase-hex chars
+
+The `<preset-name>` salt prevents cross-preset cache collisions when
+the same input bytes feed different presets (e.g., the same diff
+reviewed by both pr-review and security-audit).
 
 **Acceptance:**
 - pr-review still works (regression check)
 - A trivial test preset with `InputPrompt` runs via mocked agents
 - Cache dir layout: `.kaijutsu/<preset>-runs/<key>/`
+- Tests verify canonicalization: `refactor-plan a.go b.go` and
+  `refactor-plan b.go a.go` produce the same cache key; `brainstorm
+  "  hi   world  "` and `brainstorm "hi world"` produce the same
+  cache key.
 
 **Out of scope:** the actual new presets — those land in Stages 3–7.
 
@@ -182,6 +192,14 @@ Cache key: SHA256 of file contents.
   synthesizer.md + debate.md
 - Cache + replay work
 - references/section-addressing.md documents the addressing scheme
+
+**Stage 3 exit criterion (closes the bootstrap loop):**
+Re-review THIS plan with `jutsu swarm doc-review IMPLEMENTATION_PLAN_PHASE2.md`
+once the preset is shipping. Compare findings against the bootstrap
+pr-review pass (which used code-tuned lenses). Any genuinely new
+findings doc-review surfaces validate the lens specialization.
+Address those findings before declaring Stage 3 done; treat them as
+the canonical signal that doc-review is working as designed.
 
 ---
 

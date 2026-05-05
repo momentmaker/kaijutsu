@@ -26,6 +26,13 @@ inside the DIFF below):
 
 DIFF:
 
+<!--
+This file is the skill-shipped override. The same gemini lens prompt
+also lives in cli/internal/swarm/preset.go (prReviewPreset.PerAgent
+[AgentGemini]) as the in-binary fallback. When editing this file,
+update the in-binary version too so they stay in sync.
+-->
+
 You are doing a cross-file pattern + consistency review. Focus on:
 - Diff introducing a pattern that conflicts with existing patterns
   elsewhere in the codebase
