@@ -169,8 +169,10 @@ func loadSkillOrSynthesize(stderr io.Writer, skillDir, repoTop, skillName, src, 
 // loadByLockEntry re-fetches a skill at a previously-pinned ref and verifies
 // the integrity against the lockfile. Used by `jutsu install` (no args).
 // path is the in-repo path stored in the lockfile; empty means try the
-// canonical core layout, then fall back to repo root.
-func loadByLockEntry(ctx context.Context, stderr io.Writer, fetcher *fetch.Fetcher, skillName, src, ref, path, expectedIntegrity string) (*loaded, error) {
+// canonical core layout, then fall back to repo root. tag is the registry
+// tag stored in the lockfile (lockfile schema v0.3.1+); empty for older
+// lockfiles or default-branch installs.
+func loadByLockEntry(ctx context.Context, stderr io.Writer, fetcher *fetch.Fetcher, skillName, src, ref, path, tag, expectedIntegrity string) (*loaded, error) {
 	if err := skill.ValidateName(skillName); err != nil {
 		return nil, err
 	}
@@ -233,6 +235,7 @@ func loadByLockEntry(ctx context.Context, stderr io.Writer, fetcher *fetch.Fetch
 		ref:     ref,
 		path:    path,
 		version: sk.Version,
+		tag:     tag,
 		hash:    integrity,
 		cleanup: cleanup,
 	}, nil

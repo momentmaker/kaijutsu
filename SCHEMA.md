@@ -142,6 +142,7 @@ Pinned, reproducible resolution. Committed to source control. Updated by `jutsu 
   "skills": {
     "pr-review": {
       "version": "1.2.0",
+      "tag": "v0.3.1",
       "source": "momentmaker/kaijutsu",
       "ref": "abc123def456...",
       "path": "skills/core/pr-review",
@@ -150,6 +151,7 @@ Pinned, reproducible resolution. Committed to source control. Updated by `jutsu 
     },
     "blunder-hunt": {
       "version": "0.1.0",
+      "tag": "v0.3.1",
       "source": "momentmaker/kaijutsu",
       "ref": "abc123def456...",
       "path": "skills/core/blunder-hunt",
@@ -166,7 +168,8 @@ Pinned, reproducible resolution. Committed to source control. Updated by `jutsu 
 }
 ```
 
-- **`version: null`** means the upstream source has no semver tag; the lockfile pins to a commit SHA.
+- **`version`** is the skill's internal version from its `skill.yaml` (the `version:` field). `null` when the skill ships only `SKILL.md` without a kaijutsu manifest.
+- **`tag`** is the registry tag the skill was resolved from (e.g. `v0.3.1`). Empty when the skill was resolved from a default-branch HEAD or installed via `--registry`. Used by sigstore verify on lockfile sync (without it sync skips verify with a warning).
 - **`path`** is the directory inside the source repo where the skill lives (omitted for repo-root layouts).
 - **`integrity`** is a base64-encoded SHA-256 of the fetched tarball, prefixed `sha256-`. The CLI re-fetches and re-hashes on every sync to verify reproducibility.
 - **`installedAs`** records *why* the skill is in the lockfile and is informational. `"direct"` means the user explicitly ran `jutsu install <name>`. `"dep:<parent>"` means the skill was first pulled in to satisfy `<parent>`'s `deps.skills`. The value is written once (on first install) and preserved across subsequent re-encounters; if multiple skills depend on the same dep, only the first parent is recorded. Authoritative orphan detection at remove time should compute the dep graph dynamically by walking every installed skill's `deps.skills` rather than trusting this field as the source of truth.

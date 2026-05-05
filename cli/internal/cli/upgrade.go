@@ -77,7 +77,7 @@ that exceed the constraint.`,
 
 			lf.Agents = m.Agents
 			for _, c := range candidates {
-				l, err := loadByLockEntry(cmd.Context(), cmd.ErrOrStderr(), fetcher, c.name, c.source, c.newRef, c.path, "")
+				l, err := loadByLockEntry(cmd.Context(), cmd.ErrOrStderr(), fetcher, c.name, c.source, c.newRef, c.path, c.newTag, "")
 				if err != nil {
 					return fmt.Errorf("upgrade %s: %w", c.name, err)
 				}
@@ -85,10 +85,15 @@ that exceed the constraint.`,
 					l.cleanup()
 					return err
 				}
-				v := c.newVersion
 				prevInstalledAs := lf.Skills[c.name].InstalledAs
+				var versionPtr *string
+				if l.skill != nil && l.skill.Version != "" {
+					sv := l.skill.Version
+					versionPtr = &sv
+				}
 				lf.Skills[c.name] = manifest.LockEntry{
-					Version:     &v,
+					Version:     versionPtr,
+					Tag:         c.newTag,
 					Source:      c.source,
 					Ref:         c.newRef,
 					Path:        c.path,
@@ -122,7 +127,7 @@ that exceed the constraint.`,
 				if err := lf.Save(lockPath); err != nil {
 					return err
 				}
-				fmt.Fprintf(out, "Upgraded %s: %s -> %s\n", c.name, c.oldVersion, c.newVersion)
+				fmt.Fprintf(out, "Upgraded %s: %s -> %s\n", c.name, displayTagOrVersion(c.oldTag, c.oldVersion), c.newTag)
 			}
 			return nil
 		},
@@ -138,9 +143,11 @@ type upgradeCandidate struct {
 	source     string
 	path       string
 	oldRef     string
-	oldVersion string
+	oldTag     string // registry tag the lockfile pinned (e.g. "v0.2.1")
+	oldVersion string // skill's internal version from the lockfile (e.g. "0.3.0")
 	newRef     string
-	newVersion string
+	newTag     string // registry tag we'd upgrade to (e.g. "v0.3.1")
+	newVersion string // semver-cleaned form of newTag (e.g. "0.3.1")
 }
 
 func planUpgrades(cmd *cobra.Command, fetcher *fetch.Fetcher, m *manifest.Manifest, lf *manifest.Lockfile, names []string, only string, major bool) ([]upgradeCandidate, error) {
@@ -189,15 +196,27 @@ func planUpgrades(cmd *cobra.Command, fetcher *fetch.Fetcher, m *manifest.Manife
 		if newVersion == "" {
 			continue
 		}
+		// Compare REGISTRY TAGS, not lockfile.version (which is the
+		// skill's internal version). Tags are the unit of release
+		// reproducibility; an upgrade is "the registry tag advanced".
+		oldTag := entry.Tag
 		oldV := ""
 		if entry.Version != nil {
 			oldV = *entry.Version
 		}
-		if oldV == newVersion {
-			continue
-		}
-		// Only flag actual upgrades (newer), not equal/older.
-		if oldV != "" {
+		if oldTag != "" {
+			oldTV, oerr := semver.NewVersion(oldTag)
+			newTV, nerr := semver.NewVersion(newTag)
+			if oerr == nil && nerr == nil && !newTV.GreaterThan(oldTV) {
+				continue
+			}
+		} else if oldV != "" {
+			// Legacy lockfile (no tag field). Best-effort fallback:
+			// treat the skill's internal version as a proxy for the
+			// release. Imperfect when internal-version != tag-version
+			// (the case that motivated this whole refactor), but
+			// better than always reporting an upgrade. Re-running
+			// `jutsu install <skill>` repopulates the tag field.
 			oldSV, oerr := semver.NewVersion(oldV)
 			newSV, nerr := semver.NewVersion(newVersion)
 			if oerr == nil && nerr == nil && !newSV.GreaterThan(oldSV) {
@@ -213,19 +232,34 @@ func planUpgrades(cmd *cobra.Command, fetcher *fetch.Fetcher, m *manifest.Manife
 			source:     entry.Source,
 			path:       entry.Path,
 			oldRef:     entry.Ref,
+			oldTag:     oldTag,
 			oldVersion: oldV,
 			newRef:     newRef,
+			newTag:     newTag,
 			newVersion: newVersion,
 		})
 	}
 	return out, nil
 }
 
+// displayTagOrVersion prefers the registry tag for display, falling
+// back to the skill's internal version when the tag isn't recorded
+// (older lockfiles before the v0.3.x schema gained Tag).
+func displayTagOrVersion(tag, version string) string {
+	if tag != "" {
+		return tag
+	}
+	if version != "" {
+		return version
+	}
+	return "(unknown)"
+}
+
 func confirmInteractive(cmd *cobra.Command, candidates []upgradeCandidate) bool {
 	out := cmd.OutOrStdout()
 	fmt.Fprintln(out, "Upgrades available:")
 	for _, c := range candidates {
-		fmt.Fprintf(out, "  %s: %s -> %s\n", c.name, c.oldVersion, c.newVersion)
+		fmt.Fprintf(out, "  %s: %s -> %s\n", c.name, displayTagOrVersion(c.oldTag, c.oldVersion), c.newTag)
 	}
 	fmt.Fprint(out, "Apply? [y/N]: ")
 	r := bufio.NewReader(cmd.InOrStdin())

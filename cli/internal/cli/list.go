@@ -41,13 +41,18 @@ func newListCmd() *cobra.Command {
 				names = append(names, n)
 			}
 			sort.Strings(names)
+			fmt.Fprintf(out, "%-30s  %-10s  %-10s  %s\n", "NAME", "VERSION", "TAG", "SOURCE")
 			for _, n := range names {
 				e := lf.Skills[n]
-				v := "(no semver)"
+				v := "(none)"
 				if e.Version != nil {
 					v = *e.Version
 				}
-				fmt.Fprintf(out, "%-30s  %-12s  %s\n", n, v, e.Source)
+				tag := e.Tag
+				if tag == "" {
+					tag = "(none)"
+				}
+				fmt.Fprintf(out, "%-30s  %-10s  %-10s  %s\n", n, v, tag, e.Source)
 			}
 			return nil
 		},

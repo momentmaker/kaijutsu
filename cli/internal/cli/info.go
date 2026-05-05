@@ -68,6 +68,9 @@ func printInfo(out io.Writer, l *loaded) {
 	}
 	fmt.Fprintf(out, "  agents:      %v\n", sk.Agents)
 	fmt.Fprintf(out, "  source:      %s\n", l.source)
+	if l.tag != "" {
+		fmt.Fprintf(out, "  tag:         %s\n", l.tag)
+	}
 	fmt.Fprintf(out, "  ref:         %s\n", l.ref)
 	if l.path != "" {
 		fmt.Fprintf(out, "  path:        %s\n", l.path)

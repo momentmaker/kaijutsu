@@ -225,28 +225,31 @@ func (s *installSession) load(name, constraint string) (*loaded, error) {
 }
 
 // warnVersionConflict emits a stderr warning when a transitive dep is
-// requested under a constraint the already-resolved version doesn't
-// satisfy. First-resolved wins; this just makes the conflict visible.
+// requested under a constraint the already-resolved tag doesn't satisfy.
+// First-resolved wins; this just makes the conflict visible. Constraints
+// from deps.skills resolve against REGISTRY TAGS (see resolveRef), so we
+// compare against entry.Tag, not entry.Version (which is the skill's
+// internal version since v0.3.2).
 func (s *installSession) warnVersionConflict(name, requested, parent string) {
 	if requested == "" || parent == "" {
 		return
 	}
 	entry, ok := s.lf.Skills[name]
-	if !ok || entry.Version == nil {
+	if !ok || entry.Tag == "" {
 		return
 	}
 	c, err := semver.NewConstraint(requested)
 	if err != nil {
 		return
 	}
-	v, err := semver.NewVersion(*entry.Version)
+	v, err := semver.NewVersion(entry.Tag)
 	if err != nil {
 		return
 	}
 	if !c.Check(v) {
 		fmt.Fprintf(s.cmd.ErrOrStderr(),
 			"warning: %s wants %s@%s but the lockfile pinned %s@%s — replacing the pin with a freshly-resolved version.\n",
-			parent, name, requested, name, *entry.Version)
+			parent, name, requested, name, entry.Tag)
 	}
 }
 
@@ -275,7 +278,7 @@ func runSyncFromLockfile(cmd *cobra.Command, installRoot, manifestPath, lockPath
 			fmt.Fprintf(cmd.ErrOrStderr(), "skipping %s: source=local cannot be re-fetched\n", name)
 			continue
 		}
-		l, err := loadByLockEntry(cmd.Context(), cmd.ErrOrStderr(), fetcher, name, entry.Source, entry.Ref, entry.Path, entry.Integrity)
+		l, err := loadByLockEntry(cmd.Context(), cmd.ErrOrStderr(), fetcher, name, entry.Source, entry.Ref, entry.Path, entry.Tag, entry.Integrity)
 		if err != nil {
 			return fmt.Errorf("sync %s: %w", name, err)
 		}
@@ -288,7 +291,11 @@ func runSyncFromLockfile(cmd *cobra.Command, installRoot, manifestPath, lockPath
 			return err
 		}
 		l.cleanup()
-		fmt.Fprintf(cmd.OutOrStdout(), "Synced %s@%s\n", name, displayVersion(entry.Version, entry.Ref))
+		display := entry.Tag
+		if display == "" {
+			display = displayVersion(entry.Version, entry.Ref)
+		}
+		fmt.Fprintf(cmd.OutOrStdout(), "Synced %s@%s\n", name, display)
 	}
 	return nil
 }
@@ -319,9 +326,14 @@ func recordInstall(m *manifest.Manifest, lf *manifest.Lockfile, l *loaded, const
 		m.Dependencies[l.skill.Name] = depConstraint
 	}
 
+	// lockfile.Version stores the SKILL'S internal version from its
+	// skill.yaml (l.skill.Version). lockfile.Tag stores the registry
+	// tag the skill resolved from (e.g. "v0.3.1"). l.version (resolved
+	// tag's semver) is intentionally not what we record — it would
+	// conflate registry-tag with skill-author intent.
 	var versionPtr *string
-	if l.version != "" {
-		v := l.version
+	if l.skill != nil && l.skill.Version != "" {
+		v := l.skill.Version
 		versionPtr = &v
 	}
 
@@ -342,6 +354,7 @@ func recordInstall(m *manifest.Manifest, lf *manifest.Lockfile, l *loaded, const
 
 	lf.Skills[l.skill.Name] = manifest.LockEntry{
 		Version:     versionPtr,
+		Tag:         l.tag,
 		Source:      l.source,
 		Ref:         l.ref,
 		Path:        l.path,

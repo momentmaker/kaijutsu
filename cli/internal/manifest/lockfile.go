@@ -8,16 +8,25 @@ import (
 )
 
 // LockEntry pins a single skill to a specific source + ref + content hash.
+//
+// Version is the skill's internal version from its skill.yaml (the
+// `version:` field). Tag is the registry tag the skill was resolved
+// from (e.g. "v0.3.1"). Ref is the commit SHA the tag points at.
+// Together they pin the skill three ways: by skill-author intent
+// (Version), by registry release (Tag), and by content (Ref +
+// Integrity).
+//
 // Path is the directory inside the source repo where the skill lives;
-// empty means the skill is at the repo root (used by single-skill third-party
-// repos). Populated from registry/index.json or set to "skills/core/<name>"
-// for the default kaijutsu monorepo.
+// empty means the skill is at the repo root (used by single-skill third-
+// party repos). Populated from registry/index.json or set to
+// "skills/core/<name>" for the default kaijutsu monorepo.
 //
 // InstalledAs records why the skill was installed:
 //   - "" or "direct" — user installed this skill explicitly
 //   - "dep:<parent>" — pulled in to satisfy <parent>'s deps.skills
 type LockEntry struct {
 	Version     *string `json:"version"`
+	Tag         string  `json:"tag,omitempty"`
 	Source      string  `json:"source"`
 	Ref         string  `json:"ref"`
 	Path        string  `json:"path,omitempty"`

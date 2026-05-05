@@ -38,12 +38,13 @@ func verifySignature(ctx context.Context, stderr io.Writer, fetcher *fetch.Fetch
 	}
 	if l.tag == "" {
 		// No tag context — either default-branch HEAD fallback (no
-		// matching semver tag) or a lockfile sync (tag isn't stored
-		// in the v1 lockfile schema; v0.4 will add a tag field).
-		// Surface that verify was skipped despite expected-signer.
+		// matching semver tag) or a pre-tag-field lockfile sync.
+		// Newer lockfiles (written by jutsu >= 0.3.2) carry a tag
+		// field; re-running `jutsu install <skill>` against the
+		// remote registry will repopulate it.
 		if stderr != nil {
-			fmt.Fprintf(stderr, "warning: skill %s declares expected-signer %q but no tag context is available (likely lockfile sync); signature verification skipped. v0.4 will store the tag in the lockfile to close this gap.\n",
-				l.skill.Name, l.skill.Trust.ExpectedSigner)
+			fmt.Fprintf(stderr, "warning: skill %s declares expected-signer %q but no tag context is available (older lockfile or HEAD fallback); signature verification skipped. Re-run `jutsu install %s` to repopulate the tag and re-enable verify.\n",
+				l.skill.Name, l.skill.Trust.ExpectedSigner, l.skill.Name)
 		}
 		return nil
 	}

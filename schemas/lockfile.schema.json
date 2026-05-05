@@ -22,7 +22,11 @@
         "properties": {
           "version": {
             "type": ["string", "null"],
-            "description": "Semver string if the upstream source has a tag; null if pinned to commit SHA."
+            "description": "Skill's internal version from its skill.yaml (the `version:` field). Null when the skill ships only SKILL.md without a kaijutsu manifest."
+          },
+          "tag": {
+            "type": "string",
+            "description": "Registry tag the skill was resolved from (e.g. 'v0.3.1'). Empty when the skill was resolved from a default-branch HEAD or installed via --registry."
           },
           "source": {
             "type": "string",
