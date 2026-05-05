@@ -1,0 +1,19 @@
+name: doc-review
+version: 0.1.0
+license: MIT
+layout: rich
+description: "Universal QA gate for markdown artifacts. Runs claude / codex / gemini in parallel via `jutsu swarm doc-review <path>`, each with a tailored lens (claude=completeness, codex=implementability, gemini=consistency), then synthesizes into a single review with a disagreement table. Designed to be invoked at the end of any artifact-producing skill (spec-driven-development, planning-and-task-breakdown, decide). Use when the user says \"review this spec\", \"review this plan\", \"check this RFC\", or invokes /doc-review."
+homepage: https://kaijutsu.dev/skills/doc-review
+repository: https://github.com/momentmaker/kaijutsu
+tags: [review, spec, plan, multi-agent, quality-gate]
+agents: [claude, codex, gemini]
+shared: [scripts, prompts, references, runbooks]
+deps:
+  skills:
+    - lie-to-them@^0.2
+permissions:
+  bash: true
+  network: true
+  fs-write: scoped
+trust:
+  expected-signer: kaijutsu-core@github

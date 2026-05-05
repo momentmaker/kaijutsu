@@ -20,8 +20,9 @@ func newSwarmCmd() *cobra.Command {
 		Long: `Orchestrate claude / codex / gemini in parallel against the same input
 and aggregate their structured findings.
 
-Phase 1 ships one preset: pr-review. Phase 2 generalizes to brainstorm,
-refactor-plan, and security-audit.
+Phase 2 ships pr-review (diff input) and doc-review (markdown
+artifact input). Stages 5-7 add brainstorm, refactor-plan, and
+security-audit.
 
 The swarm probes each CLI for availability + auth and runs only the
 ones that pass. With --quick (default), each agent emits findings
@@ -30,47 +31,62 @@ a Pass-2 critique round runs first so agents can dispute each other
 before the synthesizer.`,
 	}
 	cmd.AddCommand(newSwarmPRReviewCmd())
+	cmd.AddCommand(newSwarmDocReviewCmd())
 	return cmd
+}
+
+// commonSwarmFlags carries the flag values that every preset
+// subcommand shares. Each subcommand registers its own preset-
+// specific flags (--pr, --diff-from-branch, etc.) on top.
+type commonSwarmFlags struct {
+	mode           string
+	strict         bool
+	maxCostUSD     float64
+	synthesizer    string
+	perAgentBudget float64
+	timeout        time.Duration
+	format         string
+	postComment    bool
+	allowSecrets   bool
+	yes            bool
+	replayKey      string
+}
+
+func bindCommonFlags(cmd *cobra.Command, f *commonSwarmFlags, supportsPostComment bool) {
+	cmd.Flags().StringVar(&f.mode, "mode", "quick", "quick | full (--full enables round-robin debate)")
+	cmd.Flags().BoolVar(&f.strict, "strict", false, "lie-to-them filter on synthesis draft")
+	cmd.Flags().Float64Var(&f.maxCostUSD, "max-cost", 1.00, "skip optional --full/--strict spend if Pass-1 estimate already exceeds this many USD; warn at end if total exceeds")
+	cmd.Flags().Float64Var(&f.perAgentBudget, "per-agent-budget", 0.50, "passed to each agent's --max-budget-usd if supported")
+	cmd.Flags().StringVar(&f.synthesizer, "synthesizer", "claude", "which agent runs the synthesis pass")
+	cmd.Flags().DurationVar(&f.timeout, "timeout", 180*time.Second, "per-agent invocation timeout")
+	cmd.Flags().StringVar(&f.format, "format", "markdown", "markdown (default — synthesized review) | json (raw multi-agent dump, no synthesis)")
+	cmd.Flags().BoolVar(&f.allowSecrets, "allow-secrets", false, "bypass the pre-flight secrets scan (DANGEROUS — input will be sent to remote model providers)")
+	cmd.Flags().BoolVarP(&f.yes, "yes", "y", false, "non-interactive: skip the consent prompt; require .kaijutsu/<preset>.yaml has allow-multi-model: true")
+	cmd.Flags().StringVar(&f.replayKey, "replay", "", "re-run synthesis on cached per-agent findings for a key (SHA for diff presets, hash for files/prompt) without calling model APIs")
+	if supportsPostComment {
+		cmd.Flags().BoolVar(&f.postComment, "post-comment", false, "after synthesis, post the markdown as a PR comment via gh (edits prior kaijutsu-pr-review comment if found)")
+	}
 }
 
 func newSwarmPRReviewCmd() *cobra.Command {
 	var (
+		flags          commonSwarmFlags
 		pr             int
-		mode           string
-		strict         bool
-		maxCostUSD     float64
-		synthesizer    string
-		perAgentBudget float64
-		timeout        time.Duration
 		diffFromBranch string
-		format         string
-		postComment    bool
-		allowSecrets   bool
-		yes            bool
-		replaySHA      string
 	)
 	cmd := &cobra.Command{
 		Use:   "pr-review",
 		Short: "Multi-agent pull request review",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
-			out := cmd.OutOrStdout()
-			stderr := cmd.ErrOrStderr()
-
 			projectRoot, _ := os.Getwd()
-
-			// --replay: skip the full pipeline (no diff, no agent
-			// calls, no privacy gates). Reads cached per-agent
-			// results, re-runs synthesis only.
-			if replaySHA != "" {
-				return runReplay(ctx, cmd, projectRoot, replaySHA, synthesizer, perAgentBudget, timeout, postComment)
+			if flags.replayKey != "" {
+				return runReplay(ctx, cmd, projectRoot, "pr-review", flags.replayKey, flags.synthesizer, flags.perAgentBudget, flags.timeout, flags.postComment)
 			}
-
 			preset, err := swarm.LoadPresetWithSkillOverrides(projectRoot, "pr-review")
 			if err != nil {
 				return err
 			}
-
 			ictx, err := swarm.ResolveInput(ctx, preset, swarm.InputOptions{
 				PR:             pr,
 				DiffFromBranch: diffFromBranch,
@@ -78,197 +94,230 @@ func newSwarmPRReviewCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-
-			// Privacy gate: hard-block on secrets unless explicitly
-			// overridden. Only InputDiff/InputFiles inputs are
-			// scanned — free-form prompts (InputPrompt) are user-
-			// authored and don't go through the diff scanner.
-			hits := swarm.SecretsScan(ictx.Body)
-			if len(hits) > 0 && !allowSecrets {
-				fmt.Fprintf(stderr, "secrets pre-flight scan blocked %d match(es):\n", len(hits))
-				for _, h := range hits {
-					fmt.Fprintf(stderr, "  - %s (%s)\n", h.Match, h.Reason)
-				}
-				return errors.New("refusing to send diff to remote models; remove the secrets or pass --allow-secrets at your own risk")
-			}
-			if len(hits) > 0 {
-				fmt.Fprintf(stderr, "warning: --allow-secrets bypassed %d secrets-scan hit(s); diff WILL be sent to model providers\n", len(hits))
-			}
-
-			available := swarm.AvailableAgents()
-			if len(available) == 0 {
-				return errors.New("no agent CLI available. Install at least one of: claude, codex, gemini, then re-run")
-			}
-
-			// Consent gate: persist user opt-in to <preset>.yaml on
-			// first run. Subsequent runs skip the prompt.
-			if cerr := swarm.EnsureConsent(projectRoot, preset, cmd.InOrStdin(), stderr, available, yes); cerr != nil {
-				return cerr
-			}
-
-			fmt.Fprintf(stderr, "swarm: %d agent(s) available: %v\n", len(available), available)
-
-			jobs := make([]swarm.Job, 0, len(available))
-			for _, name := range available {
-				tmpl, ok := preset.PerAgent[name]
-				if !ok {
-					fmt.Fprintf(stderr, "swarm: no preset prompt for %s; skipping\n", name)
-					continue
-				}
-				jobs = append(jobs, swarm.Job{
-					Agent:  swarm.AgentFor(name),
-					Prompt: fmt.Sprintf(tmpl, ictx.Body),
-				})
-			}
-			if len(jobs) == 0 {
-				return errors.New("no jobs assembled — preset is missing prompts for every available agent")
-			}
-
-			start := time.Now()
-			results := swarm.FanOut(ctx, jobs, perAgentBudget, timeout)
-			finished := time.Now()
-
-			run := swarm.SwarmRun{
-				Preset:     "pr-review",
-				PR:         ictx.PR,
-				SHA:        ictx.SHA,
-				Mode:       mode,
-				Agents:     results,
-				StartedAt:  start,
-				FinishedAt: finished,
-			}
-			for _, r := range results {
-				run.TotalCost += r.Cost
-			}
-			// Synthesis pass — Stage 2 default. --format json skips it
-			// and dumps the raw multi-agent results instead.
-			if format != "json" {
-				synthAgent := pickSynthesizer(synthesizer, results)
-				if synthAgent == nil {
-					fmt.Fprintln(stderr, "warning: no synthesizer agent available; falling back to JSON dump")
-					format = "json"
-				} else {
-					// Cost gate: --max-cost is enforced BEFORE optional
-					// extra spends (debate + strict). The Pass-1 spend
-					// already happened by here; if it alone busted the
-					// cap, log + skip the optional steps.
-					overBudget := maxCostUSD > 0 && run.TotalCost > maxCostUSD
-					if overBudget {
-						fmt.Fprintf(stderr, "warning: Pass-1 cost $%.2f already exceeds --max-cost $%.2f; skipping optional debate/strict passes\n", run.TotalCost, maxCostUSD)
-					}
-					// Stage 3: --full runs a Pass-2 round-robin debate
-					// before synthesis so the synthesizer can lean on
-					// peer-tested findings. SynthesizeWithDebate merges
-					// Pass-1 + Pass-2 — agents whose Pass-2 erred or
-					// returned no findings keep their Pass-1 results,
-					// so a flaky debate round doesn't lose signal.
-					var (
-						synth    *swarm.Synthesis
-						synthErr error
-					)
-					if mode == "full" && !overBudget {
-						fmt.Fprintln(stderr, "swarm: --full mode — Pass 2 round-robin debate starting")
-						pass2 := swarm.Debate(ctx, results, preset, perAgentBudget, timeout)
-						for _, r := range pass2 {
-							run.TotalCost += r.Cost
-						}
-						synth, synthErr = swarm.SynthesizeWithDebate(ctx, results, pass2, synthAgent, preset, perAgentBudget, timeout)
-					} else {
-						synth, synthErr = swarm.Synthesize(ctx, results, synthAgent, preset, perAgentBudget, timeout)
-					}
-					if synth != nil {
-						run.TotalCost += synth.Cost
-					}
-					if synthErr != nil {
-						fmt.Fprintf(stderr, "warning: synthesis: %v (using deterministic fallback markdown)\n", synthErr)
-					}
-					md := ""
-					if synth != nil {
-						md = synth.Markdown
-					}
-					// --strict: lie-to-them filter on the synthesis
-					// draft (Stage 3). One extra synthesizer call.
-					// Skipped under over-budget.
-					if strict && md != "" && !overBudget {
-						filtered, lieCost, lieErr := swarm.LieToThem(ctx, md, synthAgent, perAgentBudget, timeout)
-						if lieErr != nil {
-							fmt.Fprintf(stderr, "warning: --strict lie-to-them filter failed: %v (keeping unfiltered draft)\n", lieErr)
-						} else {
-							md = filtered
-							run.TotalCost += lieCost
-						}
-					}
-					if maxCostUSD > 0 && run.TotalCost > maxCostUSD {
-						fmt.Fprintf(stderr, "warning: total cost $%.2f exceeded --max-cost $%.2f\n", run.TotalCost, maxCostUSD)
-					}
-					md = appendMarker(md, ictx.SHA)
-					if cerr := swarm.CacheRun(projectRoot, preset, ictx.SHA, results, md); cerr != nil {
-						fmt.Fprintf(stderr, "warning: cache write failed: %v\n", cerr)
-					}
-					fmt.Fprint(out, md)
-					if postComment {
-						if ictx.PR == 0 {
-							fmt.Fprintln(stderr, "warning: --post-comment requested but no PR detected (--diff-from-branch mode); skipping post")
-						} else if perr := swarm.PostOrUpdateComment(ctx, ictx.PR, md); perr != nil {
-							fmt.Fprintf(stderr, "warning: post comment failed: %v\n", perr)
-						} else {
-							fmt.Fprintf(stderr, "posted/updated PR comment on #%d\n", ictx.PR)
-						}
-					}
-					reportSwarmStderr(stderr, results, finished.Sub(start), run.TotalCost)
-					return nil
-				}
-			}
-
-			if maxCostUSD > 0 && run.TotalCost > maxCostUSD {
-				fmt.Fprintf(stderr, "warning: estimated total cost $%.2f exceeded --max-cost $%.2f\n", run.TotalCost, maxCostUSD)
-			}
-			enc := json.NewEncoder(out)
-			enc.SetIndent("", "  ")
-			if err := enc.Encode(run); err != nil {
-				return err
-			}
-			reportSwarmStderr(stderr, results, finished.Sub(start), run.TotalCost)
-			return nil
+			return runSwarmPipeline(ctx, cmd, projectRoot, preset, ictx, flags)
 		},
 	}
 	cmd.Flags().IntVar(&pr, "pr", 0, "PR number (default: detect from current branch)")
 	cmd.Flags().StringVar(&diffFromBranch, "diff-from-branch", "", "review the local branch vs base ref instead of a PR (e.g. origin/main)")
-	cmd.Flags().StringVar(&mode, "mode", "quick", "quick | full (Stage 3+: --full enables round-robin debate)")
-	cmd.Flags().BoolVar(&strict, "strict", false, "(Stage 3) lie-to-them filter on synthesis draft")
-	cmd.Flags().Float64Var(&maxCostUSD, "max-cost", 1.00, "skip optional --full/--strict spend if Pass-1 estimate already exceeds this many USD; warn at end if total exceeds")
-	cmd.Flags().Float64Var(&perAgentBudget, "per-agent-budget", 0.50, "passed to each agent's --max-budget-usd if supported")
-	cmd.Flags().StringVar(&synthesizer, "synthesizer", "claude", "(Stage 2) which agent runs the synthesis pass")
-	cmd.Flags().DurationVar(&timeout, "timeout", 180*time.Second, "per-agent invocation timeout")
-	cmd.Flags().StringVar(&format, "format", "markdown", "markdown (default — synthesized review) | json (raw multi-agent dump, no synthesis)")
-	cmd.Flags().BoolVar(&postComment, "post-comment", false, "after synthesis, post the markdown as a PR comment via gh (edits prior kaijutsu-pr-review comment if found)")
-	cmd.Flags().BoolVar(&allowSecrets, "allow-secrets", false, "bypass the pre-flight secrets scan (DANGEROUS — diff will be sent to remote model providers)")
-	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "non-interactive: skip the consent prompt; require .kaijutsu/pr-review.yaml has allow-multi-model: true")
-	cmd.Flags().StringVar(&replaySHA, "replay", "", "re-run synthesis on cached per-agent findings for a SHA without calling model APIs (skips fan-out and gates)")
+	bindCommonFlags(cmd, &flags, true)
 	return cmd
+}
+
+func newSwarmDocReviewCmd() *cobra.Command {
+	var flags commonSwarmFlags
+	cmd := &cobra.Command{
+		Use:   "doc-review <path>",
+		Short: "Multi-agent review of a markdown artifact (spec, plan, decision record)",
+		Args:  cobra.MinimumNArgs(0), // 0 args allowed when --replay is set
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			projectRoot, _ := os.Getwd()
+			if flags.replayKey != "" {
+				return runReplay(ctx, cmd, projectRoot, "doc-review", flags.replayKey, flags.synthesizer, flags.perAgentBudget, flags.timeout, false)
+			}
+			if len(args) == 0 {
+				return errors.New("doc-review requires at least one markdown path argument (or --replay <key>)")
+			}
+			preset, err := swarm.LoadPresetWithSkillOverrides(projectRoot, "doc-review")
+			if err != nil {
+				return err
+			}
+			ictx, err := swarm.ResolveInput(ctx, preset, swarm.InputOptions{
+				Files: args,
+			})
+			if err != nil {
+				return err
+			}
+			return runSwarmPipeline(ctx, cmd, projectRoot, preset, ictx, flags)
+		},
+	}
+	bindCommonFlags(cmd, &flags, false) // no --post-comment for doc-review
+	return cmd
+}
+
+// runSwarmPipeline is the shared per-preset pipeline: privacy gate →
+// consent gate → fan-out → synthesis (+ optional debate / strict) →
+// cache → optional PR-comment post → stderr summary.
+//
+// pr-review and doc-review share this. Stages 5-7 will plug in
+// brainstorm, refactor-plan, security-audit by adding subcommands
+// that fill InputOptions and call this same pipeline.
+func runSwarmPipeline(ctx context.Context, cmd *cobra.Command, projectRoot string, preset *swarm.Preset, ictx *swarm.InputContext, f commonSwarmFlags) error {
+	out := cmd.OutOrStdout()
+	stderr := cmd.ErrOrStderr()
+
+	// Privacy gate: hard-block on secrets unless explicitly
+	// overridden. InputDiff + InputFiles get scanned; InputPrompt
+	// is user-authored and skips (callers shouldn't dump secrets
+	// into a brainstorm prompt; if they do, --allow-secrets isn't
+	// the gate that protects them).
+	if ictx.InputKind == swarm.InputDiff || ictx.InputKind == swarm.InputFiles {
+		hits := swarm.SecretsScan(ictx.Body)
+		if len(hits) > 0 && !f.allowSecrets {
+			fmt.Fprintf(stderr, "secrets pre-flight scan blocked %d match(es):\n", len(hits))
+			for _, h := range hits {
+				fmt.Fprintf(stderr, "  - %s (%s)\n", h.Match, h.Reason)
+			}
+			return errors.New("refusing to send input to remote models; remove the secrets or pass --allow-secrets at your own risk")
+		}
+		if len(hits) > 0 {
+			fmt.Fprintf(stderr, "warning: --allow-secrets bypassed %d secrets-scan hit(s); input WILL be sent to model providers\n", len(hits))
+		}
+	}
+
+	available := swarm.AvailableAgents()
+	if len(available) == 0 {
+		return errors.New("no agent CLI available. Install at least one of: claude, codex, gemini, then re-run")
+	}
+
+	if cerr := swarm.EnsureConsent(projectRoot, preset, cmd.InOrStdin(), stderr, available, f.yes); cerr != nil {
+		return cerr
+	}
+
+	fmt.Fprintf(stderr, "swarm: %d agent(s) available: %v\n", len(available), available)
+
+	jobs := make([]swarm.Job, 0, len(available))
+	for _, name := range available {
+		tmpl, ok := preset.PerAgent[name]
+		if !ok {
+			fmt.Fprintf(stderr, "swarm: no preset prompt for %s; skipping\n", name)
+			continue
+		}
+		jobs = append(jobs, swarm.Job{
+			Agent:  swarm.AgentFor(name),
+			Prompt: fmt.Sprintf(tmpl, ictx.Body),
+		})
+	}
+	if len(jobs) == 0 {
+		return fmt.Errorf("no jobs assembled — preset %q is missing prompts for every available agent", preset.Name)
+	}
+
+	start := time.Now()
+	results := swarm.FanOut(ctx, jobs, f.perAgentBudget, f.timeout)
+	finished := time.Now()
+
+	run := swarm.SwarmRun{
+		Preset:     preset.Name,
+		PR:         ictx.PR,
+		SHA:        ictx.SHA,
+		Mode:       f.mode,
+		Agents:     results,
+		StartedAt:  start,
+		FinishedAt: finished,
+	}
+	for _, r := range results {
+		run.TotalCost += r.Cost
+	}
+
+	// JSON-only path: skip synthesis entirely.
+	if f.format == "json" {
+		if f.maxCostUSD > 0 && run.TotalCost > f.maxCostUSD {
+			fmt.Fprintf(stderr, "warning: estimated total cost $%.2f exceeded --max-cost $%.2f\n", run.TotalCost, f.maxCostUSD)
+		}
+		enc := json.NewEncoder(out)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(run); err != nil {
+			return err
+		}
+		reportSwarmStderr(stderr, results, finished.Sub(start), run.TotalCost)
+		return nil
+	}
+
+	// Markdown synthesis path.
+	synthAgent := pickSynthesizer(f.synthesizer, results)
+	if synthAgent == nil {
+		fmt.Fprintln(stderr, "warning: no synthesizer agent available; falling back to JSON dump")
+		enc := json.NewEncoder(out)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(run); err != nil {
+			return err
+		}
+		reportSwarmStderr(stderr, results, finished.Sub(start), run.TotalCost)
+		return nil
+	}
+
+	overBudget := f.maxCostUSD > 0 && run.TotalCost > f.maxCostUSD
+	if overBudget {
+		fmt.Fprintf(stderr, "warning: Pass-1 cost $%.2f already exceeds --max-cost $%.2f; skipping optional debate/strict passes\n", run.TotalCost, f.maxCostUSD)
+	}
+
+	var (
+		synth    *swarm.Synthesis
+		synthErr error
+	)
+	if f.mode == "full" && !overBudget {
+		fmt.Fprintln(stderr, "swarm: --full mode — Pass 2 round-robin debate starting")
+		pass2 := swarm.Debate(ctx, results, preset, f.perAgentBudget, f.timeout)
+		for _, r := range pass2 {
+			run.TotalCost += r.Cost
+		}
+		synth, synthErr = swarm.SynthesizeWithDebate(ctx, results, pass2, synthAgent, preset, f.perAgentBudget, f.timeout)
+	} else {
+		synth, synthErr = swarm.Synthesize(ctx, results, synthAgent, preset, f.perAgentBudget, f.timeout)
+	}
+	if synth != nil {
+		run.TotalCost += synth.Cost
+	}
+	if synthErr != nil {
+		fmt.Fprintf(stderr, "warning: synthesis: %v (using deterministic fallback markdown)\n", synthErr)
+	}
+	md := ""
+	if synth != nil {
+		md = synth.Markdown
+	}
+	if f.strict && md != "" && !overBudget {
+		filtered, lieCost, lieErr := swarm.LieToThem(ctx, md, synthAgent, f.perAgentBudget, f.timeout)
+		if lieErr != nil {
+			fmt.Fprintf(stderr, "warning: --strict lie-to-them filter failed: %v (keeping unfiltered draft)\n", lieErr)
+		} else {
+			md = filtered
+			run.TotalCost += lieCost
+		}
+	}
+	if f.maxCostUSD > 0 && run.TotalCost > f.maxCostUSD {
+		fmt.Fprintf(stderr, "warning: total cost $%.2f exceeded --max-cost $%.2f\n", run.TotalCost, f.maxCostUSD)
+	}
+	md = appendMarker(md, ictx.CacheKey)
+	if cerr := swarm.CacheRun(projectRoot, preset, ictx.CacheKey, results, md); cerr != nil {
+		fmt.Fprintf(stderr, "warning: cache write failed: %v\n", cerr)
+	}
+	fmt.Fprint(out, md)
+	if f.postComment {
+		if ictx.PR == 0 {
+			fmt.Fprintln(stderr, "warning: --post-comment requested but no PR detected; skipping post")
+		} else if perr := swarm.PostOrUpdateComment(ctx, ictx.PR, md); perr != nil {
+			fmt.Fprintf(stderr, "warning: post comment failed: %v\n", perr)
+		} else {
+			fmt.Fprintf(stderr, "posted/updated PR comment on #%d\n", ictx.PR)
+		}
+	}
+	reportSwarmStderr(stderr, results, finished.Sub(start), run.TotalCost)
+	return nil
 }
 
 // appendMarker tacks the kaijutsu-pr-review HTML comment marker
 // onto the synthesis markdown so re-runs can find it via
-// PostOrUpdateComment.
-func appendMarker(md, sha string) string {
-	return strings.TrimRight(md, "\n") + "\n\n" + swarm.Marker(swarm.NewRunID(), sha) + "\n"
+// PostOrUpdateComment. Marker key is the CacheKey (SHA for InputDiff,
+// hash for InputFiles/InputPrompt) so re-runs in any preset are
+// disambiguable.
+func appendMarker(md, key string) string {
+	return strings.TrimRight(md, "\n") + "\n\n" + swarm.Marker(swarm.NewRunID(), key) + "\n"
 }
 
 // runReplay re-renders the synthesis markdown from cached per-agent
 // results without re-calling any model APIs. Useful for tuning the
 // synthesizer prompt offline.
-func runReplay(ctx context.Context, cmd *cobra.Command, projectRoot, sha, synthesizer string, budget float64, timeout time.Duration, postComment bool) error {
+func runReplay(ctx context.Context, cmd *cobra.Command, projectRoot, presetName, key, synthesizer string, budget float64, timeout time.Duration, postComment bool) error {
 	out := cmd.OutOrStdout()
 	stderr := cmd.ErrOrStderr()
 
-	preset, err := swarm.LoadPresetWithSkillOverrides(projectRoot, "pr-review")
+	preset, err := swarm.LoadPresetWithSkillOverrides(projectRoot, presetName)
 	if err != nil {
 		return err
 	}
-	results, err := swarm.LoadCachedResults(projectRoot, preset, sha)
+	results, err := swarm.LoadCachedResults(projectRoot, preset, key)
 	if err != nil {
-		return fmt.Errorf("--replay %s: %w", sha, err)
+		return fmt.Errorf("--replay %s: %w", key, err)
 	}
 	synthAgent := pickSynthesizer(synthesizer, results)
 	if synthAgent == nil {
@@ -282,12 +331,12 @@ func runReplay(ctx context.Context, cmd *cobra.Command, projectRoot, sha, synthe
 	if synth != nil {
 		md = synth.Markdown
 	}
-	md = appendMarker(md, sha)
+	md = appendMarker(md, key)
 	fmt.Fprint(out, md)
 	if postComment {
 		fmt.Fprintln(stderr, "warning: --post-comment + --replay requires the original PR number; resolve manually")
 	}
-	fmt.Fprintf(stderr, "\nreplay done · synthesizer=%s\n", synthAgent.Name())
+	fmt.Fprintf(stderr, "\nreplay done · preset=%s · synthesizer=%s\n", presetName, synthAgent.Name())
 	return nil
 }
 
@@ -317,4 +366,3 @@ func reportSwarmStderr(stderr interface{ Write(p []byte) (int, error) }, results
 		}
 	}
 }
-

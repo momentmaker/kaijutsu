@@ -109,4 +109,5 @@ func BuiltinPresets() []*Preset {
 
 func init() {
 	defaultRegistry.Register(&prReviewPreset)
+	defaultRegistry.Register(&docReviewPreset)
 }

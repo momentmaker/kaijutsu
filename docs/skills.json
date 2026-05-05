@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "total": 37,
+  "total": 38,
   "skills": [
     {
       "name": "agent-doctor",
@@ -341,6 +341,34 @@
         "bash": false,
         "network": false,
         "fs_write": false
+      }
+    },
+    {
+      "name": "doc-review",
+      "version": "0.1.0",
+      "license": "MIT",
+      "description": "Universal QA gate for markdown artifacts. Runs claude / codex / gemini in parallel via `jutsu swarm doc-review \u003cpath\u003e`, each with a tailored lens (claude=completeness, codex=implementability, gemini=consistency), then synthesizes into a single review with a disagreement table. Designed to be invoked at the end of any artifact-producing skill (spec-driven-development, planning-and-task-breakdown, decide). Use when the user says \"review this spec\", \"review this plan\", \"check this RFC\", or invokes /doc-review.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "review",
+        "spec",
+        "plan",
+        "multi-agent",
+        "quality-gate"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/doc-review",
+      "homepage": "https://kaijutsu.dev/skills/doc-review",
+      "has_hooks": false,
+      "permissions": {
+        "bash": true,
+        "network": true,
+        "fs_write": "scoped"
       }
     },
     {

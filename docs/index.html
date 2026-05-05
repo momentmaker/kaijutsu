@@ -220,13 +220,13 @@
   <div class="controls">
     <input type="search" id="search" placeholder="Search skills by name, description, tag…" autocomplete="off">
     <div class="filter-group" id="filters">
-      <button class="filter active" data-filter="all">All (37)</button>
+      <button class="filter active" data-filter="all">All (38)</button>
       <button class="filter" data-filter="core">Core</button>
       <button class="filter" data-filter="third-party">Third-party</button>
       <button class="filter" data-filter="hooks">Hooks</button>
     </div>
   </div>
-  <p class="stats" id="stats">Showing all 37 skills.</p>
+  <p class="stats" id="stats">Showing all 38 skills.</p>
 
   <div class="grid" id="grid">
     
@@ -423,6 +423,19 @@
         
       </div>
       <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install dispatch-parallel')" title="Click to copy">jutsu install dispatch-parallel</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="doc-review Universal QA gate for markdown artifacts. Runs claude / codex / gemini in parallel via `jutsu swarm doc-review &lt;path&gt;`, each with a tailored lens (claude=completeness, codex=implementability, gemini=consistency), then synthesizes into a single review with a disagreement table. Designed to be invoked at the end of any artifact-producing skill (spec-driven-development, planning-and-task-breakdown, decide). Use when the user says &#34;review this spec&#34;, &#34;review this plan&#34;, &#34;check this RFC&#34;, or invokes /doc-review. review spec plan multi-agent quality-gate claude codex gemini">
+      <div class="row">
+        <h3>doc-review<span style="color:var(--muted);font-weight:normal"> 0.1.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Universal QA gate for markdown artifacts. Runs claude / codex / gemini in parallel via `jutsu swarm doc-review &lt;path&gt;`, each with a tailored lens (claude=completeness, codex=implementability, gemini=consistency), then synthesizes into a single review with a disagreement table. Designed to be invoked at the end of any artifact-producing skill (spec-driven-development, planning-and-task-breakdown, decide). Use when the user says &#34;review this spec&#34;, &#34;review this plan&#34;, &#34;check this RFC&#34;, or invokes /doc-review.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install doc-review')" title="Click to copy">jutsu install doc-review</div>
     </article>
     
     <article class="card" data-source="third-party" data-hooks="false" data-search="documentation-and-adrs Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install documentation-and-adrs`.  claude codex gemini">
