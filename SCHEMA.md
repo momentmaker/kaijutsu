@@ -193,6 +193,30 @@ A single write to `~/.agents/skills/` covers both Codex and Gemini, per the [Age
 
 ---
 
+## `.kaijutsu/pr-review.yaml`
+
+Per-repo configuration for `jutsu swarm pr-review`. The `allow-multi-model` field is a consent gate — multi-model runs refuse to send a diff to remote model providers (Anthropic, OpenAI, Google) without it set to `true`. First interactive run prompts the user and persists the answer; CI / non-interactive runs require the file pre-populated.
+
+```yaml
+# Required for jutsu swarm pr-review to send the diff to remote
+# models. First run prompts and writes this file.
+allow-multi-model: true
+
+# Optional overrides — all default to the CLI flag values otherwise.
+agents: [claude, codex, gemini]   # subset to use; empty = all available
+mode: quick                        # quick | full
+max_cost_usd: 1.00                 # warn-then-abort estimate cap
+exclude_paths:                     # paths to strip from the diff
+  - pnpm-lock.yaml
+  - vendor/
+severity_floor: minor              # suppress info-level findings
+synthesizer: claude                # which agent runs the synthesis pass
+```
+
+Stage 4 honors `allow-multi-model` only. `agents`, `mode`, `max_cost_usd`, `exclude_paths`, `severity_floor`, and `synthesizer` are reserved for Stages 5+ — declared in the schema so authors know what's coming.
+
+---
+
 ## Hooks
 
 Skills can ship agent hooks — pre-tool-use / post-tool-use / session-start / etc. callbacks that the CLI registers into the target agent's native settings file at install time. Declared via `skill.yaml`'s `hooks:` block + `permissions.hooks: true`:

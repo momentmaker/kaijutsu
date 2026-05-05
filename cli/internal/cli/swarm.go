@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -43,6 +44,9 @@ func newSwarmPRReviewCmd() *cobra.Command {
 		timeout        time.Duration
 		diffFromBranch string
 		format         string
+		postComment    bool
+		allowSecrets   bool
+		yes            bool
 	)
 	cmd := &cobra.Command{
 		Use:   "pr-review",
@@ -60,10 +64,32 @@ func newSwarmPRReviewCmd() *cobra.Command {
 				return errors.New("diff is empty; nothing to review")
 			}
 
+			// Privacy gate: hard-block on secrets unless explicitly
+			// overridden.
+			hits := swarm.SecretsScan(pctx.Diff)
+			if len(hits) > 0 && !allowSecrets {
+				fmt.Fprintf(stderr, "secrets pre-flight scan blocked %d match(es):\n", len(hits))
+				for _, h := range hits {
+					fmt.Fprintf(stderr, "  - %s (%s)\n", h.Match, h.Reason)
+				}
+				return errors.New("refusing to send diff to remote models; remove the secrets or pass --allow-secrets at your own risk")
+			}
+			if len(hits) > 0 {
+				fmt.Fprintf(stderr, "warning: --allow-secrets bypassed %d secrets-scan hit(s); diff WILL be sent to model providers\n", len(hits))
+			}
+
 			available := swarm.AvailableAgents()
 			if len(available) == 0 {
 				return errors.New("no agent CLI available. Install at least one of: claude, codex, gemini, then re-run")
 			}
+
+			// Consent gate: persist user opt-in to .kaijutsu/pr-review.yaml
+			// on first run. Subsequent runs skip the prompt.
+			projectRoot, _ := osGetwd()
+			if cerr := swarm.EnsureConsent(projectRoot, cmd.InOrStdin(), stderr, available, yes); cerr != nil {
+				return cerr
+			}
+
 			fmt.Fprintf(stderr, "swarm: %d agent(s) available: %v\n", len(available), available)
 
 			preset, err := swarm.PresetFor("pr-review")
@@ -148,7 +174,17 @@ func newSwarmPRReviewCmd() *cobra.Command {
 					if maxCostUSD > 0 && run.TotalCost > maxCostUSD {
 						fmt.Fprintf(stderr, "warning: estimated total cost $%.2f exceeded --max-cost $%.2f\n", run.TotalCost, maxCostUSD)
 					}
+					md = appendMarker(md, pctx.SHA)
 					fmt.Fprint(out, md)
+					if postComment {
+						if pctx.PR == 0 {
+							fmt.Fprintln(stderr, "warning: --post-comment requested but no PR detected (--diff-from-branch mode); skipping post")
+						} else if perr := swarm.PostOrUpdateComment(ctx, pctx.PR, pctx.SHA, md); perr != nil {
+							fmt.Fprintf(stderr, "warning: post comment failed: %v\n", perr)
+						} else {
+							fmt.Fprintf(stderr, "posted/updated PR comment on #%d\n", pctx.PR)
+						}
+					}
 					reportSwarmStderr(stderr, results, finished.Sub(start), run.TotalCost)
 					return nil
 				}
@@ -176,8 +212,22 @@ func newSwarmPRReviewCmd() *cobra.Command {
 	cmd.Flags().StringVar(&synthesizer, "synthesizer", "claude", "(Stage 2) which agent runs the synthesis pass")
 	cmd.Flags().DurationVar(&timeout, "timeout", 180*time.Second, "per-agent invocation timeout")
 	cmd.Flags().StringVar(&format, "format", "markdown", "markdown (default — synthesized review) | json (raw multi-agent dump, no synthesis)")
+	cmd.Flags().BoolVar(&postComment, "post-comment", false, "after synthesis, post the markdown as a PR comment via gh (edits prior kaijutsu-pr-review comment if found)")
+	cmd.Flags().BoolVar(&allowSecrets, "allow-secrets", false, "bypass the pre-flight secrets scan (DANGEROUS — diff will be sent to remote model providers)")
+	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "non-interactive: skip the consent prompt; require .kaijutsu/pr-review.yaml has allow-multi-model: true")
 	return cmd
 }
+
+// appendMarker tacks the kaijutsu-pr-review HTML comment marker
+// onto the synthesis markdown so re-runs can find it via
+// PostOrUpdateComment.
+func appendMarker(md, sha string) string {
+	return strings.TrimRight(md, "\n") + "\n\n" + swarm.Marker(swarm.NewRunID(), sha) + "\n"
+}
+
+// osGetwd is a tiny indirection so swarm.go's RunE doesn't import os
+// directly. Keeps testing easier.
+func osGetwd() (string, error) { return os.Getwd() }
 
 // pickSynthesizer chooses which agent runs the synthesis pass.
 // Prefers the user-requested name if available; otherwise falls back
