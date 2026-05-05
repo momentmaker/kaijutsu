@@ -220,13 +220,13 @@
   <div class="controls">
     <input type="search" id="search" placeholder="Search skills by name, description, tag…" autocomplete="off">
     <div class="filter-group" id="filters">
-      <button class="filter active" data-filter="all">All (39)</button>
+      <button class="filter active" data-filter="all">All (40)</button>
       <button class="filter" data-filter="core">Core</button>
       <button class="filter" data-filter="third-party">Third-party</button>
       <button class="filter" data-filter="hooks">Hooks</button>
     </div>
   </div>
-  <p class="stats" id="stats">Showing all 39 skills.</p>
+  <p class="stats" id="stats">Showing all 40 skills.</p>
 
   <div class="grid" id="grid">
     
@@ -631,6 +631,19 @@
         
       </div>
       <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install readme-update')" title="Click to copy">jutsu install readme-update</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="refactor-plan Multi-agent refactor planning. Runs claude / codex / gemini in parallel via `jutsu swarm refactor-plan &lt;path&gt;... --goal &#34;&lt;goal&gt;&#34;`. Each agent contributes from a different angle (claude=architectural decomposition, codex=stepwise risk, gemini=pattern consistency); synthesizer assembles into an ordered step plan with risk per step. Designed to feed into `planning-and-task-breakdown` for execution. Use when the user says &#34;plan this refactor&#34;, &#34;how do I restructure&#34;, &#34;step plan to extract X&#34;, or invokes /refactor-plan. refactor planning multi-agent code claude codex gemini">
+      <div class="row">
+        <h3>refactor-plan<span style="color:var(--muted);font-weight:normal"> 0.1.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Multi-agent refactor planning. Runs claude / codex / gemini in parallel via `jutsu swarm refactor-plan &lt;path&gt;... --goal &#34;&lt;goal&gt;&#34;`. Each agent contributes from a different angle (claude=architectural decomposition, codex=stepwise risk, gemini=pattern consistency); synthesizer assembles into an ordered step plan with risk per step. Designed to feed into `planning-and-task-breakdown` for execution. Use when the user says &#34;plan this refactor&#34;, &#34;how do I restructure&#34;, &#34;step plan to extract X&#34;, or invokes /refactor-plan.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install refactor-plan')" title="Click to copy">jutsu install refactor-plan</div>
     </article>
     
     <article class="card" data-source="core" data-hooks="false" data-search="scope-check Mid-task scope mirror with cost-tier classification (plan/bead/code = 1x/5x/25x). Surfaces when work has drifted from cheap planning into expensive code-space rework, and identifies natural split-points where a PR could become two. workflow focus planning claude codex gemini">

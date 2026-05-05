@@ -111,4 +111,5 @@ func init() {
 	defaultRegistry.Register(&prReviewPreset)
 	defaultRegistry.Register(&docReviewPreset)
 	defaultRegistry.Register(&brainstormPreset)
+	defaultRegistry.Register(&refactorPlanPreset)
 }

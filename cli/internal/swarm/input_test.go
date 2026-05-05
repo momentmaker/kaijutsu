@@ -60,6 +60,53 @@ func TestResolveInput_FilesOverCap(t *testing.T) {
 	}
 }
 
+func TestResolveInput_FilesWithGoalPrependedAndCounted(t *testing.T) {
+	dir := t.TempDir()
+	a := filepath.Join(dir, "a.go")
+	if err := os.WriteFile(a, []byte("alpha"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	preset := &Preset{Name: "refactor-plan", InputKind: InputFiles}
+	ictx, err := ResolveInput(context.Background(), preset, InputOptions{
+		Files: []string{a},
+		Goal:  "extract handler into service",
+	})
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if !strings.HasPrefix(ictx.Body, "--- GOAL ---\n") {
+		t.Errorf("expected GOAL prefix, got body:\n%s", ictx.Body)
+	}
+	if !strings.Contains(ictx.Body, "extract handler into service") {
+		t.Errorf("goal text missing from body: %s", ictx.Body)
+	}
+	// Cache key should differ from a no-goal call
+	noGoalCtx, _ := ResolveInput(context.Background(), preset, InputOptions{Files: []string{a}})
+	if ictx.CacheKey == noGoalCtx.CacheKey {
+		t.Errorf("goal should affect cache key; both = %q", ictx.CacheKey)
+	}
+}
+
+func TestResolveInput_FilesWithGoalCountsAgainstCap(t *testing.T) {
+	dir := t.TempDir()
+	a := filepath.Join(dir, "a.go")
+	// File at exactly cap; goal pushes it over.
+	if err := os.WriteFile(a, make([]byte, maxBytesFiles), 0644); err != nil {
+		t.Fatal(err)
+	}
+	preset := &Preset{Name: "refactor-plan", InputKind: InputFiles}
+	_, err := ResolveInput(context.Background(), preset, InputOptions{
+		Files: []string{a},
+		Goal:  "this is the goal text that pushes over",
+	})
+	if err == nil {
+		t.Fatal("expected error: file at cap + non-empty goal should bust the cap")
+	}
+	if !strings.Contains(err.Error(), "exceed") {
+		t.Errorf("expected 'exceed' in error, got %v", err)
+	}
+}
+
 func TestResolveInput_PromptHappyPath(t *testing.T) {
 	preset := &Preset{Name: "brainstorm", InputKind: InputPrompt}
 	ictx, err := ResolveInput(context.Background(), preset, InputOptions{Prompt: "  how  do  I rate-limit  "})

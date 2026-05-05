@@ -1,0 +1,16 @@
+name: refactor-plan
+version: 0.1.0
+license: MIT
+layout: rich
+description: "Multi-agent refactor planning. Runs claude / codex / gemini in parallel via `jutsu swarm refactor-plan <path>... --goal \"<goal>\"`. Each agent contributes from a different angle (claude=architectural decomposition, codex=stepwise risk, gemini=pattern consistency); synthesizer assembles into an ordered step plan with risk per step. Designed to feed into `planning-and-task-breakdown` for execution. Use when the user says \"plan this refactor\", \"how do I restructure\", \"step plan to extract X\", or invokes /refactor-plan."
+homepage: https://kaijutsu.dev/skills/refactor-plan
+repository: https://github.com/momentmaker/kaijutsu
+tags: [refactor, planning, multi-agent, code]
+agents: [claude, codex, gemini]
+shared: [scripts, prompts, references]
+permissions:
+  bash: true
+  network: true
+  fs-write: scoped
+trust:
+  expected-signer: kaijutsu-core@github

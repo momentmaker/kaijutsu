@@ -47,6 +47,11 @@ type InputOptions struct {
 	DiffFromBranch string
 	// InputFiles:
 	Files []string
+	// Goal is an optional InputFiles companion. When non-empty it
+	// gets prepended to the body as a `--- GOAL ---\n<goal>\n` block
+	// AND hashed into the cache key. Used by refactor-plan; other
+	// InputFiles presets (doc-review) leave it empty.
+	Goal string
 	// InputPrompt:
 	Prompt string
 }
@@ -101,7 +106,7 @@ func resolveFilesInput(preset *Preset, opts InputOptions) (*InputContext, error)
 		return nil, fmt.Errorf("preset %q requires at least one file path argument", preset.Name)
 	}
 	entries := make([]FileEntry, 0, len(opts.Files))
-	totalBytes := 0
+	totalBytes := len(opts.Goal) // goal counts against the 200KB cap too
 	for _, p := range opts.Files {
 		data, err := os.ReadFile(p)
 		if err != nil {
@@ -113,11 +118,15 @@ func resolveFilesInput(preset *Preset, opts InputOptions) (*InputContext, error)
 		}
 		entries = append(entries, FileEntry{Path: p, Content: string(data)})
 	}
+	body := AssembleFilesBody(entries)
+	if opts.Goal != "" {
+		body = "--- GOAL ---\n" + strings.TrimSpace(opts.Goal) + "\n\n" + body
+	}
 	return &InputContext{
 		Preset:    preset,
 		InputKind: InputFiles,
-		Body:      AssembleFilesBody(entries),
-		CacheKey:  CacheKeyForFiles(preset, entries),
+		Body:      body,
+		CacheKey:  CacheKeyForFilesWithGoal(preset, entries, opts.Goal),
 		Files:     append([]string(nil), opts.Files...),
 	}, nil
 }

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "total": 39,
+  "total": 40,
   "skills": [
     {
       "name": "agent-doctor",
@@ -730,6 +730,33 @@
       "permissions": {
         "bash": true,
         "network": false,
+        "fs_write": "scoped"
+      }
+    },
+    {
+      "name": "refactor-plan",
+      "version": "0.1.0",
+      "license": "MIT",
+      "description": "Multi-agent refactor planning. Runs claude / codex / gemini in parallel via `jutsu swarm refactor-plan \u003cpath\u003e... --goal \"\u003cgoal\u003e\"`. Each agent contributes from a different angle (claude=architectural decomposition, codex=stepwise risk, gemini=pattern consistency); synthesizer assembles into an ordered step plan with risk per step. Designed to feed into `planning-and-task-breakdown` for execution. Use when the user says \"plan this refactor\", \"how do I restructure\", \"step plan to extract X\", or invokes /refactor-plan.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "refactor",
+        "planning",
+        "multi-agent",
+        "code"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/refactor-plan",
+      "homepage": "https://kaijutsu.dev/skills/refactor-plan",
+      "has_hooks": false,
+      "permissions": {
+        "bash": true,
+        "network": true,
         "fs_write": "scoped"
       }
     },

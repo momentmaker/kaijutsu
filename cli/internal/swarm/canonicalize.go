@@ -94,6 +94,18 @@ func CacheKeyForFiles(preset *Preset, entries []FileEntry) string {
 	return saltedHashKey(preset.Name, body)
 }
 
+// CacheKeyForFilesWithGoal is the refactor-plan-flavored variant:
+// includes the goal text in the hash so the same files reviewed
+// against different goals produce different cache keys. When goal
+// is empty it's identical to CacheKeyForFiles.
+func CacheKeyForFilesWithGoal(preset *Preset, entries []FileEntry, goal string) string {
+	body := AssembleFilesBody(entries)
+	if goal != "" {
+		body = "GOAL:" + strings.TrimSpace(goal) + "\n" + body
+	}
+	return saltedHashKey(preset.Name, body)
+}
+
 // CacheKeyForPrompt derives the per-preset cache key for an
 // InputPrompt run. Applies CanonicalizePrompt then salts with
 // preset.Name.

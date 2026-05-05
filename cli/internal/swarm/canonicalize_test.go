@@ -68,6 +68,36 @@ func TestCacheKeyForFiles_ContentChangeChangesKey(t *testing.T) {
 	}
 }
 
+func TestCacheKeyForFilesWithGoal_GoalAffectsKey(t *testing.T) {
+	preset := &Preset{Name: "refactor-plan"}
+	files := []FileEntry{{Path: "a.go", Content: "alpha"}}
+	a := CacheKeyForFilesWithGoal(preset, files, "extract handler")
+	b := CacheKeyForFilesWithGoal(preset, files, "rename module")
+	if a == b {
+		t.Errorf("different goals should produce different keys, both = %q", a)
+	}
+}
+
+func TestCacheKeyForFilesWithGoal_EmptyGoalMatchesPlain(t *testing.T) {
+	preset := &Preset{Name: "refactor-plan"}
+	files := []FileEntry{{Path: "a.go", Content: "alpha"}}
+	plain := CacheKeyForFiles(preset, files)
+	withEmpty := CacheKeyForFilesWithGoal(preset, files, "")
+	if plain != withEmpty {
+		t.Errorf("empty goal should match CacheKeyForFiles, got %q vs %q", plain, withEmpty)
+	}
+}
+
+func TestCacheKeyForFilesWithGoal_GoalWhitespaceNormalized(t *testing.T) {
+	preset := &Preset{Name: "refactor-plan"}
+	files := []FileEntry{{Path: "a.go", Content: "alpha"}}
+	a := CacheKeyForFilesWithGoal(preset, files, "extract handler")
+	b := CacheKeyForFilesWithGoal(preset, files, "  extract handler  \n")
+	if a != b {
+		t.Errorf("goal trim should not affect key, got %q vs %q", a, b)
+	}
+}
+
 func TestAssembleFilesBody_PrefixesAndSorts(t *testing.T) {
 	body := AssembleFilesBody([]FileEntry{
 		{Path: "z.go", Content: "z body"},

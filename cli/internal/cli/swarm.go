@@ -33,6 +33,7 @@ before the synthesizer.`,
 	cmd.AddCommand(newSwarmPRReviewCmd())
 	cmd.AddCommand(newSwarmDocReviewCmd())
 	cmd.AddCommand(newSwarmBrainstormCmd())
+	cmd.AddCommand(newSwarmRefactorPlanCmd())
 	return cmd
 }
 
@@ -191,6 +192,58 @@ speculative) with cross-cut themes called out separately.`,
 		},
 	}
 	bindCommonFlags(cmd, &flags, false) // no --post-comment for brainstorm (no PR)
+	return cmd
+}
+
+func newSwarmRefactorPlanCmd() *cobra.Command {
+	var flags commonSwarmFlags
+	var goal string
+	cmd := &cobra.Command{
+		Use:   "refactor-plan <path>... --goal \"<goal>\"",
+		Short: "Multi-agent refactor plan: ordered steps with risk per step",
+		Long: `Plan a refactor of one or more files toward a goal. Three agents
+each contribute steps from a different angle:
+  - claude: architectural decomposition (right new shape)
+  - codex:  stepwise risk (order minimizes regression risk)
+  - gemini: pattern consistency (matches existing repo idioms)
+
+Output: ordered step list with per-step risk assessment + ordering-
+disagreement callouts.
+
+The --goal flag is REQUIRED unless --replay or --grant-consent is
+set. The goal text counts against the 200 KB InputFiles cap.`,
+		Args: cobra.ArbitraryArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			projectRoot, _ := os.Getwd()
+			preset, err := swarm.LoadPresetWithSkillOverrides(projectRoot, "refactor-plan")
+			if err != nil {
+				return err
+			}
+			if flags.grantConsent {
+				return runGrantConsent(cmd, projectRoot, preset)
+			}
+			if flags.replayKey != "" {
+				return runReplay(ctx, cmd, projectRoot, "refactor-plan", flags.replayKey, flags.synthesizer, flags.perAgentBudget, flags.timeout, false)
+			}
+			if len(args) == 0 {
+				return errors.New("refactor-plan requires at least one file path argument (or --replay <key>)")
+			}
+			if strings.TrimSpace(goal) == "" {
+				return errors.New("refactor-plan requires --goal \"<refactor goal>\". Example: --goal \"extract HTTP handler into its own service\"")
+			}
+			ictx, err := swarm.ResolveInput(ctx, preset, swarm.InputOptions{
+				Files: args,
+				Goal:  goal,
+			})
+			if err != nil {
+				return err
+			}
+			return runSwarmPipeline(ctx, cmd, projectRoot, preset, ictx, flags)
+		},
+	}
+	cmd.Flags().StringVar(&goal, "goal", "", "refactor goal (REQUIRED) — one-line description of the desired end-state")
+	bindCommonFlags(cmd, &flags, false) // no --post-comment for refactor-plan (no PR)
 	return cmd
 }
 
