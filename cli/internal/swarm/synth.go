@@ -137,16 +137,30 @@ func clusterFindings(results []AgentResult) []FindingGroup {
 	return out
 }
 
+// severityRank assigns a numeric ordering to each known severity so
+// clusterFindings can sort by severity desc. Ranks parallel across
+// vocabularies — CVSS "critical" sits at the same rank as review
+// "blocker" so a synthesizer that runs across vocabularies (rare;
+// not done in Phase 2) sorts sensibly. Within a single preset's run
+// only that preset's vocab appears, so the cross-vocab parallels
+// don't cause confusion.
 func severityRank(s Severity) int {
 	switch s {
-	case SeverityBlocker:
+	// rank 4 (highest)
+	case SeverityBlocker, SeverityCritical:
 		return 4
-	case SeverityIssue:
+	// rank 3
+	case SeverityIssue, SeverityHigh, SeverityRecommended:
 		return 3
-	case SeverityMinor:
+	// rank 2
+	case SeverityMinor, SeverityMedium, SeverityAlternative, SeverityRisky:
 		return 2
-	case SeverityInfo:
+	// rank 1
+	case SeverityLow:
 		return 1
+	// rank 0 (lowest — info-only)
+	case SeverityInfo, SeverityInformational, SeveritySpeculative:
+		return 0
 	}
 	return 0
 }

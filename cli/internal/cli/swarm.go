@@ -34,6 +34,7 @@ before the synthesizer.`,
 	cmd.AddCommand(newSwarmDocReviewCmd())
 	cmd.AddCommand(newSwarmBrainstormCmd())
 	cmd.AddCommand(newSwarmRefactorPlanCmd())
+	cmd.AddCommand(newSwarmSecurityAuditCmd())
 	return cmd
 }
 
@@ -244,6 +245,96 @@ set. The goal text counts against the 200 KB InputFiles cap.`,
 	}
 	cmd.Flags().StringVar(&goal, "goal", "", "refactor goal (REQUIRED) — one-line description of the desired end-state")
 	bindCommonFlags(cmd, &flags, false) // no --post-comment for refactor-plan (no PR)
+	return cmd
+}
+
+func newSwarmSecurityAuditCmd() *cobra.Command {
+	var flags commonSwarmFlags
+	var (
+		pr             int
+		diffFromBranch string
+	)
+	cmd := &cobra.Command{
+		Use:   "security-audit",
+		Short: "Multi-agent security audit (CVSS-aligned). Diff or files in, threat model out.",
+		Long: `Audit a code change OR file set for security issues. Three lenses:
+  - claude: auth + data flow (boundaries, identity, trust)
+  - codex:  injection + privilege escalation (concrete attack vectors)
+  - gemini: dependency + supply-chain (third-party trust, version drift)
+
+Severity vocabulary is CVSS-aligned (critical | high | medium | low |
+informational), distinct from pr-review's blocker/issue/minor/info.
+
+Two input modes (mutually exclusive):
+  - PR mode: --pr <n> or --diff-from-branch <ref>
+  - Files mode: positional file/dir paths
+
+--full mode defaults ON for security-audit (high-stakes; the Pass-2
+debate catches false-positives that erode trust). Pass --mode quick
+to disable explicitly.
+
+Cache directory: .kaijutsu/security-audit-runs/<key>/. Same SHA can
+be audited via both pr-review AND security-audit without colliding —
+the preset name is part of the cache-key salt.`,
+		Args: cobra.ArbitraryArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			projectRoot, _ := os.Getwd()
+			preset, err := swarm.LoadPresetWithSkillOverrides(projectRoot, "security-audit")
+			if err != nil {
+				return err
+			}
+			if flags.grantConsent {
+				return runGrantConsent(cmd, projectRoot, preset)
+			}
+			if flags.replayKey != "" {
+				return runReplay(ctx, cmd, projectRoot, "security-audit", flags.replayKey, flags.synthesizer, flags.perAgentBudget, flags.timeout, false)
+			}
+			diffMode := pr != 0 || diffFromBranch != ""
+			filesMode := len(args) > 0
+			if diffMode && filesMode {
+				return errors.New("security-audit: pick ONE input mode — either --pr/--diff-from-branch (diff mode) OR positional file paths (files mode), not both")
+			}
+			if !diffMode && !filesMode {
+				return errors.New("security-audit requires either --pr <n> / --diff-from-branch <ref> (diff mode) or one or more file paths (files mode)")
+			}
+			// Default --full ON for security-audit. User can override
+			// to --mode quick if they want a cheap first-pass scan.
+			if !cmd.Flags().Changed("mode") {
+				flags.mode = "full"
+			}
+			// Build the right kind of InputContext per mode. The
+			// preset's static metadata declares InputDiff (for
+			// registry/help purposes); runtime swap is fine because
+			// runSwarmPipeline reads ictx.InputKind, not preset.InputKind.
+			var (
+				ictx     *swarm.InputContext
+				resolveErr error
+			)
+			if diffMode {
+				ictx, resolveErr = swarm.ResolveInput(ctx, preset, swarm.InputOptions{
+					PR:             pr,
+					DiffFromBranch: diffFromBranch,
+				})
+			} else {
+				// Override InputKind on a per-invocation copy so
+				// resolveFilesInput is called even though the preset
+				// metadata says InputDiff.
+				filesPreset := *preset
+				filesPreset.InputKind = swarm.InputFiles
+				ictx, resolveErr = swarm.ResolveInput(ctx, &filesPreset, swarm.InputOptions{
+					Files: args,
+				})
+			}
+			if resolveErr != nil {
+				return resolveErr
+			}
+			return runSwarmPipeline(ctx, cmd, projectRoot, preset, ictx, flags)
+		},
+	}
+	cmd.Flags().IntVar(&pr, "pr", 0, "PR number (diff mode; default: detect from current branch)")
+	cmd.Flags().StringVar(&diffFromBranch, "diff-from-branch", "", "review the local branch vs base ref (diff mode; e.g. origin/main)")
+	bindCommonFlags(cmd, &flags, false) // no --post-comment for security-audit (might leak vuln details to a public PR)
 	return cmd
 }
 

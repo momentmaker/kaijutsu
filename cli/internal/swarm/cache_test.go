@@ -85,6 +85,29 @@ func TestCacheDir_HonorsCachePathPartOverride(t *testing.T) {
 	}
 }
 
+// TestCacheDir_NoCollisionAcrossSecurityAuditAndPRReview verifies
+// that auditing the same diff twice — once via pr-review, once via
+// security-audit — produces distinct cache dirs. The cache-segment
+// is per-preset (`<Name>-runs`) so the two never overlap. Stage 7
+// acceptance criterion.
+func TestCacheDir_NoCollisionAcrossSecurityAuditAndPRReview(t *testing.T) {
+	root := "/tmp/project"
+	pr := &Preset{Name: "pr-review"}
+	sa := &Preset{Name: "security-audit"}
+	sha := "abc1234"
+	prDir := CacheDir(root, pr, sha)
+	saDir := CacheDir(root, sa, sha)
+	if prDir == saDir {
+		t.Fatalf("expected distinct cache dirs, both = %q", prDir)
+	}
+	if !strings.HasSuffix(prDir, "/.kaijutsu/pr-review-runs/abc1234") {
+		t.Errorf("pr-review path wrong: %q", prDir)
+	}
+	if !strings.HasSuffix(saDir, "/.kaijutsu/security-audit-runs/abc1234") {
+		t.Errorf("security-audit path wrong: %q", saDir)
+	}
+}
+
 func TestSanitizeAgent_DropsUnsafeChars(t *testing.T) {
 	got := sanitizeAgent("../../foo")
 	if got != "foo" {

@@ -1,0 +1,16 @@
+name: security-audit
+version: 0.1.0
+license: MIT
+layout: rich
+description: "Multi-agent security audit. Runs claude / codex / gemini in parallel via `jutsu swarm security-audit --pr <n>` (PR mode) or `jutsu swarm security-audit <path>...` (files mode). Three lenses: claude=auth+data flow, codex=injection+priv-esc, gemini=dep+supply-chain. CVSS-aligned severity (critical|high|medium|low|informational). --full mode defaults ON. Output: threat model + prioritized recs. Use when the user says \"audit this for security\", \"threat model\", \"check for vulns\", \"review the auth flow\", or invokes /security-audit."
+homepage: https://kaijutsu.dev/skills/security-audit
+repository: https://github.com/momentmaker/kaijutsu
+tags: [security, audit, threat-model, multi-agent, cvss]
+agents: [claude, codex, gemini]
+shared: [scripts, prompts, references]
+permissions:
+  bash: true
+  network: true
+  fs-write: scoped
+trust:
+  expected-signer: kaijutsu-core@github

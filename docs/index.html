@@ -220,13 +220,13 @@
   <div class="controls">
     <input type="search" id="search" placeholder="Search skills by name, description, tag…" autocomplete="off">
     <div class="filter-group" id="filters">
-      <button class="filter active" data-filter="all">All (40)</button>
+      <button class="filter active" data-filter="all">All (41)</button>
       <button class="filter" data-filter="core">Core</button>
       <button class="filter" data-filter="third-party">Third-party</button>
       <button class="filter" data-filter="hooks">Hooks</button>
     </div>
   </div>
-  <p class="stats" id="stats">Showing all 40 skills.</p>
+  <p class="stats" id="stats">Showing all 41 skills.</p>
 
   <div class="grid" id="grid">
     
@@ -670,6 +670,19 @@
         
       </div>
       <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install security-and-hardening')" title="Click to copy">jutsu install security-and-hardening</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="security-audit Multi-agent security audit. Runs claude / codex / gemini in parallel via `jutsu swarm security-audit --pr &lt;n&gt;` (PR mode) or `jutsu swarm security-audit &lt;path&gt;...` (files mode). Three lenses: claude=auth&#43;data flow, codex=injection&#43;priv-esc, gemini=dep&#43;supply-chain. CVSS-aligned severity (critical|high|medium|low|informational). --full mode defaults ON. Output: threat model &#43; prioritized recs. Use when the user says &#34;audit this for security&#34;, &#34;threat model&#34;, &#34;check for vulns&#34;, &#34;review the auth flow&#34;, or invokes /security-audit. security audit threat-model multi-agent cvss claude codex gemini">
+      <div class="row">
+        <h3>security-audit<span style="color:var(--muted);font-weight:normal"> 0.1.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Multi-agent security audit. Runs claude / codex / gemini in parallel via `jutsu swarm security-audit --pr &lt;n&gt;` (PR mode) or `jutsu swarm security-audit &lt;path&gt;...` (files mode). Three lenses: claude=auth&#43;data flow, codex=injection&#43;priv-esc, gemini=dep&#43;supply-chain. CVSS-aligned severity (critical|high|medium|low|informational). --full mode defaults ON. Output: threat model &#43; prioritized recs. Use when the user says &#34;audit this for security&#34;, &#34;threat model&#34;, &#34;check for vulns&#34;, &#34;review the auth flow&#34;, or invokes /security-audit.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install security-audit')" title="Click to copy">jutsu install security-audit</div>
     </article>
     
     <article class="card" data-source="core" data-hooks="false" data-search="session-retro End-of-session retrospective. Mines the current conversation for learnings; cross-session pattern detection across recent retros; writes to project-memory; optional auto-apply mode. retrospective memory learning claude codex gemini">

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "total": 40,
+  "total": 41,
   "skills": [
     {
       "name": "agent-doctor",
@@ -814,6 +814,34 @@
         "bash": true,
         "network": true,
         "fs_write": false
+      }
+    },
+    {
+      "name": "security-audit",
+      "version": "0.1.0",
+      "license": "MIT",
+      "description": "Multi-agent security audit. Runs claude / codex / gemini in parallel via `jutsu swarm security-audit --pr \u003cn\u003e` (PR mode) or `jutsu swarm security-audit \u003cpath\u003e...` (files mode). Three lenses: claude=auth+data flow, codex=injection+priv-esc, gemini=dep+supply-chain. CVSS-aligned severity (critical|high|medium|low|informational). --full mode defaults ON. Output: threat model + prioritized recs. Use when the user says \"audit this for security\", \"threat model\", \"check for vulns\", \"review the auth flow\", or invokes /security-audit.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "security",
+        "audit",
+        "threat-model",
+        "multi-agent",
+        "cvss"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/security-audit",
+      "homepage": "https://kaijutsu.dev/skills/security-audit",
+      "has_hooks": false,
+      "permissions": {
+        "bash": true,
+        "network": true,
+        "fs_write": "scoped"
       }
     },
     {
