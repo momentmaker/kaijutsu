@@ -111,21 +111,45 @@ func newSwarmPRReviewCmd() *cobra.Command {
 					fmt.Fprintln(stderr, "warning: no synthesizer agent available; falling back to JSON dump")
 					format = "json"
 				} else {
-					synth, synthErr := swarm.Synthesize(ctx, results, synthAgent, preset, perAgentBudget, timeout)
+					// Stage 3: --full runs a Pass-2 round-robin debate
+					// before synthesis so the synthesizer can lean on
+					// peer-tested findings.
+					effective := results
+					if mode == "full" {
+						fmt.Fprintln(stderr, "swarm: --full mode — Pass 2 round-robin debate starting")
+						pass2 := swarm.Debate(ctx, results, preset, perAgentBudget, timeout)
+						for _, r := range pass2 {
+							run.TotalCost += r.Cost
+						}
+						effective = pass2
+					}
+					synth, synthErr := swarm.Synthesize(ctx, effective, synthAgent, preset, perAgentBudget, timeout)
 					if synth != nil {
 						run.TotalCost += synth.Cost
-					}
-					if maxCostUSD > 0 && run.TotalCost > maxCostUSD {
-						fmt.Fprintf(stderr, "warning: estimated total cost $%.2f exceeded --max-cost $%.2f\n", run.TotalCost, maxCostUSD)
 					}
 					if synthErr != nil {
 						fmt.Fprintf(stderr, "warning: synthesis: %v (using deterministic fallback markdown)\n", synthErr)
 					}
+					md := ""
 					if synth != nil {
-						fmt.Fprint(out, synth.Markdown)
+						md = synth.Markdown
 					}
+					// --strict: lie-to-them filter on the synthesis
+					// draft (Stage 3). One extra synthesizer call.
+					if strict && md != "" {
+						filtered, lieCost, lieErr := swarm.LieToThem(ctx, md, synthAgent, perAgentBudget, timeout)
+						if lieErr != nil {
+							fmt.Fprintf(stderr, "warning: --strict lie-to-them filter failed: %v (keeping unfiltered draft)\n", lieErr)
+						} else {
+							md = filtered
+							run.TotalCost += lieCost
+						}
+					}
+					if maxCostUSD > 0 && run.TotalCost > maxCostUSD {
+						fmt.Fprintf(stderr, "warning: estimated total cost $%.2f exceeded --max-cost $%.2f\n", run.TotalCost, maxCostUSD)
+					}
+					fmt.Fprint(out, md)
 					reportSwarmStderr(stderr, results, finished.Sub(start), run.TotalCost)
-					_ = strict
 					return nil
 				}
 			}
