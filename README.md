@@ -68,11 +68,20 @@ Most skills only need a single `SKILL.md`. For the rare cases where Claude and C
 
 ## Core skills
 
-**Task-oriented** — `pr-review` · `readme-update` · `decide` · `journal` · `polish` · `unstuck` · `scope-check` · `session-retro` · `agent-doctor`
+**Task-oriented** — `pr-review` · `readme-update` · `decide` · `journal` · `polish` · `unstuck` · `scope-check` · `session-retro` · `agent-doctor` · `doc-review`
 
 **Primitives (composed by other skills via `deps.skills`)** — `blunder-hunt` · `lie-to-them` · `convergence-detect` · `deslop` · `dispatch-parallel` · `multi-model-synth` · `project-memory`
 
 Run `jutsu search <query>` to find skills by name / description / tag, or `jutsu info <skill>` for full metadata.
+
+## Multi-agent flywheel (`jutsu swarm`)
+
+Two skills (`pr-review` v1.x, `doc-review` v0.1+) ship as multi-agent presets that orchestrate claude / codex / gemini in parallel through `jutsu swarm <preset>`. Each agent reviews the same input through a different lens, then a synthesizer produces a single markdown report with a disagreement table. Used as the universal QA gate for kaijutsu artifacts:
+
+- `jutsu swarm pr-review --pr 42` — adversarial multi-agent code review on a PR
+- `jutsu swarm doc-review SPEC.md` — multi-agent review on a spec / plan / decision record / design doc
+
+Three artifact-producing skills (`spec-driven-development`, `planning-and-task-breakdown`, `decide`) call `jutsu swarm doc-review` as their final review pass instead of inventing their own — a single shared QA gate replaces three ad-hoc mechanisms. See [`IMPLEMENTATION_PLAN_PHASE2.md`](./IMPLEMENTATION_PLAN_PHASE2.md) for the design.
 
 ## Trust model
 

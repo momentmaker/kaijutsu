@@ -74,3 +74,40 @@ func TestEscapePipes(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestAssembleMarkdown_HeaderUsesPresetName(t *testing.T) {
+	cases := []struct {
+		preset *Preset
+		want   string
+	}{
+		{&Preset{Name: "pr-review"}, "## kaijutsu pr-review"},
+		{&Preset{Name: "doc-review"}, "## kaijutsu doc-review"},
+		{&Preset{Name: "brainstorm"}, "## kaijutsu brainstorm"},
+		{&Preset{Name: "refactor-plan"}, "## kaijutsu refactor-plan"},
+		{&Preset{Name: "security-audit"}, "## kaijutsu security-audit"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.preset.Name, func(t *testing.T) {
+			md := assembleMarkdown(tc.preset, nil, "", "draft", nil)
+			if !strings.HasPrefix(md, tc.want+"\n\n") {
+				t.Errorf("preset %q: expected prefix %q, got first 50 chars %q", tc.preset.Name, tc.want, md[:50])
+			}
+		})
+	}
+}
+
+func TestFallbackMarkdown_HeaderUsesPresetName(t *testing.T) {
+	preset := &Preset{Name: "doc-review"}
+	md := fallbackMarkdown(preset, nil, "", "")
+	want := "## kaijutsu doc-review (synthesis failed; raw findings below)"
+	if !strings.HasPrefix(md, want) {
+		t.Errorf("expected prefix %q, got %q", want, md[:min(len(md), len(want))])
+	}
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}

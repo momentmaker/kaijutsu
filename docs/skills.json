@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "total": 37,
+  "total": 41,
   "skills": [
     {
       "name": "agent-doctor",
@@ -70,6 +70,33 @@
         "bash": false,
         "network": false,
         "fs_write": false
+      }
+    },
+    {
+      "name": "brainstorm",
+      "version": "0.1.0",
+      "license": "MIT",
+      "description": "Multi-agent ideation against a free-form prompt. Runs claude / codex / gemini in parallel via `jutsu swarm brainstorm \"\u003cprompt\u003e\"`, each with a different angle (claude=long-horizon framing, codex=code-pattern grounding, gemini=cross-domain analogy), then synthesizes into a ranked list of approaches with tradeoffs. Designed to feed into `decide` for ADR capture or into `refactor-plan` for execution. Use when the user says \"brainstorm\", \"ideas for\", \"how should we approach\", \"options for\", or invokes /brainstorm.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "ideation",
+        "brainstorm",
+        "multi-agent",
+        "planning"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/brainstorm",
+      "homepage": "https://kaijutsu.dev/skills/brainstorm",
+      "has_hooks": false,
+      "permissions": {
+        "bash": true,
+        "network": true,
+        "fs_write": "scoped"
       }
     },
     {
@@ -249,9 +276,9 @@
     },
     {
       "name": "decide",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "license": "MIT",
-      "description": "Decision journal — record architectural decisions with reasoning + tripwires; multi-model critique on record; auto-tag from content; surface recorded decisions when about to contradict one. Writes to project-memory.",
+      "description": "Decision journal — record architectural decisions with reasoning + tripwires; high-stakes decisions get a multi-agent review pass via `jutsu swarm doc-review` before commit; auto-tag from content; surface recorded decisions when about to contradict one. Writes to project-memory.",
       "agents": [
         "claude",
         "codex",
@@ -341,6 +368,34 @@
         "bash": false,
         "network": false,
         "fs_write": false
+      }
+    },
+    {
+      "name": "doc-review",
+      "version": "0.1.0",
+      "license": "MIT",
+      "description": "Universal QA gate for markdown artifacts. Runs claude / codex / gemini in parallel via `jutsu swarm doc-review \u003cpath\u003e`, each with a tailored lens (claude=completeness, codex=implementability, gemini=consistency), then synthesizes into a single review with a disagreement table. Designed to be invoked at the end of any artifact-producing skill (spec-driven-development, planning-and-task-breakdown, decide). Use when the user says \"review this spec\", \"review this plan\", \"check this RFC\", or invokes /doc-review.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "review",
+        "spec",
+        "plan",
+        "multi-agent",
+        "quality-gate"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/doc-review",
+      "homepage": "https://kaijutsu.dev/skills/doc-review",
+      "has_hooks": false,
+      "permissions": {
+        "bash": true,
+        "network": true,
+        "fs_write": "scoped"
       }
     },
     {
@@ -544,9 +599,9 @@
     },
     {
       "name": "planning-and-task-breakdown",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "license": "MIT",
-      "description": "Decompose a spec into a verifiable task list — vertical slices, explicit dependencies, acceptance criteria per task. Final review pass via blunder-hunt + scope-check before tasks are considered ready for implementation.",
+      "description": "Decompose a spec into a verifiable task list — vertical slices, explicit dependencies, acceptance criteria per task. Final review pass via `jutsu swarm doc-review`; cost-tier classification per slice via scope-check.",
       "agents": [
         "claude",
         "codex",
@@ -679,6 +734,33 @@
       }
     },
     {
+      "name": "refactor-plan",
+      "version": "0.1.0",
+      "license": "MIT",
+      "description": "Multi-agent refactor planning. Runs claude / codex / gemini in parallel via `jutsu swarm refactor-plan \u003cpath\u003e... --goal \"\u003cgoal\u003e\"`. Each agent contributes from a different angle (claude=architectural decomposition, codex=stepwise risk, gemini=pattern consistency); synthesizer assembles into an ordered step plan with risk per step. Designed to feed into `planning-and-task-breakdown` for execution. Use when the user says \"plan this refactor\", \"how do I restructure\", \"step plan to extract X\", or invokes /refactor-plan.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "refactor",
+        "planning",
+        "multi-agent",
+        "code"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/refactor-plan",
+      "homepage": "https://kaijutsu.dev/skills/refactor-plan",
+      "has_hooks": false,
+      "permissions": {
+        "bash": true,
+        "network": true,
+        "fs_write": "scoped"
+      }
+    },
+    {
       "name": "scope-check",
       "version": "0.2.0",
       "license": "MIT",
@@ -732,6 +814,34 @@
         "bash": true,
         "network": true,
         "fs_write": false
+      }
+    },
+    {
+      "name": "security-audit",
+      "version": "0.1.0",
+      "license": "MIT",
+      "description": "Multi-agent security audit. Runs claude / codex / gemini in parallel via `jutsu swarm security-audit --pr \u003cn\u003e` (PR mode) or `jutsu swarm security-audit \u003cpath\u003e...` (files mode). Three lenses: claude=auth+data flow, codex=injection+priv-esc, gemini=dep+supply-chain. CVSS-aligned severity (critical|high|medium|low|informational). --full mode defaults ON. Output: threat model + prioritized recs. Use when the user says \"audit this for security\", \"threat model\", \"check for vulns\", \"review the auth flow\", or invokes /security-audit.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "security",
+        "audit",
+        "threat-model",
+        "multi-agent",
+        "cvss"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/security-audit",
+      "homepage": "https://kaijutsu.dev/skills/security-audit",
+      "has_hooks": false,
+      "permissions": {
+        "bash": true,
+        "network": true,
+        "fs_write": "scoped"
       }
     },
     {
@@ -798,9 +908,9 @@
     },
     {
       "name": "spec-driven-development",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "license": "MIT",
-      "description": "Author a PRD-style spec before writing implementation. Produce a written, reviewable artifact (problem statement, scope, non-goals, acceptance criteria, open questions) that survives the agent session and gets reviewed by a fresh-eyes pass before unblocking implementation.",
+      "description": "Author a PRD-style spec before writing implementation. Produce a written, reviewable artifact (problem statement, scope, non-goals, acceptance criteria, open questions) that survives the agent session and gets reviewed by `jutsu swarm doc-review` before unblocking implementation.",
       "agents": [
         "claude",
         "codex",

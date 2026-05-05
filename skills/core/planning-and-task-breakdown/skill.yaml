@@ -1,8 +1,8 @@
 name: planning-and-task-breakdown
-version: 0.1.0
+version: 0.2.0
 license: MIT
 layout: flat
-description: "Decompose a spec into a verifiable task list — vertical slices, explicit dependencies, acceptance criteria per task. Final review pass via blunder-hunt + scope-check before tasks are considered ready for implementation."
+description: "Decompose a spec into a verifiable task list — vertical slices, explicit dependencies, acceptance criteria per task. Final review pass via `jutsu swarm doc-review`; cost-tier classification per slice via scope-check."
 author: "Addy Osmani (originally) — adapted by kaijutsu maintainers"
 homepage: https://kaijutsu.dev/skills/planning-and-task-breakdown
 repository: https://github.com/momentmaker/kaijutsu
@@ -18,5 +18,5 @@ permissions:
 
 deps:
   skills:
-    - blunder-hunt@^0.2
+    - doc-review@^0.1
     - scope-check@^0.2

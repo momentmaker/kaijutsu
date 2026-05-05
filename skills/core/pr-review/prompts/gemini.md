@@ -36,4 +36,12 @@ You are doing a cross-file pattern + consistency review. Focus on:
 If the diff is a one-off tactical fix, that's OK to say so and emit
 no findings.
 
+CRITICAL — TOOLS POLICY: This invocation runs you in read-only sandbox
+mode. Write tools and shell commands will be denied; read tools may
+auto-approve but waste your token budget without adding any context
+the DIFF below doesn't already contain. Do NOT attempt to read files,
+glob paths, run commands, or invoke any tools. Every byte you need is
+already embedded between this paragraph and end-of-input. Reason
+solely from the DIFF text and return ONLY a JSON array of findings.
+
 %s

@@ -74,14 +74,56 @@ func normalize(in []Finding) []Finding {
 	return out
 }
 
+// coerceSeverity normalizes the agent-emitted severity string to a
+// Severity value the orchestrator recognizes. Each preset declares
+// its own vocabulary via Preset.SeverityVocab; coercion preserves
+// preset-specific vocabularies (CVSS for security-audit; brainstorm-
+// flavored for brainstorm/refactor-plan) and only collapses truly
+// unknown strings to SeverityInfo.
+//
+// A handful of cross-vocabulary aliases (fatal → blocker, warning →
+// issue) handle agents that emit close-but-not-exact terms.
+//
+// NOTE: cross-vocab leakage is NOT prevented. A pr-review agent that
+// mistakenly emits "high" (CVSS vocab) gets coerced to SeverityHigh
+// and renders verbatim in the disagreement table alongside
+// "blocker"/"issue"/"minor"/"info". UX-quality concern, not a crash.
+// Phase-3 work could add an in-vocab guard that coerces out-of-vocab
+// severities to the closest in-vocab match per Preset.SeverityVocab.
 func coerceSeverity(s string) Severity {
 	switch strings.ToLower(strings.TrimSpace(s)) {
-	case "blocker", "critical", "fatal":
+	// Review vocab (pr-review, doc-review)
+	case "blocker", "fatal":
 		return SeverityBlocker
 	case "issue", "major", "warning", "warn":
 		return SeverityIssue
-	case "minor", "nit", "nitpick", "low":
+	case "minor", "nit", "nitpick":
 		return SeverityMinor
+	case "info":
+		return SeverityInfo
+
+	// CVSS vocab (security-audit)
+	case "critical":
+		return SeverityCritical
+	case "high":
+		return SeverityHigh
+	case "medium":
+		return SeverityMedium
+	case "low":
+		return SeverityLow
+	case "informational":
+		return SeverityInformational
+
+	// Brainstorm vocab (brainstorm, refactor-plan)
+	case "recommended":
+		return SeverityRecommended
+	case "alternative":
+		return SeverityAlternative
+	case "risky":
+		return SeverityRisky
+	case "speculative":
+		return SeveritySpeculative
+
 	default:
 		return SeverityInfo
 	}

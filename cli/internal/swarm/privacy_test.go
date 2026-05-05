@@ -78,18 +78,41 @@ func TestSecretsScan_OpenAIClassicKey(t *testing.T) {
 }
 
 func TestSecretsScan_OpenAIClassicNoFalsePositiveOnEmbedded(t *testing.T) {
-	// `sk-` preceded by `-` (a non-delimiter char in the leading
-	// anchor `[ \t"'=:;,]`) should NOT match. Real-world shapes
-	// this guards against include `task-sk-...`, `repo-sk-...`,
-	// kebab-case identifiers that end in -sk- midword.
-	diff := `diff --git a/foo.go b/foo.go
+	// Two real-world false-positive shapes the classic-key regex
+	// must reject:
+	//   1. camelCase mid-word: `taskSk...` — uppercase 'S' fails
+	//      the lowercase-only `sk` requirement. Guards against
+	//      future regex relaxations that drop case sensitivity.
+	//   2. hyphen-prefixed: `task-sk-...` — lowercase `sk-` with
+	//      40+ alphanumerics, BUT preceded by `-` which isn't in
+	//      the delimiter set `[ \t"'=:;,]`. Guards the leading-
+	//      anchor logic specifically.
+	cases := []struct {
+		name string
+		diff string
+	}{
+		{
+			"camelCase midword (uppercase guard)",
+			`diff --git a/foo.go b/foo.go
 +++ b/foo.go
-+var taskID = "task-sk-Abcd1234EfghIjkl5678MnopQrst9012UvwxYzab3456"`
-	hits := SecretsScan(diff)
-	for _, h := range hits {
-		if strings.Contains(h.Reason, "classic") {
-			t.Errorf("false positive on hyphen-prefixed sk- substring: %+v", h)
-		}
++var taskSkAbcd1234EfghIjkl5678MnopQrst9012UvwxYzab3456 = 1`,
+		},
+		{
+			"hyphen-prefixed (delimiter guard)",
+			`diff --git a/foo.go b/foo.go
++++ b/foo.go
++var taskID = "task-sk-Abcd1234EfghIjkl5678MnopQrst9012UvwxYzab3456"`,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			hits := SecretsScan(tc.diff)
+			for _, h := range hits {
+				if strings.Contains(h.Reason, "classic") {
+					t.Errorf("false positive: %+v", h)
+				}
+			}
+		})
 	}
 }
 

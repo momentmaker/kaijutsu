@@ -56,6 +56,13 @@ func (codexAgent) Run(ctx context.Context, prompt string, budget float64) (strin
 // diffs easily exceed 64KB) we keep a stub instruction in -p and pipe
 // the bulk via stdin — Gemini's `-p` doc states stdin is APPENDED to
 // the prompt arg in non-interactive mode.
+//
+// --approval-mode plan: read-only mode. Auto-approves reads, blocks
+// writes/shell. Without this, gemini's default approval-mode prompts
+// for confirmation on every tool call, blocking on stdin (no tty) and
+// ultimately timing out. The skill-side prompt asks gemini not to use
+// tools at all; this flag is belt-and-suspenders so a slip into tool
+// invocation either auto-resolves (read) or fails fast (write).
 type geminiAgent struct{}
 
 // argSafe is a conservative cap below the smallest ARG_MAX we expect
@@ -65,11 +72,12 @@ const argSafe = 32 * 1024
 
 func (geminiAgent) Name() AgentName { return AgentGemini }
 func (geminiAgent) Run(ctx context.Context, prompt string, budget float64) (string, error) {
+	base := []string{"--approval-mode", "plan", "-p"}
 	if len(prompt) < argSafe {
-		return runWithStdin(ctx, "gemini", []string{"-p", prompt}, "")
+		return runWithStdin(ctx, "gemini", append(base, prompt), "")
 	}
 	stub := "Read the full prompt + DIFF on stdin. Follow the instructions in it exactly. Return ONLY the JSON array described."
-	return runWithStdin(ctx, "gemini", []string{"-p", stub}, prompt)
+	return runWithStdin(ctx, "gemini", append(base, stub), prompt)
 }
 
 // runWithStdin executes name with args and prompt piped to stdin.

@@ -70,13 +70,31 @@ func TestParseFindings_Empty(t *testing.T) {
 
 func TestNormalize_SeverityCoercion(t *testing.T) {
 	in := []Finding{
-		{Severity: "CRITICAL"},
+		// Aliases that fold into the review vocab
+		{Severity: "FATAL"},
 		{Severity: "warn"},
 		{Severity: "nit"},
 		{Severity: "weird"},
+		// Direct CVSS terms (security-audit) — preserved, NOT folded
+		{Severity: "Critical"},
+		{Severity: "high"},
+		{Severity: "low"},
+		// Brainstorm/refactor-plan vocab — preserved, NOT folded to info
+		{Severity: "recommended"},
+		{Severity: "speculative"},
 	}
 	out := normalize(in)
-	want := []Severity{SeverityBlocker, SeverityIssue, SeverityMinor, SeverityInfo}
+	want := []Severity{
+		SeverityBlocker, // FATAL → blocker (review-vocab alias)
+		SeverityIssue,   // warn → issue (alias)
+		SeverityMinor,   // nit → minor (alias)
+		SeverityInfo,    // weird → info (default)
+		SeverityCritical,
+		SeverityHigh,
+		SeverityLow,
+		SeverityRecommended,
+		SeveritySpeculative,
+	}
 	for i, w := range want {
 		if out[i].Severity != w {
 			t.Errorf("[%d] got %s want %s", i, out[i].Severity, w)

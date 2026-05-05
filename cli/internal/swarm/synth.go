@@ -52,14 +52,14 @@ func Synthesize(ctx context.Context, results []AgentResult, synth Agent, preset 
 	dur := time.Since(start)
 	if err != nil {
 		return &Synthesis{
-			Markdown:    fallbackMarkdown(results, table, raw),
+			Markdown:    fallbackMarkdown(preset, results, table, raw),
 			RawDraft:    raw,
 			MergedTable: table,
 			Duration:    dur,
 			Clusters:    clusters,
 		}, fmt.Errorf("synthesizer (%s) failed: %w", synth.Name(), err)
 	}
-	finalMD := assembleMarkdown(results, table, raw, clusters)
+	finalMD := assembleMarkdown(preset, results, table, raw, clusters)
 	return &Synthesis{
 		Markdown:    finalMD,
 		RawDraft:    raw,
@@ -137,16 +137,30 @@ func clusterFindings(results []AgentResult) []FindingGroup {
 	return out
 }
 
+// severityRank assigns a numeric ordering to each known severity so
+// clusterFindings can sort by severity desc. Ranks parallel across
+// vocabularies — CVSS "critical" sits at the same rank as review
+// "blocker" so a synthesizer that runs across vocabularies (rare;
+// not done in Phase 2) sorts sensibly. Within a single preset's run
+// only that preset's vocab appears, so the cross-vocab parallels
+// don't cause confusion.
 func severityRank(s Severity) int {
 	switch s {
-	case SeverityBlocker:
+	// rank 4 (highest)
+	case SeverityBlocker, SeverityCritical:
 		return 4
-	case SeverityIssue:
+	// rank 3
+	case SeverityIssue, SeverityHigh, SeverityRecommended:
 		return 3
-	case SeverityMinor:
+	// rank 2
+	case SeverityMinor, SeverityMedium, SeverityAlternative, SeverityRisky:
 		return 2
-	case SeverityInfo:
+	// rank 1
+	case SeverityLow:
 		return 1
+	// rank 0 (lowest — info-only)
+	case SeverityInfo, SeverityInformational, SeveritySpeculative:
+		return 0
 	}
 	return 0
 }
@@ -214,13 +228,14 @@ func escapePipes(s string) string {
 }
 
 // assembleMarkdown wraps the synthesizer's draft with the deterministic
-// disagreement table + run metadata header + footer marker. Stage 4
-// will swap the marker into the format `comment.go` expects for
-// edit-in-place re-runs.
-func assembleMarkdown(results []AgentResult, table, draft string, clusters []FindingGroup) string {
+// disagreement table + run metadata header + footer marker. Header
+// is preset-specific so non-pr-review presets (doc-review,
+// brainstorm, refactor-plan, security-audit) don't render under a
+// "pr-review" label.
+func assembleMarkdown(preset *Preset, results []AgentResult, table, draft string, clusters []FindingGroup) string {
 	var b strings.Builder
 
-	b.WriteString("## kaijutsu pr-review\n\n")
+	fmt.Fprintf(&b, "## kaijutsu %s\n\n", preset.Name)
 	consensus := 0
 	contested := 0
 	for _, g := range clusters {
@@ -257,9 +272,9 @@ func assembleMarkdown(results []AgentResult, table, draft string, clusters []Fin
 	return b.String()
 }
 
-func fallbackMarkdown(results []AgentResult, table, partial string) string {
+func fallbackMarkdown(preset *Preset, results []AgentResult, table, partial string) string {
 	var b strings.Builder
-	b.WriteString("## kaijutsu pr-review (synthesis failed; raw findings below)\n\n")
+	fmt.Fprintf(&b, "## kaijutsu %s (synthesis failed; raw findings below)\n\n", preset.Name)
 	if table != "" {
 		b.WriteString("### Disagreement Table\n\n")
 		b.WriteString(table)

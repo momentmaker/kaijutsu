@@ -8,14 +8,38 @@ package swarm
 
 import "time"
 
-// Severity classifies a finding. Ordered from most to least severe.
+// Severity classifies a finding. Different presets use different
+// vocabularies (declared via Preset.SeverityVocab); the orchestrator
+// preserves whichever string the preset's agents emit, only
+// normalizing case and stripping unknowns to "info".
 type Severity string
 
+// Review-flavored vocab (pr-review, doc-review).
 const (
 	SeverityBlocker Severity = "blocker"
 	SeverityIssue   Severity = "issue"
 	SeverityMinor   Severity = "minor"
 	SeverityInfo    Severity = "info"
+)
+
+// CVSS-aligned vocab (security-audit). Distinct from "blocker/issue/
+// minor/info" — security-audit's threat model uses the CVSS terms
+// the InfoSec community already speaks.
+const (
+	SeverityCritical      Severity = "critical"
+	SeverityHigh          Severity = "high"
+	SeverityMedium        Severity = "medium"
+	SeverityLow           Severity = "low"
+	SeverityInformational Severity = "informational"
+)
+
+// Brainstorm-flavored vocab (brainstorm, refactor-plan). Different
+// shape because the output is "options to pick" not "issues to fix".
+const (
+	SeverityRecommended Severity = "recommended"
+	SeverityAlternative Severity = "alternative"
+	SeverityRisky       Severity = "risky"
+	SeveritySpeculative Severity = "speculative"
 )
 
 // Finding is one structured review item from one agent.

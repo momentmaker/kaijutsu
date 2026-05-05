@@ -220,13 +220,13 @@
   <div class="controls">
     <input type="search" id="search" placeholder="Search skills by name, description, tag…" autocomplete="off">
     <div class="filter-group" id="filters">
-      <button class="filter active" data-filter="all">All (37)</button>
+      <button class="filter active" data-filter="all">All (41)</button>
       <button class="filter" data-filter="core">Core</button>
       <button class="filter" data-filter="third-party">Third-party</button>
       <button class="filter" data-filter="hooks">Hooks</button>
     </div>
   </div>
-  <p class="stats" id="stats">Showing all 37 skills.</p>
+  <p class="stats" id="stats">Showing all 41 skills.</p>
 
   <div class="grid" id="grid">
     
@@ -267,6 +267,19 @@
         
       </div>
       <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install blunder-hunt')" title="Click to copy">jutsu install blunder-hunt</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="brainstorm Multi-agent ideation against a free-form prompt. Runs claude / codex / gemini in parallel via `jutsu swarm brainstorm &#34;&lt;prompt&gt;&#34;`, each with a different angle (claude=long-horizon framing, codex=code-pattern grounding, gemini=cross-domain analogy), then synthesizes into a ranked list of approaches with tradeoffs. Designed to feed into `decide` for ADR capture or into `refactor-plan` for execution. Use when the user says &#34;brainstorm&#34;, &#34;ideas for&#34;, &#34;how should we approach&#34;, &#34;options for&#34;, or invokes /brainstorm. ideation brainstorm multi-agent planning claude codex gemini">
+      <div class="row">
+        <h3>brainstorm<span style="color:var(--muted);font-weight:normal"> 0.1.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Multi-agent ideation against a free-form prompt. Runs claude / codex / gemini in parallel via `jutsu swarm brainstorm &#34;&lt;prompt&gt;&#34;`, each with a different angle (claude=long-horizon framing, codex=code-pattern grounding, gemini=cross-domain analogy), then synthesizes into a ranked list of approaches with tradeoffs. Designed to feed into `decide` for ADR capture or into `refactor-plan` for execution. Use when the user says &#34;brainstorm&#34;, &#34;ideas for&#34;, &#34;how should we approach&#34;, &#34;options for&#34;, or invokes /brainstorm.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install brainstorm')" title="Click to copy">jutsu install brainstorm</div>
     </article>
     
     <article class="card" data-source="third-party" data-hooks="false" data-search="browser-testing-with-devtools Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install browser-testing-with-devtools`.  claude codex gemini">
@@ -373,12 +386,12 @@
       <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install debugging-and-error-recovery')" title="Click to copy">jutsu install debugging-and-error-recovery</div>
     </article>
     
-    <article class="card" data-source="core" data-hooks="false" data-search="decide Decision journal — record architectural decisions with reasoning &#43; tripwires; multi-model critique on record; auto-tag from content; surface recorded decisions when about to contradict one. Writes to project-memory. decisions architecture journal claude codex gemini">
+    <article class="card" data-source="core" data-hooks="false" data-search="decide Decision journal — record architectural decisions with reasoning &#43; tripwires; high-stakes decisions get a multi-agent review pass via `jutsu swarm doc-review` before commit; auto-tag from content; surface recorded decisions when about to contradict one. Writes to project-memory. decisions architecture journal claude codex gemini">
       <div class="row">
-        <h3>decide<span style="color:var(--muted);font-weight:normal"> 0.2.0</span></h3>
+        <h3>decide<span style="color:var(--muted);font-weight:normal"> 0.3.0</span></h3>
         <span class="badge badge-core">CORE</span>
       </div>
-      <p class="desc">Decision journal — record architectural decisions with reasoning &#43; tripwires; multi-model critique on record; auto-tag from content; surface recorded decisions when about to contradict one. Writes to project-memory.</p>
+      <p class="desc">Decision journal — record architectural decisions with reasoning &#43; tripwires; high-stakes decisions get a multi-agent review pass via `jutsu swarm doc-review` before commit; auto-tag from content; surface recorded decisions when about to contradict one. Writes to project-memory.</p>
       <div class="row">
         <span class="agents">claude · codex · gemini</span>
         
@@ -423,6 +436,19 @@
         
       </div>
       <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install dispatch-parallel')" title="Click to copy">jutsu install dispatch-parallel</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="doc-review Universal QA gate for markdown artifacts. Runs claude / codex / gemini in parallel via `jutsu swarm doc-review &lt;path&gt;`, each with a tailored lens (claude=completeness, codex=implementability, gemini=consistency), then synthesizes into a single review with a disagreement table. Designed to be invoked at the end of any artifact-producing skill (spec-driven-development, planning-and-task-breakdown, decide). Use when the user says &#34;review this spec&#34;, &#34;review this plan&#34;, &#34;check this RFC&#34;, or invokes /doc-review. review spec plan multi-agent quality-gate claude codex gemini">
+      <div class="row">
+        <h3>doc-review<span style="color:var(--muted);font-weight:normal"> 0.1.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Universal QA gate for markdown artifacts. Runs claude / codex / gemini in parallel via `jutsu swarm doc-review &lt;path&gt;`, each with a tailored lens (claude=completeness, codex=implementability, gemini=consistency), then synthesizes into a single review with a disagreement table. Designed to be invoked at the end of any artifact-producing skill (spec-driven-development, planning-and-task-breakdown, decide). Use when the user says &#34;review this spec&#34;, &#34;review this plan&#34;, &#34;check this RFC&#34;, or invokes /doc-review.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install doc-review')" title="Click to copy">jutsu install doc-review</div>
     </article>
     
     <article class="card" data-source="third-party" data-hooks="false" data-search="documentation-and-adrs Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install documentation-and-adrs`.  claude codex gemini">
@@ -542,12 +568,12 @@
       <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install performance-optimization')" title="Click to copy">jutsu install performance-optimization</div>
     </article>
     
-    <article class="card" data-source="core" data-hooks="false" data-search="planning-and-task-breakdown Decompose a spec into a verifiable task list — vertical slices, explicit dependencies, acceptance criteria per task. Final review pass via blunder-hunt &#43; scope-check before tasks are considered ready for implementation. planning tasks breakdown plan addyosmani claude codex gemini">
+    <article class="card" data-source="core" data-hooks="false" data-search="planning-and-task-breakdown Decompose a spec into a verifiable task list — vertical slices, explicit dependencies, acceptance criteria per task. Final review pass via `jutsu swarm doc-review`; cost-tier classification per slice via scope-check. planning tasks breakdown plan addyosmani claude codex gemini">
       <div class="row">
-        <h3>planning-and-task-breakdown<span style="color:var(--muted);font-weight:normal"> 0.1.0</span></h3>
+        <h3>planning-and-task-breakdown<span style="color:var(--muted);font-weight:normal"> 0.2.0</span></h3>
         <span class="badge badge-core">CORE</span>
       </div>
-      <p class="desc">Decompose a spec into a verifiable task list — vertical slices, explicit dependencies, acceptance criteria per task. Final review pass via blunder-hunt &#43; scope-check before tasks are considered ready for implementation.</p>
+      <p class="desc">Decompose a spec into a verifiable task list — vertical slices, explicit dependencies, acceptance criteria per task. Final review pass via `jutsu swarm doc-review`; cost-tier classification per slice via scope-check.</p>
       <div class="row">
         <span class="agents">claude · codex · gemini</span>
         
@@ -607,6 +633,19 @@
       <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install readme-update')" title="Click to copy">jutsu install readme-update</div>
     </article>
     
+    <article class="card" data-source="core" data-hooks="false" data-search="refactor-plan Multi-agent refactor planning. Runs claude / codex / gemini in parallel via `jutsu swarm refactor-plan &lt;path&gt;... --goal &#34;&lt;goal&gt;&#34;`. Each agent contributes from a different angle (claude=architectural decomposition, codex=stepwise risk, gemini=pattern consistency); synthesizer assembles into an ordered step plan with risk per step. Designed to feed into `planning-and-task-breakdown` for execution. Use when the user says &#34;plan this refactor&#34;, &#34;how do I restructure&#34;, &#34;step plan to extract X&#34;, or invokes /refactor-plan. refactor planning multi-agent code claude codex gemini">
+      <div class="row">
+        <h3>refactor-plan<span style="color:var(--muted);font-weight:normal"> 0.1.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Multi-agent refactor planning. Runs claude / codex / gemini in parallel via `jutsu swarm refactor-plan &lt;path&gt;... --goal &#34;&lt;goal&gt;&#34;`. Each agent contributes from a different angle (claude=architectural decomposition, codex=stepwise risk, gemini=pattern consistency); synthesizer assembles into an ordered step plan with risk per step. Designed to feed into `planning-and-task-breakdown` for execution. Use when the user says &#34;plan this refactor&#34;, &#34;how do I restructure&#34;, &#34;step plan to extract X&#34;, or invokes /refactor-plan.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install refactor-plan')" title="Click to copy">jutsu install refactor-plan</div>
+    </article>
+    
     <article class="card" data-source="core" data-hooks="false" data-search="scope-check Mid-task scope mirror with cost-tier classification (plan/bead/code = 1x/5x/25x). Surfaces when work has drifted from cheap planning into expensive code-space rework, and identifies natural split-points where a PR could become two. workflow focus planning claude codex gemini">
       <div class="row">
         <h3>scope-check<span style="color:var(--muted);font-weight:normal"> 0.2.0</span></h3>
@@ -631,6 +670,19 @@
         
       </div>
       <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install security-and-hardening')" title="Click to copy">jutsu install security-and-hardening</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="security-audit Multi-agent security audit. Runs claude / codex / gemini in parallel via `jutsu swarm security-audit --pr &lt;n&gt;` (PR mode) or `jutsu swarm security-audit &lt;path&gt;...` (files mode). Three lenses: claude=auth&#43;data flow, codex=injection&#43;priv-esc, gemini=dep&#43;supply-chain. CVSS-aligned severity (critical|high|medium|low|informational). --full mode defaults ON. Output: threat model &#43; prioritized recs. Use when the user says &#34;audit this for security&#34;, &#34;threat model&#34;, &#34;check for vulns&#34;, &#34;review the auth flow&#34;, or invokes /security-audit. security audit threat-model multi-agent cvss claude codex gemini">
+      <div class="row">
+        <h3>security-audit<span style="color:var(--muted);font-weight:normal"> 0.1.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Multi-agent security audit. Runs claude / codex / gemini in parallel via `jutsu swarm security-audit --pr &lt;n&gt;` (PR mode) or `jutsu swarm security-audit &lt;path&gt;...` (files mode). Three lenses: claude=auth&#43;data flow, codex=injection&#43;priv-esc, gemini=dep&#43;supply-chain. CVSS-aligned severity (critical|high|medium|low|informational). --full mode defaults ON. Output: threat model &#43; prioritized recs. Use when the user says &#34;audit this for security&#34;, &#34;threat model&#34;, &#34;check for vulns&#34;, &#34;review the auth flow&#34;, or invokes /security-audit.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install security-audit')" title="Click to copy">jutsu install security-audit</div>
     </article>
     
     <article class="card" data-source="core" data-hooks="false" data-search="session-retro End-of-session retrospective. Mines the current conversation for learnings; cross-session pattern detection across recent retros; writes to project-memory; optional auto-apply mode. retrospective memory learning claude codex gemini">
@@ -672,12 +724,12 @@
       <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install source-driven-development')" title="Click to copy">jutsu install source-driven-development</div>
     </article>
     
-    <article class="card" data-source="core" data-hooks="false" data-search="spec-driven-development Author a PRD-style spec before writing implementation. Produce a written, reviewable artifact (problem statement, scope, non-goals, acceptance criteria, open questions) that survives the agent session and gets reviewed by a fresh-eyes pass before unblocking implementation. planning spec prd define addyosmani claude codex gemini">
+    <article class="card" data-source="core" data-hooks="false" data-search="spec-driven-development Author a PRD-style spec before writing implementation. Produce a written, reviewable artifact (problem statement, scope, non-goals, acceptance criteria, open questions) that survives the agent session and gets reviewed by `jutsu swarm doc-review` before unblocking implementation. planning spec prd define addyosmani claude codex gemini">
       <div class="row">
-        <h3>spec-driven-development<span style="color:var(--muted);font-weight:normal"> 0.1.0</span></h3>
+        <h3>spec-driven-development<span style="color:var(--muted);font-weight:normal"> 0.2.0</span></h3>
         <span class="badge badge-core">CORE</span>
       </div>
-      <p class="desc">Author a PRD-style spec before writing implementation. Produce a written, reviewable artifact (problem statement, scope, non-goals, acceptance criteria, open questions) that survives the agent session and gets reviewed by a fresh-eyes pass before unblocking implementation.</p>
+      <p class="desc">Author a PRD-style spec before writing implementation. Produce a written, reviewable artifact (problem statement, scope, non-goals, acceptance criteria, open questions) that survives the agent session and gets reviewed by `jutsu swarm doc-review` before unblocking implementation.</p>
       <div class="row">
         <span class="agents">claude · codex · gemini</span>
         

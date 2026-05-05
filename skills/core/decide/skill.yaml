@@ -1,15 +1,15 @@
 name: decide
-version: 0.2.0
+version: 0.3.0
 license: MIT
 layout: flat
-description: "Decision journal — record architectural decisions with reasoning + tripwires; multi-model critique on record; auto-tag from content; surface recorded decisions when about to contradict one. Writes to project-memory."
+description: "Decision journal — record architectural decisions with reasoning + tripwires; high-stakes decisions get a multi-agent review pass via `jutsu swarm doc-review` before commit; auto-tag from content; surface recorded decisions when about to contradict one. Writes to project-memory."
 homepage: https://kaijutsu.dev/skills/decide
 repository: https://github.com/momentmaker/kaijutsu
 tags: [decisions, architecture, journal]
 agents: [claude, codex, gemini]
 deps:
   skills:
-    - multi-model-synth@^0.2
+    - doc-review@^0.1
     - project-memory@^0.2
 permissions:
   bash: true

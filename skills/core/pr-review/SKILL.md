@@ -51,6 +51,18 @@ Three independent passes, one synthesized output:
 
 `--max-cost N` warns when the estimate exceeds N USD.
 
+## First-run consent
+
+Before the first invocation in a repo, `pr-review` requires explicit per-repo consent because the diff goes to remote model providers (Anthropic, OpenAI, Google).
+
+Interactive TTY: first invocation prompts and persists the answer. Headless (from inside an agent CLI session, from CI, or piped): the prompt has nothing to read from and the run aborts with a hint. Pre-grant consent with:
+
+```bash
+jutsu swarm pr-review --grant-consent
+```
+
+This writes `allow-multi-model: true` to `.kaijutsu/pr-review.yaml` and exits without running the swarm.
+
 ## Workflow
 
 When the user says "review this PR", "/pr-review #42", or similar:
