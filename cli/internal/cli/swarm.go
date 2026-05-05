@@ -47,6 +47,7 @@ func newSwarmPRReviewCmd() *cobra.Command {
 		postComment    bool
 		allowSecrets   bool
 		yes            bool
+		replaySHA      string
 	)
 	cmd := &cobra.Command{
 		Use:   "pr-review",
@@ -56,6 +57,15 @@ func newSwarmPRReviewCmd() *cobra.Command {
 			out := cmd.OutOrStdout()
 			stderr := cmd.ErrOrStderr()
 
+			projectRoot, _ := os.Getwd()
+
+			// --replay: skip the full pipeline (no diff, no agent
+			// calls, no privacy gates). Reads cached per-agent
+			// results, re-runs synthesis only.
+			if replaySHA != "" {
+				return runReplay(ctx, cmd, projectRoot, replaySHA, synthesizer, perAgentBudget, timeout, postComment)
+			}
+
 			pctx, err := resolveSwarmDiff(ctx, pr, diffFromBranch)
 			if err != nil {
 				return err
@@ -64,6 +74,7 @@ func newSwarmPRReviewCmd() *cobra.Command {
 				return errors.New("diff is empty; nothing to review")
 			}
 
+			_ = projectRoot // used by EnsureConsent below
 			// Privacy gate: hard-block on secrets unless explicitly
 			// overridden.
 			hits := swarm.SecretsScan(pctx.Diff)
@@ -85,14 +96,13 @@ func newSwarmPRReviewCmd() *cobra.Command {
 
 			// Consent gate: persist user opt-in to .kaijutsu/pr-review.yaml
 			// on first run. Subsequent runs skip the prompt.
-			projectRoot, _ := osGetwd()
 			if cerr := swarm.EnsureConsent(projectRoot, cmd.InOrStdin(), stderr, available, yes); cerr != nil {
 				return cerr
 			}
 
 			fmt.Fprintf(stderr, "swarm: %d agent(s) available: %v\n", len(available), available)
 
-			preset, err := swarm.PresetFor("pr-review")
+			preset, err := swarm.LoadPresetWithSkillOverrides(projectRoot, "pr-review")
 			if err != nil {
 				return err
 			}
@@ -175,6 +185,9 @@ func newSwarmPRReviewCmd() *cobra.Command {
 						fmt.Fprintf(stderr, "warning: estimated total cost $%.2f exceeded --max-cost $%.2f\n", run.TotalCost, maxCostUSD)
 					}
 					md = appendMarker(md, pctx.SHA)
+					if cerr := swarm.CacheRun(projectRoot, pctx.SHA, results, md); cerr != nil {
+						fmt.Fprintf(stderr, "warning: cache write failed: %v\n", cerr)
+					}
 					fmt.Fprint(out, md)
 					if postComment {
 						if pctx.PR == 0 {
@@ -215,6 +228,7 @@ func newSwarmPRReviewCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&postComment, "post-comment", false, "after synthesis, post the markdown as a PR comment via gh (edits prior kaijutsu-pr-review comment if found)")
 	cmd.Flags().BoolVar(&allowSecrets, "allow-secrets", false, "bypass the pre-flight secrets scan (DANGEROUS — diff will be sent to remote model providers)")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "non-interactive: skip the consent prompt; require .kaijutsu/pr-review.yaml has allow-multi-model: true")
+	cmd.Flags().StringVar(&replaySHA, "replay", "", "re-run synthesis on cached per-agent findings for a SHA without calling model APIs (skips fan-out and gates)")
 	return cmd
 }
 
@@ -225,9 +239,41 @@ func appendMarker(md, sha string) string {
 	return strings.TrimRight(md, "\n") + "\n\n" + swarm.Marker(swarm.NewRunID(), sha) + "\n"
 }
 
-// osGetwd is a tiny indirection so swarm.go's RunE doesn't import os
-// directly. Keeps testing easier.
-func osGetwd() (string, error) { return os.Getwd() }
+// runReplay re-renders the synthesis markdown from cached per-agent
+// results without re-calling any model APIs. Useful for tuning the
+// synthesizer prompt offline.
+func runReplay(ctx context.Context, cmd *cobra.Command, projectRoot, sha, synthesizer string, budget float64, timeout time.Duration, postComment bool) error {
+	out := cmd.OutOrStdout()
+	stderr := cmd.ErrOrStderr()
+
+	results, err := swarm.LoadCachedResults(projectRoot, sha)
+	if err != nil {
+		return fmt.Errorf("--replay %s: %w", sha, err)
+	}
+	preset, err := swarm.LoadPresetWithSkillOverrides(projectRoot, "pr-review")
+	if err != nil {
+		return err
+	}
+	synthAgent := pickSynthesizer(synthesizer, results)
+	if synthAgent == nil {
+		return errors.New("--replay: no synthesizer agent available; install claude/codex/gemini first")
+	}
+	synth, synthErr := swarm.Synthesize(ctx, results, synthAgent, preset, budget, timeout)
+	if synthErr != nil {
+		fmt.Fprintf(stderr, "warning: synthesis: %v (using fallback markdown)\n", synthErr)
+	}
+	md := ""
+	if synth != nil {
+		md = synth.Markdown
+	}
+	md = appendMarker(md, sha)
+	fmt.Fprint(out, md)
+	if postComment {
+		fmt.Fprintln(stderr, "warning: --post-comment + --replay requires the original PR number; resolve manually")
+	}
+	fmt.Fprintf(stderr, "\nreplay done · synthesizer=%s\n", synthAgent.Name())
+	return nil
+}
 
 // pickSynthesizer chooses which agent runs the synthesis pass.
 // Prefers the user-requested name if available; otherwise falls back

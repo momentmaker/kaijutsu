@@ -44,13 +44,15 @@ Working consume-and-author loop. No bells, no eval gate, no static site.
 - [ ] **GitHub API rate-limit handling**: surface a clearer error + `GITHUB_TOKEN` hint when 403-rate-limited. install.sh already supports `GITHUB_TOKEN`; the `jutsu` CLI should too.
 - [ ] **Static skill catalog at `kaijutsu.dev`**: searchable index, agent-compat matrix, install copy-buttons; auto-built from the registry on every release
 
-## v0.4 — community + telemetry
+## v0.4 — multi-agent flagship + community + telemetry
 
+- [x] **`jutsu swarm` primitive + multi-agent `pr-review`** (Phase 1): orchestrates claude/codex/gemini in parallel with tailored per-agent prompts, optional Pass-2 round-robin debate (`--full`), lie-to-them filter on synthesis (`--strict`), disagreement-table output, edit-in-place PR comment via `gh` (`--post-comment`), pre-flight secrets scan, per-repo consent gate (`.kaijutsu/pr-review.yaml` `allow-multi-model: true`), `--replay <sha>` from cache. pr-review skill bumps to v1.0.0 rich layout with overrideable per-agent prompts.
+- [ ] **`jutsu swarm` Phase 2**: pluggable presets — `brainstorm`, `refactor-plan`, `security-audit` on the same primitive.
 - [ ] `skills/community/` opens for PRs (auto-merge on green CI + maintainer approval)
 - [ ] CODEOWNERS by category for trusted maintainers
 - [ ] Anonymized opt-in telemetry: install counts, error rates, skill pairings → drives bundle recommendations
 - [ ] `jutsu translate` — convert a skill from one agent's format to another (best-effort)
-- [ ] Multi-model API plumbing in the CLI (so `multi-model-synth` doesn't have to fake it)
+- [ ] `jutsu eval` (deferred from v0.3) — per-skill eval runner that consumes `evals/cases.yaml`; CI integration via `lint-skills.yml`
 - [ ] `git-commit` and `reorient` skills (deferred from v0.1)
 
 ## v1 — maturity
