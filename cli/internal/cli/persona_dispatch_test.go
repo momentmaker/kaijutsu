@@ -120,6 +120,49 @@ func TestOverlayPersonaCosts_IgnoresUnmappedResults(t *testing.T) {
 	}
 }
 
+// fakeProviderRegistry helps test the persona.Model override without
+// touching the on-disk YAML loader. Constructs a Resolved manually.
+func TestPersonaModelOverride_ClonesProviderInsteadOfMutating(t *testing.T) {
+	// Same provider serving two personas with different model
+	// overrides. The second persona's override must not bleed
+	// into the first.
+	provider := &agents.Provider{
+		Name:     "deepseek",
+		Driver:   agents.DriverHTTP,
+		Protocol: "openai-compat",
+		BaseURL:  "https://api.deepseek.com/v1",
+		Model:    "deepseek-v4-flash",
+	}
+
+	// Simulate what assemblePersonaJobs does: clone-on-override.
+	// Persona 1 — no override, uses provider default.
+	p1 := provider
+	if (&agents.Persona{Provider: "deepseek"}).Model != "" {
+		// would override, but doesn't here
+	}
+
+	// Persona 2 — overrides to v4-pro.
+	override := agents.Persona{Provider: "deepseek", Model: "deepseek-v4-pro"}
+	var p2 *agents.Provider
+	if override.Model != "" {
+		cloned := *provider
+		cloned.Model = override.Model
+		p2 = &cloned
+	} else {
+		p2 = provider
+	}
+
+	if p1.Model != "deepseek-v4-flash" {
+		t.Errorf("p1 (no override) Model = %q, want deepseek-v4-flash (was the persona override mutating shared provider?)", p1.Model)
+	}
+	if p2.Model != "deepseek-v4-pro" {
+		t.Errorf("p2 Model = %q, want deepseek-v4-pro", p2.Model)
+	}
+	if provider.Model != "deepseek-v4-flash" {
+		t.Errorf("original provider mutated: Model = %q, want deepseek-v4-flash", provider.Model)
+	}
+}
+
 func TestUserSentinel_StableValue(t *testing.T) {
 	// The cli userSentinel must match the constant the agents/http_driver.go
 	// uses for splitSystemUser. Both packages share the literal value

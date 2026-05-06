@@ -42,11 +42,15 @@ func BuiltinProviders() map[string]*Provider {
 			Driver:   DriverHTTP,
 			Protocol: "openai-compat",
 			BaseURL:  "https://api.deepseek.com/v1",
-			// "deepseek-chat" is the post-v2.5 unified non-thinking
-			// model name; "deepseek-coder" was an alias scheduled to
-			// retire 2026-07-24. Use the canonical name to avoid
-			// surprises after the deprecation date.
-			Model:     "deepseek-chat",
+			// DeepSeek API surfaces two real model IDs:
+			//   - "deepseek-v4-flash" (cheap, fast, no thinking by default)
+			//   - "deepseek-v4-pro"   (heavyweight reasoning, ~3-5x output cost)
+			// Legacy aliases "deepseek-chat" and "deepseek-reasoner"
+			// both route to v4-flash internally and retire 2026-07-24
+			// per upstream deprecation. Use the canonical v4-flash here
+			// — users who want pro override per-project or per-persona
+			// (Persona.Model wired in v0.6.2).
+			Model:     "deepseek-v4-flash",
 			APIKeyEnv: "DEEPSEEK_API_KEY",
 			Cost: &CostRates{
 				InputPerMtok:       0.27,

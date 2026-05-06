@@ -107,6 +107,14 @@ func personaProjections(projectRoot string, preset *swarm.Preset, ictx *swarm.In
 		if !ok {
 			return nil, fmt.Errorf("--estimate --personas %q: provider %q not enabled", name, persona.Provider)
 		}
+		// Persona.Model override matches the dispatch path — projections
+		// reflect what the actual swarm run will use, not the
+		// provider default.
+		if persona.Model != "" {
+			cloned := *provider
+			cloned.Model = persona.Model
+			provider = &cloned
+		}
 		// Use the preset's resolved fallback chain so estimate
 		// numbers reflect what the actual swarm dispatch would send.
 		tmpl, ok := preset.PromptFor(persona.Provider)
