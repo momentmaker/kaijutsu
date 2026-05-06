@@ -26,6 +26,17 @@ import (
 // the same run_id would be a duplicate. v0.7.x will gate this behind
 // a "did we replay from cache" check once cache replay is wired into
 // runSwarmPipeline.
+//
+// --full mode caveat: in --full, swarm.Debate runs Pass-2 AFTER this
+// hook fires, then mergePasses overlays Pass-2 revisions onto Pass-1.
+// We currently record Pass-1 only, so any Pass-2-marked [new] finding
+// won't get a DB row + any [disputes]/[agreed] revision text won't
+// match what `jutsu finding list` shows vs. what the synthesis prints.
+// For weight math (per-(provider, persona) precision), this doesn't
+// matter — the agent identity is preserved across passes — but the
+// summary text divergence is real. v0.7.x will move the recorder
+// below the debate block once we have signal on whether users hit
+// this divergence in practice.
 func recordFindingsBestEffort(stderr io.Writer, projectRoot, runID, preset string, results []swarm.AgentResult, personas []*personaAdapter) {
 	// Cheap pre-check: nothing to record at all? Skip silently — we
 	// don't even want to open the DB for a 0-finding fan-out.

@@ -1,7 +1,6 @@
 package findings
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 
@@ -138,8 +137,7 @@ func nullableConfidence(c float64) any {
 // <id>` to verify the recorder wrote what it claimed.
 func CountForRun(s *Store, runID string) (int, error) {
 	var n int
-	err := s.db.QueryRow(`SELECT COUNT(*) FROM findings WHERE run_id = ?`, runID).Scan(&n)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err := s.db.QueryRow(`SELECT COUNT(*) FROM findings WHERE run_id = ?`, runID).Scan(&n); err != nil {
 		return 0, err
 	}
 	return n, nil
