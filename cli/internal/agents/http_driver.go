@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
+	"math/rand/v2"
 	"net/http"
 	"os"
 	"strconv"
@@ -59,7 +59,10 @@ func nextBackoff(attempt int, retryAfter string) time.Duration {
 	if cap > httpMaxBackoff {
 		cap = httpMaxBackoff
 	}
-	return time.Duration(rand.Int63n(int64(cap) + 1))
+	// math/rand/v2 — goroutine-safe by design (Go 1.22+). N(int64) is
+	// equivalent to v1's Int63n; eliminates the data-race risk under
+	// concurrent retry loops.
+	return time.Duration(rand.Int64N(int64(cap) + 1))
 }
 
 // Anthropic-compat protocol values.

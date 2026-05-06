@@ -112,9 +112,12 @@ func (d *mcpDriver) invokeHTTP(ctx context.Context, prompt string) (Result, erro
 		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("initialize id mismatch: got %d want %d", initResp.ID, initID))
 	}
 	// 2. notifications/initialized — http MCP servers per spec accept
-	// notifications as POSTs without expecting a response (server may
-	// 200 OK with empty body or 202).
-	_ = httpRPC.notify("notifications/initialized", nil)
+	// notifications as POSTs without expecting a response body
+	// (server typically 200/202 with empty body). Any non-2xx means
+	// the handshake desynced; abort instead of pressing on.
+	if err := httpRPC.notify("notifications/initialized", nil); err != nil {
+		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("notify initialized: %v", err))
+	}
 
 	// 3. tools/list discovery
 	tool := d.provider.ToolName
@@ -126,7 +129,10 @@ func (d *mcpDriver) invokeHTTP(ctx context.Context, prompt string) (Result, erro
 	if err != nil {
 		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("tools/list: %v", err))
 	}
-	available, _ := extractToolNames(listResp)
+	available, listErr := extractToolNames(listResp)
+	if listErr != nil {
+		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("tools/list parse: %v (cannot validate tool name; failing closed)", listErr))
+	}
 	if len(available) > 0 && !slices.Contains(available, tool) {
 		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("tool %q not exposed by mcp server %q (available: %v). Set tool_name: in agents.yaml.", tool, d.provider.Name, available))
 	}
@@ -161,16 +167,24 @@ func (d *mcpDriver) invokeHTTP(ctx context.Context, prompt string) (Result, erro
 }
 
 // buildMCPHeaders resolves env-var indirection in provider.Headers
-// and merges with HeadersLiteral. HeadersLiteral wins on collision.
+// and merges with HeadersLiteral. Env-resolved Headers wins on
+// collision — matches the codebase convention that secrets-from-env
+// take precedence over literal values (mirrors the cli-compat driver
+// where Env literal wins over EnvKey indirection only when the user
+// explicitly sets it; the secret-handling boundary stays consistent).
+//
+// Apply order: HeadersLiteral first (so non-secret defaults land),
+// then env-resolved Headers overwrites — secrets in env take final
+// value.
 func buildMCPHeaders(p *Provider) map[string]string {
 	out := map[string]string{}
+	for k, v := range p.HeadersLiteral {
+		out[k] = v
+	}
 	for hdr, envName := range p.Headers {
 		if v := os.Getenv(envName); v != "" {
 			out[hdr] = v
 		}
-	}
-	for k, v := range p.HeadersLiteral {
-		out[k] = v
 	}
 	return out
 }
@@ -214,6 +228,13 @@ func (c *mcpHTTPClient) call(id int, method string, params any) (*mcpRPCResponse
 	if err := json.Unmarshal(respBody, &rpcResp); err != nil {
 		return nil, fmt.Errorf("parse response: %v", err)
 	}
+	// JSON-RPC error: HTTP 200 + result.error means the server
+	// rejected the call (auth failure, bad params, method not
+	// allowed). Surface it now rather than letting downstream code
+	// dereference rpcResp.Result on an empty body.
+	if rpcResp.Error != nil {
+		return nil, fmt.Errorf("jsonrpc error: %s", rpcResp.Error.Message)
+	}
 	return &rpcResp, nil
 }
 
@@ -241,7 +262,13 @@ func (c *mcpHTTPClient) notify(method string, params any) error {
 	if err != nil {
 		return err
 	}
-	_ = resp.Body.Close()
+	defer resp.Body.Close()
+	// Notifications are usually 200/202; surface non-2xx so the
+	// handshake can't silently drift into "client thinks server
+	// is initialized, server thinks otherwise".
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("notification %s returned HTTP %d", method, resp.StatusCode)
+	}
 	return nil
 }
 

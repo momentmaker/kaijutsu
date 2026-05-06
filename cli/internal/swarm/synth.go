@@ -9,6 +9,14 @@ import (
 	"time"
 )
 
+// driverKindMCP mirrors agents.DriverMCP's string value. Kept as a
+// swarm-local const so synth.go doesn't pull in the agents package
+// (would tie the swarm primitive to the driver registry; today swarm
+// is dispatch-agnostic, agents is the resolved-config layer above
+// it). The two strings stay in lockstep — drift is caught by
+// TestDriverKindEnumStable in the agents package.
+const driverKindMCP = "mcp"
+
 // Synthesis is the markdown report produced by Synthesize. RawDraft
 // is what the synthesizer agent produced; MergedTable is the
 // deterministic disagreement-table the orchestrator builds locally
@@ -106,7 +114,7 @@ func clusterFindings(results []AgentResult) []FindingGroup {
 			// info-tier findings that drown out the issue+ signal.
 			// Drop info-tier MCP findings before they reach the
 			// disagreement table. LLM info findings still flow.
-			if r.Driver == "mcp" && f.Severity == SeverityInfo {
+			if r.Driver == driverKindMCP && f.Severity == SeverityInfo {
 				continue
 			}
 			key := f.File + ":" + f.LineRange
@@ -211,7 +219,7 @@ func renderDisagreementTable(results []AgentResult, clusters []FindingGroup) str
 	fmt.Fprintf(&b, "| Finding | Severity | Consensus |")
 	for _, c := range cols {
 		label := c
-		if driverByAgent[c] == "mcp" {
+		if driverByAgent[c] == driverKindMCP {
 			label = c + " [deterministic]"
 		}
 		fmt.Fprintf(&b, " %s |", label)
@@ -233,7 +241,7 @@ func renderDisagreementTable(results []AgentResult, clusters []FindingGroup) str
 		for _, c := range cols {
 			if f, ok := g.Reporters[c]; ok {
 				marker := "✓"
-				if driverByAgent[c] == "mcp" {
+				if driverByAgent[c] == driverKindMCP {
 					marker = "✓⚙"
 				}
 				fmt.Fprintf(&b, " %s (%s) |", marker, f.Severity)
