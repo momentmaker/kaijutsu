@@ -92,16 +92,11 @@ func assemblePersonaJobs(projectRoot string, preset *swarm.Preset, ictx *swarm.I
 		if !ok {
 			return nil, nil, fmt.Errorf("--personas %q: references provider %q which is not enabled. Add to enabled list in .kaijutsu/agents.yaml or run `jutsu agent enable %s`", name, persona.Provider, persona.Provider)
 		}
-		// Persona.Model override (v0.6.2): a persona may override the
-		// provider's default model — e.g. a heavyweight reasoning
-		// persona pinning to `deepseek-v4-pro` while the rest of the
-		// project stays on flash. Clone the provider to avoid
-		// mutating the resolved registry that other personas share.
-		if persona.Model != "" {
-			cloned := *provider
-			cloned.Model = persona.Model
-			provider = &cloned
-		}
+		// Persona override application — currently just Model; future
+		// fields (per-persona timeout, header overrides) extend
+		// agents.ApplyPersonaOverrides. Clone-on-override prevents
+		// bleeding into other personas backed by the same provider.
+		provider = agents.ApplyPersonaOverrides(provider, persona)
 		driver, err := agents.BuildDriver(provider)
 		if err != nil {
 			return nil, nil, fmt.Errorf("--personas %q: build driver: %w", name, err)
