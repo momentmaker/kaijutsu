@@ -50,7 +50,7 @@ Pass --personas to also list resolved personas.
 
 Secrets are never printed; api_key_env shows the env-var name only.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projectRoot, err := os.Getwd()
+			root, err := projectRoot()
 			if err != nil {
 				return err
 			}
@@ -58,7 +58,7 @@ Secrets are never printed; api_key_env shows the env-var name only.`,
 			if err != nil {
 				return err
 			}
-			project, err := agents.LoadProjectConfig(projectRoot)
+			project, err := agents.LoadProjectConfig(root)
 			if err != nil {
 				return err
 			}
@@ -97,7 +97,7 @@ Exits 0 only if every enabled provider passes its driver's checks.`,
 			ctx, cancel := context.WithTimeout(cmd.Context(), 30*time.Second)
 			defer cancel()
 
-			root, err := os.Getwd()
+			root, err := projectRoot()
 			if err != nil {
 				return err
 			}
@@ -190,10 +190,7 @@ func probeCLIVersion(ctx context.Context, bin, label string) doctorRow {
 		return doctorRow{check: label, pass: false, detail: fmt.Sprintf("%s --version failed: %v", bin, err)}
 	}
 	first := strings.SplitN(strings.TrimSpace(string(out)), "\n", 2)[0]
-	if len(first) > 60 {
-		first = first[:57] + "..."
-	}
-	return doctorRow{check: label, pass: true, detail: first}
+	return doctorRow{check: label, pass: true, detail: truncateRunes(first, 60)}
 }
 
 func probeAPIKeyEnv(p *agents.Provider) doctorRow {

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"strings"
 	"testing"
@@ -137,6 +138,92 @@ func TestLookupTestProvider_FindsBuiltinWithoutEnable(t *testing.T) {
 	}
 	if got.Name != "claude" || got.Driver != agents.DriverCLI {
 		t.Errorf("got %+v", got)
+	}
+}
+
+func TestProbeCLIVersion_BinaryNotFound(t *testing.T) {
+	row := probeCLIVersion(context.Background(), "no-such-binary-fzx9", "binary")
+	if row.pass {
+		t.Errorf("expected pass=false; got %+v", row)
+	}
+	if !strings.Contains(row.detail, "--version failed") {
+		t.Errorf("detail = %q; want substring '--version failed'", row.detail)
+	}
+}
+
+func TestProbeCLIVersion_NonZeroExit(t *testing.T) {
+	row := probeCLIVersion(context.Background(), "false", "binary")
+	if row.pass {
+		t.Errorf("expected pass=false for `false --version`; got %+v", row)
+	}
+}
+
+func TestProbeCLIVersion_EmptyBinReportsCmdNotSet(t *testing.T) {
+	row := probeCLIVersion(context.Background(), "", "binary")
+	if row.pass {
+		t.Errorf("expected pass=false for empty bin")
+	}
+	if !strings.Contains(row.detail, "cmd not set") {
+		t.Errorf("detail = %q; want 'cmd not set'", row.detail)
+	}
+}
+
+func TestRemoveFromGlobal_RefusesWhenScanFindsRefs(t *testing.T) {
+	// Set up two test repos referencing a provider; one ignored.
+	scanRoot := t.TempDir()
+	for _, repo := range []string{"a", "b"} {
+		dir := scanRoot + "/" + repo + "/.kaijutsu"
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			t.Fatal(err)
+		}
+		var enabled string
+		if repo == "a" {
+			enabled = "[claude, deepseek-test]"
+		} else {
+			enabled = "[claude]"
+		}
+		if err := os.WriteFile(dir+"/agents.yaml", []byte("version: 1\nenabled: "+enabled+"\n"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Set up a global agents.yaml under a temp HOME so SaveGlobalConfig
+	// writes there instead of polluting the real home dir.
+	homeBack := os.Getenv("HOME")
+	tmpHome := t.TempDir()
+	t.Setenv("HOME", tmpHome)
+	t.Cleanup(func() { os.Setenv("HOME", homeBack) })
+
+	// Pre-write the global provider entry we're about to remove.
+	if err := agents.SaveGlobalConfig(&agents.GlobalConfig{
+		Providers: map[string]*agents.Provider{
+			"deepseek-test": {Name: "deepseek-test", Driver: agents.DriverHTTP, BaseURL: "https://x", Model: "m"},
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("JUTSU_REPO_SCAN_ROOTS", scanRoot)
+	var out, errBuf bytes.Buffer
+	err := removeFromGlobal(&out, &errBuf, "deepseek-test", false)
+	if err == nil {
+		t.Fatal("expected refuse-without-force error; got nil")
+	}
+	if !strings.Contains(err.Error(), "refusing to remove") {
+		t.Errorf("error = %v; want substring 'refusing to remove'", err)
+	}
+	if !strings.Contains(errBuf.String(), "1 repo(s) still reference") {
+		t.Errorf("stderr missing scan warning: %q", errBuf.String())
+	}
+
+	// Now retry with --force; should succeed.
+	out.Reset()
+	errBuf.Reset()
+	if err := removeFromGlobal(&out, &errBuf, "deepseek-test", true); err != nil {
+		t.Fatalf("force-remove: %v", err)
+	}
+	if !strings.Contains(out.String(), "removed") {
+		t.Errorf("force-remove stdout = %q", out.String())
 	}
 }
 
