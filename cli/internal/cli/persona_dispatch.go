@@ -97,19 +97,15 @@ func assemblePersonaJobs(projectRoot string, preset *swarm.Preset, ictx *swarm.I
 			return nil, nil, fmt.Errorf("--personas %q: build driver: %w", name, err)
 		}
 
-		// Preset prompt-template lookup is by underlying agent type
-		// (claude/codex/gemini) — presets ship per-agent prompts in
-		// PerAgent[AgentName]; persona names map back to provider
-		// names which match the AgentName constants for the three
-		// native CLIs. For v0.6 only personas backed by claude /
-		// codex / gemini providers find a template; HTTP-only
-		// providers (deepseek, glm, etc.) route via their backing
-		// AgentName when the persona uses one of the three roles —
-		// otherwise this errors with a clear message.
-		tmplKey := swarm.AgentName(persona.Provider)
-		tmpl, ok := preset.PerAgent[tmplKey]
+		// Preset prompt-template lookup with fallback chain:
+		// PerAgent[provider] → DefaultPrompt → PerAgent[AgentClaude].
+		// New HTTP providers (deepseek/glm/kimi/anything via
+		// `jutsu agent add`) get the preset's DefaultPrompt — the
+		// generalist version of the preset's purpose — instead of
+		// hard-failing.
+		tmpl, ok := preset.PromptFor(persona.Provider)
 		if !ok {
-			return nil, nil, fmt.Errorf("--personas %q: preset %q has no prompt template for provider %q (preset templates are keyed by claude/codex/gemini). v0.6.x will add per-persona template overrides; for now, persona must back a known agent role", name, preset.Name, persona.Provider)
+			return nil, nil, fmt.Errorf("--personas %q: preset %q has no prompt template for provider %q and no DefaultPrompt set", name, preset.Name, persona.Provider)
 		}
 		body := fmt.Sprintf(tmpl, ictx.Body)
 

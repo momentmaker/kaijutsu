@@ -107,10 +107,10 @@ func personaProjections(projectRoot string, preset *swarm.Preset, ictx *swarm.In
 		if !ok {
 			return nil, fmt.Errorf("--estimate --personas %q: provider %q not enabled", name, persona.Provider)
 		}
-		tmpl, ok := preset.PerAgent[swarm.AgentName(persona.Provider)]
+		// Use the preset's resolved fallback chain so estimate
+		// numbers reflect what the actual swarm dispatch would send.
+		tmpl, ok := preset.PromptFor(persona.Provider)
 		if !ok {
-			// Persona refers to an HTTP-only provider with no preset template;
-			// estimate body without template, just to give a directional number.
 			tmpl = "%s"
 		}
 		body := fmt.Sprintf(tmpl, ictx.Body)
