@@ -23,7 +23,7 @@
 
 ---
 
-> **Status: alpha.** The `jutsu` CLI works end-to-end (init / install / list / remove / upgrade / lint / search / info / publish). 16 core skills currently ship: 9 task-oriented (decide, journal, polish, unstuck, scope-check, session-retro, agent-doctor, pr-review, readme-update) and 7 composable primitives (blunder-hunt, lie-to-them, convergence-detect, deslop, dispatch-parallel, multi-model-synth, project-memory). Install paths, skill schema, and command surface are stable for v0.x. Signature-verification enforcement, hooks-as-first-class, and the public skill catalog at [kaijutsu.dev](https://kaijutsu.dev) are still maturing — see [`ROADMAP.md`](./ROADMAP.md). Security model: [`SECURITY.md`](./SECURITY.md).
+> **Status: alpha.** The `jutsu` CLI works end-to-end (init / install / list / remove / upgrade / lint / search / info / publish / agent / swarm). 26 core skills currently ship across task-oriented (decide, journal, polish, unstuck, scope-check, session-retro, agent-doctor, pr-review, readme-update, doc-review, brainstorm, refactor-plan, security-audit, spec-driven-development, planning-and-task-breakdown, security-and-hardening, code-simplification, incremental-implementation), composable primitives (blunder-hunt, lie-to-them, convergence-detect, deslop, dispatch-parallel, multi-model-synth, project-memory), and a hooks bundle (dcg). v0.6 ships multi-provider swarm (driver abstraction + agents.yaml + personas) — see below. Install paths, skill schema, and command surface are stable for v0.x. The public skill catalog at [kaijutsu.dev](https://kaijutsu.dev) is still maturing — see [`ROADMAP.md`](./ROADMAP.md). Security model: [`SECURITY.md`](./SECURITY.md).
 
 ## Why
 
@@ -76,12 +76,44 @@ Run `jutsu search <query>` to find skills by name / description / tag, or `jutsu
 
 ## Multi-agent flywheel (`jutsu swarm`)
 
-Two skills (`pr-review` v1.x, `doc-review` v0.1+) ship as multi-agent presets that orchestrate claude / codex / gemini in parallel through `jutsu swarm <preset>`. Each agent reviews the same input through a different lens, then a synthesizer produces a single markdown report with a disagreement table. Used as the universal QA gate for kaijutsu artifacts:
+Five swarm presets (`pr-review`, `doc-review`, `brainstorm`, `refactor-plan`, `security-audit`) orchestrate multiple agents in parallel through `jutsu swarm <preset>`. Each agent reviews the same input through a different lens, then a synthesizer produces a single markdown report with a disagreement table. Used as the universal QA gate for kaijutsu artifacts:
 
 - `jutsu swarm pr-review --pr 42` — adversarial multi-agent code review on a PR
 - `jutsu swarm doc-review SPEC.md` — multi-agent review on a spec / plan / decision record / design doc
+- `jutsu swarm brainstorm "<prompt>"` — orthogonal-angle ideation
+- `jutsu swarm refactor-plan <files>... --goal "<goal>"` — ordered refactor steps with risk per step
+- `jutsu swarm security-audit --pr 42` — CVSS-aligned threat model
 
 Three artifact-producing skills (`spec-driven-development`, `planning-and-task-breakdown`, `decide`) call `jutsu swarm doc-review` as their final review pass instead of inventing their own — a single shared QA gate replaces three ad-hoc mechanisms. See [`IMPLEMENTATION_PLAN_PHASE2.md`](./IMPLEMENTATION_PLAN_PHASE2.md) for the design.
+
+### v0.6 — Multi-provider agents
+
+`jutsu swarm` is no longer locked to claude/codex/gemini CLIs. Four driver kinds:
+
+- **`cli`** — native CLIs (claude/codex/gemini) — the v0.5 default
+- **`http`** — direct OpenAI-compat / Anthropic-compat HTTP (DeepSeek, GLM, Kimi, local Ollama)
+- **`cli-compat`** — wrap a native CLI with `BASE_URL` + `KEY` override (opt-in; emits a one-shot warning about telemetry leakage)
+- **`mcp`** — MCP servers as deterministic peers (semgrep, eslint, custom analyzers); `Result.CostUSD = 0`
+
+Two-layer config in `agents.yaml`:
+
+- `~/.kaijutsu/agents.yaml` — global provider catalog
+- `<repo>/.kaijutsu/agents.yaml` — project enabled list + per-repo overrides
+
+7 built-in personas: 3 `default-*` (empty system prompt for v0.5 cache compat) + 4 reference flavored (`paranoid-security-claude`, `pragmatic-codex`, `architecture-purist-gemini`, `brainstorm-creative-claude`). Skills can require persona tags; auto-synthesis of `default-<provider>` for any enabled provider.
+
+Quick start:
+
+```bash
+jutsu agent add deepseek                         # writes catalog default to .kaijutsu/agents.yaml
+export DEEPSEEK_API_KEY=sk-...
+jutsu agent enable deepseek
+jutsu agent test deepseek                        # /models GET (or 1-token completion fallback)
+jutsu swarm pr-review --personas paranoid-security-claude,pragmatic-codex,deepseek
+jutsu swarm pr-review --estimate                 # dry-run cost projection (±20% accuracy)
+```
+
+`jutsu agent` ships 8 subcommands (list, doctor, add, enable, disable, remove, test, migrate). See [`docs/multi-agent.md`](./docs/multi-agent.md) for the full driver reference + persona authoring guide.
 
 ## Trust model
 
