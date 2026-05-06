@@ -18,25 +18,39 @@ import (
 // TestFindingFile_NoNetworkImports is the privacy enforcement gate
 // from the v0.7 spec: finding.go MUST NOT import any networking
 // package. This test parses the file's actual import list and fails
-// if a forbidden import slips in. Catches accidental telemetry adds.
+// if any net/* (or bare net, or golang.org/x/net/*) import slips in.
+// Catches both intentional telemetry adds and accidental drag-ins
+// from a "convenient" helper package.
 func TestFindingFile_NoNetworkImports(t *testing.T) {
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, "finding.go", nil, parser.ImportsOnly)
 	if err != nil {
 		t.Fatalf("parse finding.go: %v", err)
 	}
-	forbidden := map[string]bool{
-		`"net"`:      true,
-		`"net/http"`: true,
-		`"net/url"`:  true,
-		`"net/rpc"`:  true,
-	}
 	for _, imp := range file.Imports {
-		if forbidden[imp.Path.Value] {
-			t.Errorf("finding.go imports %s — privacy boundary violated; v0.7 quality fingerprinting must be local-only",
-				imp.Path.Value)
+		path := strings.Trim(imp.Path.Value, `"`)
+		if isNetworkPkg(path) {
+			t.Errorf("finding.go imports %q — privacy boundary violated; v0.7 quality fingerprinting must be local-only",
+				path)
 		}
 	}
+}
+
+// isNetworkPkg flags any package that opens a socket, makes RPC
+// calls, or otherwise reaches the network. Conservative — better to
+// nudge a contributor to justify a stdlib `net/textproto` (text-only,
+// arguably safe) than to silently miss a `net/http` slip-in.
+func isNetworkPkg(path string) bool {
+	if path == "net" {
+		return true
+	}
+	if strings.HasPrefix(path, "net/") {
+		return true
+	}
+	if strings.HasPrefix(path, "golang.org/x/net/") {
+		return true
+	}
+	return false
 }
 
 // TestFindingList_HappyPath records two runs and verifies the list
@@ -250,6 +264,46 @@ func TestFindingExport_WritesSchemaV1(t *testing.T) {
 	}
 }
 
+// TestFindingAccept_MissingIdFriendly verifies a missing id surfaces
+// as actionable text, not a raw "sql: no rows in result set" leak.
+func TestFindingAccept_MissingIdFriendly(t *testing.T) {
+	store, _ := setupFindingTest(t)
+	store.Close()
+
+	_, _, err := runCmdCapture(t, "finding", "accept", "999")
+	if err == nil {
+		t.Fatal("expected error for missing id")
+	}
+	if !strings.Contains(err.Error(), "not found") {
+		t.Errorf("error should mention 'not found': %v", err)
+	}
+	if strings.Contains(err.Error(), "sql:") {
+		t.Errorf("raw sql error leaked: %v", err)
+	}
+}
+
+// TestFinding_NoStorePathErrorsCleanly verifies the spec contract
+// that the DB is created on first swarm run, not on a `jutsu finding`
+// invocation. Without the guard we'd silently drop a 0-row file at
+// the user's HOME on a curiosity probe.
+func TestFinding_NoStorePathErrorsCleanly(t *testing.T) {
+	tmp := t.TempDir()
+	missing := filepath.Join(tmp, "does-not-exist", "findings.db")
+	t.Setenv("KAIJUTSU_FINDINGS_DB", missing)
+
+	_, _, err := runCmdCapture(t, "finding", "list")
+	if err == nil {
+		t.Fatal("expected error when DB absent; got nil")
+	}
+	if !strings.Contains(err.Error(), "no findings store") {
+		t.Errorf("error message missing actionable hint: %v", err)
+	}
+	// Side-effect check: the missing path must NOT have been created.
+	if _, statErr := os.Stat(missing); !os.IsNotExist(statErr) {
+		t.Errorf("openFindingsStore created the DB despite the guard: %v", statErr)
+	}
+}
+
 // TestParseDurationSpec_DaysAndStdLib covers the days extension over
 // time.ParseDuration.
 func TestParseDurationSpec_DaysAndStdLib(t *testing.T) {
@@ -263,6 +317,8 @@ func TestParseDurationSpec_DaysAndStdLib(t *testing.T) {
 		{"24h", 24 * time.Hour, false},
 		{"15m", 15 * time.Minute, false},
 		{"-1d", 0, true},
+		{"-30m", 0, true},
+		{"-1h", 0, true},
 		{"abcd", 0, true},
 		{"", 0, true},
 	}

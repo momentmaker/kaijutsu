@@ -5,6 +5,7 @@
 package cli
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -50,13 +51,18 @@ network calls.`,
 
 // openFindingsStore is the shared resolver for every subcommand. It
 // honors KAIJUTSU_FINDINGS_DB so tests can scope to a temp file.
-// Returns a clear error when the DB doesn't exist yet (ran no swarm
-// runs) so the user gets actionable feedback instead of an SQLite
-// "no such table" leak.
+// Refuses to create the DB on a `jutsu finding *` invocation — the
+// spec contracts that the DB is created on the first swarm run that
+// produces findings. Without this guard, a curious user running
+// `jutsu finding list` on a fresh system would silently leave a
+// 0-row findings.db behind.
 func openFindingsStore() (*findings.Store, error) {
 	path, err := findings.DefaultPath()
 	if err != nil {
 		return nil, err
+	}
+	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		return nil, fmt.Errorf("no findings store at %s — run `jutsu swarm <preset>` first to create it", path)
 	}
 	return findings.Open(path)
 }
@@ -185,6 +191,9 @@ when batch-actioning across repos from a single shell session).`, action),
 			defer store.Close()
 
 			row, err := findings.GetByID(store, id)
+			if errors.Is(err, sql.ErrNoRows) {
+				return fmt.Errorf("finding id %d not found — list ids with `jutsu finding list`", id)
+			}
 			if err != nil {
 				return fmt.Errorf("finding id %d: %w", id, err)
 			}
@@ -349,6 +358,9 @@ Runs VACUUM after deletion to reclaim disk.`,
 			out := cmd.OutOrStdout()
 			// Default to dry-run when neither flag is passed — explicit
 			// affirmative required for destructive ops per spec.
+			// --dry-run + --yes combined: dry-run wins (spec phrasing
+			// is "defaults to dry-run unless --yes is set"; explicit
+			// --dry-run is always honored).
 			effectiveDry := dryRun || !yes
 			if effectiveDry {
 				n, err := findings.CountClearable(store, opts)
@@ -391,11 +403,22 @@ func parseDurationSpec(s string) (time.Duration, error) {
 			return 0, fmt.Errorf("days prefix invalid: %w", err)
 		}
 		if days < 0 {
-			return 0, errors.New("negative days")
+			return 0, errors.New("negative duration not allowed")
 		}
 		return time.Duration(days) * 24 * time.Hour, nil
 	}
-	return time.ParseDuration(s)
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		return 0, err
+	}
+	// time.ParseDuration accepts "-30m" / "-1h"; for `--older-than`
+	// that resolves to a future cutoff and DELETE FROM findings WHERE
+	// created_at < <future> matches everything. Reject so the
+	// destructive op stays an opt-in.
+	if d < 0 {
+		return 0, errors.New("negative duration not allowed")
+	}
+	return d, nil
 }
 
 // --- export ---
