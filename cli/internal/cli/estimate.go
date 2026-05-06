@@ -107,6 +107,12 @@ func personaProjections(projectRoot string, preset *swarm.Preset, ictx *swarm.In
 		if !ok {
 			return nil, fmt.Errorf("--estimate --personas %q: provider %q not enabled", name, persona.Provider)
 		}
+		// Same override application as persona dispatch — projections
+		// reflect the model the actual swarm run uses. Cost rate
+		// stays per-provider until v0.7's model-keyed rate cards
+		// land; --estimate cost is approximate when persona overrides
+		// model to a different tier (e.g. deepseek-v4-pro vs flash).
+		provider = agents.ApplyPersonaOverrides(provider, persona)
 		// Use the preset's resolved fallback chain so estimate
 		// numbers reflect what the actual swarm dispatch would send.
 		tmpl, ok := preset.PromptFor(persona.Provider)

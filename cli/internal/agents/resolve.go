@@ -280,6 +280,29 @@ func mergeProvider(dst, src *Provider) {
 	}
 }
 
+// ApplyPersonaOverrides clones a Provider and applies any persona-
+// level field overrides (currently Model). Returns the original
+// pointer when the persona has no overrides — callers can rely on
+// "no copy when no override" for performance + ptr-equality checks.
+//
+// Centralizes the override logic so dispatch (cli/persona_dispatch.go)
+// and projection (cli/estimate.go) stay in lockstep. Future
+// per-persona fields (e.g. timeout, headers) just extend this helper
+// instead of being added independently in two places.
+//
+// Note: cost rate cards are still per-PROVIDER; switching the model
+// via persona override does NOT pick up a model-specific rate. v0.7
+// will introduce model-keyed rate cards. For now --estimate cost
+// projection is approximate when the persona overrides model.
+func ApplyPersonaOverrides(p *Provider, persona *Persona) *Provider {
+	if persona == nil || persona.Model == "" {
+		return p
+	}
+	cloned := *p
+	cloned.Model = persona.Model
+	return &cloned
+}
+
 // validateDriverKind rejects providers with an unrecognized driver
 // kind. Loader-level enum validation — without this, a YAML typo like
 // `driver: clil` parses silently and surfaces as a confusing dispatch

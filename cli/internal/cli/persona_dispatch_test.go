@@ -120,6 +120,10 @@ func TestOverlayPersonaCosts_IgnoresUnmappedResults(t *testing.T) {
 	}
 }
 
+// (TestPersonaModelOverride_ClonesProviderInsteadOfMutating moved to
+// internal/agents/resolve_test.go where ApplyPersonaOverrides is
+// defined — matches Go package-boundary idiom.)
+
 func TestUserSentinel_StableValue(t *testing.T) {
 	// The cli userSentinel must match the constant the agents/http_driver.go
 	// uses for splitSystemUser. Both packages share the literal value
