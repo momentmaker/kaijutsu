@@ -120,34 +120,9 @@ func TestOverlayPersonaCosts_IgnoresUnmappedResults(t *testing.T) {
 	}
 }
 
-// TestPersonaModelOverride_ClonesProviderInsteadOfMutating exercises
-// agents.ApplyPersonaOverrides through the lens both call sites use:
-// clone-on-override + leave shared provider untouched.
-func TestPersonaModelOverride_ClonesProviderInsteadOfMutating(t *testing.T) {
-	provider := &agents.Provider{
-		Name:     "deepseek",
-		Driver:   agents.DriverHTTP,
-		Protocol: "openai-compat",
-		BaseURL:  "https://api.deepseek.com/v1",
-		Model:    "deepseek-v4-flash",
-	}
-	// Persona 1 — no override → returns same pointer.
-	p1 := agents.ApplyPersonaOverrides(provider, &agents.Persona{Provider: "deepseek"})
-	if p1 != provider {
-		t.Errorf("no-override case should return original pointer; got copy")
-	}
-	// Persona 2 — overrides Model → returns clone.
-	p2 := agents.ApplyPersonaOverrides(provider, &agents.Persona{Provider: "deepseek", Model: "deepseek-v4-pro"})
-	if p2 == provider {
-		t.Errorf("override case should return cloned pointer; got original")
-	}
-	if p2.Model != "deepseek-v4-pro" {
-		t.Errorf("p2.Model = %q, want deepseek-v4-pro", p2.Model)
-	}
-	if provider.Model != "deepseek-v4-flash" {
-		t.Errorf("override mutated shared provider: Model = %q, want deepseek-v4-flash", provider.Model)
-	}
-}
+// (TestPersonaModelOverride_ClonesProviderInsteadOfMutating moved to
+// internal/agents/resolve_test.go where ApplyPersonaOverrides is
+// defined — matches Go package-boundary idiom.)
 
 func TestUserSentinel_StableValue(t *testing.T) {
 	// The cli userSentinel must match the constant the agents/http_driver.go

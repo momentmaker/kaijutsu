@@ -105,7 +105,12 @@ func TestStripNestedAgentEnv(t *testing.T) {
 		"CLAUDE_CODE_FUTURE_VAR=baz",
 		"AI_AGENT=claude-code-foo",
 		"GEMINI_SESSION=abc",
+		"CODEX_SESSION=def",
+		// Real user secrets — must survive even when prefix matches
+		// a vendor name. Codex/Gemini API keys are exact-match-skipped.
 		"DEEPSEEK_API_KEY=sk-keep",
+		"CODEX_API_KEY=keep-me-i-am-secret",
+		"GEMINI_API_KEY=keep-me-too",
 		"USER=keep",
 	}
 	got := stripNestedAgentEnv(in)
@@ -116,11 +121,18 @@ func TestStripNestedAgentEnv(t *testing.T) {
 			keep[e[:eq]] = true
 		}
 	}
-	mustKeep := []string{"PATH", "HOME", "DEEPSEEK_API_KEY", "USER"}
-	mustStrip := []string{"CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_EXECPATH", "CLAUDE_CODE_FUTURE_VAR", "AI_AGENT", "GEMINI_SESSION"}
+	mustKeep := []string{
+		"PATH", "HOME", "USER",
+		"DEEPSEEK_API_KEY", "CODEX_API_KEY", "GEMINI_API_KEY",
+	}
+	mustStrip := []string{
+		"CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_EXECPATH",
+		"CLAUDE_CODE_FUTURE_VAR", "AI_AGENT",
+		"GEMINI_SESSION", "CODEX_SESSION",
+	}
 	for _, k := range mustKeep {
 		if !keep[k] {
-			t.Errorf("expected %q kept, was stripped", k)
+			t.Errorf("expected %q kept, was stripped (API_KEY collision check)", k)
 		}
 	}
 	for _, k := range mustStrip {
@@ -135,9 +147,13 @@ func TestIsTransientCLIError(t *testing.T) {
 		msg  string
 		want bool
 	}{
-		{"claude exited exit status 1 after 30s: ", true},
+		// Transient — retry-worthy
 		{"foo bar broken pipe baz", true},
 		{"transport: stream error: code 0", true},
+		{"rpc error: code = Unavailable desc = backend dead", true},
+		{"connection reset by peer", true},
+		// Permanent — should NOT retry (avoid 2x cost on user errors)
+		{"claude exited exit status 1 after 30s: bad config", false},
 		{"context deadline exceeded", false},
 		{"executable file not found in $PATH", false},
 		{"permission denied opening config", false},
@@ -175,6 +191,23 @@ func TestRunCLI_ErrorPath(t *testing.T) {
 	}
 	if res.Duration <= 0 {
 		t.Error("runCLI: Result.Duration is 0; want positive")
+	}
+}
+
+// TestRunCLI_PermanentErrorDoesNotRetry confirms the retry classifier
+// keeps "exit status 1" out of the transient set — earlier draft had
+// generic exit-1 marked transient and would have wasted a 2nd call
+// on every legitimate user error.
+func TestRunCLI_PermanentErrorDoesNotRetry(t *testing.T) {
+	start := time.Now()
+	_, err := runCLI(context.Background(), InvokeOpts{}, "false", nil, "")
+	elapsed := time.Since(start)
+	if err == nil {
+		t.Fatal("expected error from /usr/bin/false")
+	}
+	// Single attempt = sub-100ms; retry would push past 500ms sleep.
+	if elapsed > 400*time.Millisecond {
+		t.Errorf("permanent error retried (elapsed %v); should fail fast", elapsed)
 	}
 }
 

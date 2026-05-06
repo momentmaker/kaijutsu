@@ -197,6 +197,39 @@ func TestResolve_RejectsMissingDriverKind(t *testing.T) {
 	}
 }
 
+// TestApplyPersonaOverrides exercises the helper through the lens
+// both call sites use: clone-on-override + leave shared provider
+// untouched.
+func TestApplyPersonaOverrides_NoOverrideReturnsOriginal(t *testing.T) {
+	p := &Provider{Name: "deepseek", Driver: DriverHTTP, Model: "deepseek-v4-flash"}
+	got := ApplyPersonaOverrides(p, &Persona{Provider: "deepseek"})
+	if got != p {
+		t.Errorf("no-override should return original pointer; got copy")
+	}
+}
+
+func TestApplyPersonaOverrides_ModelOverrideClones(t *testing.T) {
+	p := &Provider{Name: "deepseek", Driver: DriverHTTP, Model: "deepseek-v4-flash"}
+	got := ApplyPersonaOverrides(p, &Persona{Provider: "deepseek", Model: "deepseek-v4-pro"})
+	if got == p {
+		t.Errorf("override should return clone; got original pointer")
+	}
+	if got.Model != "deepseek-v4-pro" {
+		t.Errorf("clone.Model = %q, want deepseek-v4-pro", got.Model)
+	}
+	if p.Model != "deepseek-v4-flash" {
+		t.Errorf("override mutated shared provider: Model = %q", p.Model)
+	}
+}
+
+func TestApplyPersonaOverrides_NilPersona(t *testing.T) {
+	p := &Provider{Name: "deepseek", Driver: DriverHTTP, Model: "deepseek-v4-flash"}
+	got := ApplyPersonaOverrides(p, nil)
+	if got != p {
+		t.Errorf("nil persona should return original pointer")
+	}
+}
+
 // TestMergeProvider_DeepCopiesMaps locks in the invariant that
 // mergeProvider deep-copies map fields from src. Without this, a
 // project Override map shared between two enabled providers (or

@@ -100,11 +100,23 @@ func runCLI(ctx context.Context, opts InvokeOpts, name string, args []string, st
 	// fixes the flaky cases without masking real problems.
 	res, err := runCLIOnce(ctx, name, args, stdin, parentEnv)
 	if err != nil && isTransientCLIError(res.Err) {
-		time.Sleep(500 * time.Millisecond)
+		// ctx-aware sleep so a cancelled parent doesn't waste 500ms
+		// before bailing.
+		select {
+		case <-ctx.Done():
+			return res, err
+		case <-time.After(500 * time.Millisecond):
+		}
 		res2, err2 := runCLIOnce(ctx, name, args, stdin, parentEnv)
 		if err2 == nil {
 			return res2, nil
 		}
+		// Both attempts failed — prefer the second result. The
+		// second's diagnostic is more recent + may carry clearer
+		// signal (e.g. first attempt's race resolved into a real
+		// permanent error on retry). Original res still findable in
+		// debug logs via the first run's stderr if anyone needs it.
+		return res2, err2
 	}
 	return res, err
 }
@@ -147,24 +159,36 @@ func runCLIOnce(ctx context.Context, name string, args []string, stdin string, e
 // another agent CLI" from a slice of KEY=VALUE entries. The spawned
 // CLI sees a clean environment as if it were launched from a fresh
 // shell.
+//
+// SECURITY/SAFETY NOTE: stripping these markers also strips any
+// recursion / cost-cap guards a vendor CLI might key off them. We
+// accept that trade-off because (a) the parent ctx already enforces
+// per-agent timeout + opts.MaxBudgetUSD when set, (b) jutsu's swarm
+// pipeline already has aggregate --max-cost limits, and (c) the
+// failure mode being fixed (claude/gemini erroring inside Claude
+// Code) was a hard regression with no workaround. If a future vendor
+// adds a recursion-protection feature jutsu wants to honor, gate
+// stripping behind a JUTSU_ALLOW_NESTED_AGENT=0 opt-out.
+//
+// Strip-list policy: exact-match for canonical session markers,
+// prefix-strip ONLY for "CLAUDE_CODE_" (clearly session-scoped
+// namespace). Avoid CODEX_/GEMINI_ prefix-strip because users put
+// real secrets there (CODEX_API_KEY, GEMINI_API_KEY). Future codex/
+// gemini session markers must be added explicitly.
 func stripNestedAgentEnv(in []string) []string {
-	// Strip these prefixes/exact names. Conservative list — only
-	// known nested-agent markers that empirically affect behavior.
 	stripExact := map[string]struct{}{
-		"CLAUDECODE":              {},
-		"CLAUDE_CODE_ENTRYPOINT":  {},
-		"CLAUDE_CODE_EXECPATH":    {},
-		"CLAUDE_CODE_SESSION":     {},
-		"CLAUDE_CODE_SESSION_ID":  {},
-		"AI_AGENT":                {},
-		"CODEX_SESSION":           {},
-		"CODEX_SESSION_ID":        {},
-		"GEMINI_SESSION":          {},
-		"GEMINI_SESSION_ID":       {},
-		"JUTSU_NESTED_AGENT":      {},
+		"CLAUDECODE":             {},
+		"AI_AGENT":               {},
+		"JUTSU_NESTED_AGENT":     {},
+		"CODEX_SESSION":          {},
+		"CODEX_SESSION_ID":       {},
+		"CODEX_AGENT_SESSION":    {},
+		"GEMINI_SESSION":         {},
+		"GEMINI_SESSION_ID":      {},
+		"GEMINI_AGENT_SESSION":   {},
 	}
 	stripPrefix := []string{
-		"CLAUDE_CODE_",
+		"CLAUDE_CODE_", // session-scoped namespace; no API_KEY collision
 	}
 	out := make([]string, 0, len(in))
 	for _, e := range in {
@@ -192,10 +216,15 @@ func stripNestedAgentEnv(in []string) []string {
 	return out
 }
 
-// isTransientCLIError heuristically detects retry-worthy errors. Auth
-// failures, "command not found", and explicit refusals fail the same
-// way twice — only retry the flaky kinds. Empirically: nil-deref
-// panics, "context deadline" near boundary, subprocess wait races.
+// isTransientCLIError heuristically detects retry-worthy errors.
+// Conservative: only retry on patterns that are unambiguously
+// transient. Bare "exit status 1" excluded — that catches every
+// permanent failure (bad args, config error, refusal, quota) and
+// would 2x cost on legitimate user errors.
+//
+// Permanent errors fail the same way twice; transient ones (subprocess
+// wait races, brief network blips, lockfile contention with a sibling
+// claude/gemini process) clear up on retry.
 func isTransientCLIError(msg string) bool {
 	lower := strings.ToLower(msg)
 	switch {
@@ -205,13 +234,13 @@ func isTransientCLIError(msg string) bool {
 		return false // PATH issue — retry won't fix
 	case strings.Contains(lower, "permission denied"):
 		return false // ACL — retry won't fix
-	case strings.Contains(lower, "exit status 1"):
-		// Generic exit 1 from claude/gemini under nested-agent
-		// conditions — empirically transient.
-		return true
 	case strings.Contains(lower, "broken pipe"):
 		return true
 	case strings.Contains(lower, "stream error"):
+		return true
+	case strings.Contains(lower, "rpc error: code = unavailable"):
+		return true
+	case strings.Contains(lower, "connection reset"):
 		return true
 	}
 	return false
