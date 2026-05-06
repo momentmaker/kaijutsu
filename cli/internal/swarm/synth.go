@@ -214,18 +214,28 @@ func clusterFindings(results []AgentResult, weights map[string]float64) []Findin
 	// v0.7 sort: weighted_consensus desc → ConsensusOf desc → severity
 	// desc → key asc. Spec acceptance "Tiebreaker order:
 	// weighted_consensus desc → ConsensusOf desc → severity desc → key
-	// asc". Severity-first vs weighted-consensus-first matters: spec
-	// puts weighted_consensus first because a high-precision agent's
-	// lone finding should outrank a low-precision agent's chorus when
-	// both same-severity. When weights is nil/empty/all-cold,
-	// weighted_consensus collapses to ConsensusOf, so behavior matches
-	// v0.6.2 (which sorted by severity → ConsensusOf → key). The pre-
-	// v0.7 ordering's severity-first kicks in only when no weights
-	// data exists, which is the cold-start byte-identical contract.
+	// asc". When weights is nil/empty/all-cold, fall back to v0.6
+	// ordering byte-for-byte (severity → ConsensusOf → key) — that's
+	// the cold-start backward-compat contract.
+	//
+	// Both the cold-start check AND the per-cluster weighted_consensus
+	// are hoisted out of the Less closure: sort.Slice calls Less
+	// O(N log N) times, and re-checking the weights map shape on each
+	// call is wasteful when neither input changes inside the sort.
+	useWeighted := anyNonCold(weights)
+	// Indexed by FindingGroup.Key (stable across the in-place sort,
+	// unlike a parallel slice which would point at the wrong cluster
+	// after a swap). Map lookup is O(1) — cheaper than re-iterating
+	// the cluster's Reporters map on every Less call.
+	var weightedSums map[string]float64
+	if useWeighted {
+		weightedSums = make(map[string]float64, len(out))
+		for _, g := range out {
+			weightedSums[g.Key] = weightedConsensus(g, weights)
+		}
+	}
 	sort.Slice(out, func(i, j int) bool {
-		// Cold-start fast path: no weights data → fall back to v0.6
-		// ordering exactly. Cheap to check, preserves backward compat.
-		if !anyNonCold(weights) {
+		if !useWeighted {
 			ri, rj := severityRank(out[i].Severity), severityRank(out[j].Severity)
 			if ri != rj {
 				return ri > rj
@@ -235,9 +245,7 @@ func clusterFindings(results []AgentResult, weights map[string]float64) []Findin
 			}
 			return out[i].Key < out[j].Key
 		}
-		// v0.7 weighted ordering.
-		wi := weightedConsensus(out[i], weights)
-		wj := weightedConsensus(out[j], weights)
+		wi, wj := weightedSums[out[i].Key], weightedSums[out[j].Key]
 		if wi != wj {
 			return wi > wj
 		}
