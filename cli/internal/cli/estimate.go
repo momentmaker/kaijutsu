@@ -51,8 +51,18 @@ func runEstimate(stdout, stderr io.Writer, projectRoot string, preset *swarm.Pre
 	fmt.Fprintln(stdout, strings.Repeat("-", 78))
 	fmt.Fprintf(stdout, "%-30s %-12s %6s %6s  $%.4f total\n", "TOTAL", "", "", "", total)
 
-	footer := fmt.Sprintf("\nestimate: char-count tokenizer (±%d%% accuracy); output assumed at %d tokens.",
-		agents.EstimateAccuracyPct, agents.OutputTokensEstimate)
+	worstAccuracy := agents.EstimateAccuracyTokenizerPct
+	for _, cp := range projections {
+		if cp.AccuracyPct > worstAccuracy {
+			worstAccuracy = cp.AccuracyPct
+		}
+	}
+	tokenizerLabel := "tiktoken-go"
+	if worstAccuracy >= agents.EstimateAccuracyFallbackPct {
+		tokenizerLabel = "tiktoken-go for openai-compat / char-count fallback for the rest"
+	}
+	footer := fmt.Sprintf("\nestimate: %s (±%d%% worst case across rows); output assumed at %d tokens.",
+		tokenizerLabel, worstAccuracy, agents.OutputTokensEstimate)
 	if missingRateCard > 0 {
 		footer += fmt.Sprintf(" %d provider(s) missing rate card → cost shown as 0.", missingRateCard)
 	}

@@ -67,15 +67,15 @@ func TestMCPDriver_StdioServerErrorSurfaces(t *testing.T) {
 	}
 }
 
-func TestMCPDriver_RejectsHTTPTransport(t *testing.T) {
+func TestMCPDriver_HTTPRequiresEndpoint(t *testing.T) {
 	d := &mcpDriver{provider: &Provider{
-		Name: "x", Driver: DriverMCP, Transport: "http", Endpoint: "https://x",
+		Name: "x", Driver: DriverMCP, Transport: "http",
 	}}
 	_, err := d.Invoke(context.Background(), "x", InvokeOpts{})
 	if err == nil {
-		t.Fatal("expected error for http transport (not implemented); got nil")
+		t.Fatal("expected error for missing endpoint; got nil")
 	}
-	if !strings.Contains(err.Error(), "http transport not implemented") {
+	if !strings.Contains(err.Error(), "endpoint field") {
 		t.Errorf("error = %v", err)
 	}
 }
