@@ -47,12 +47,7 @@ func (d *httpDriver) Invoke(ctx context.Context, prompt string, opts InvokeOpts)
 
 	apiKey := os.Getenv(d.provider.APIKeyEnv)
 	if d.provider.APIKeyEnv != "" && apiKey == "" {
-		return Result{
-				Driver:      DriverHTTP,
-				CacheStatus: CacheUnsupported,
-				Err:         fmt.Sprintf("env %s not set", d.provider.APIKeyEnv),
-			},
-			fmt.Errorf("env %s not set", d.provider.APIKeyEnv)
+		return errResult(DriverHTTP, 0, fmt.Sprintf("env %s not set", d.provider.APIKeyEnv))
 	}
 
 	switch d.provider.Protocol {
@@ -61,8 +56,7 @@ func (d *httpDriver) Invoke(ctx context.Context, prompt string, opts InvokeOpts)
 	case protocolOpenAI:
 		return d.invokeOpenAI(ctx, prompt, apiKey)
 	}
-	return Result{Driver: DriverHTTP, CacheStatus: CacheUnsupported},
-		fmt.Errorf("provider %q has unsupported protocol %q (allowed: %s, %s)", d.provider.Name, d.provider.Protocol, protocolOpenAI, protocolAnthropic)
+	return errResult(DriverHTTP, 0, fmt.Sprintf("provider %q has unsupported protocol %q (allowed: %s, %s)", d.provider.Name, d.provider.Protocol, protocolOpenAI, protocolAnthropic))
 }
 
 // --- Anthropic-compat -------------------------------------------------
@@ -134,7 +128,9 @@ func (d *httpDriver) invokeAnthropic(ctx context.Context, prompt string, apiKey 
 		return errResult(DriverHTTP, 0, fmt.Sprintf("build request: %v", err))
 	}
 	httpReq.Header.Set("content-type", "application/json")
-	httpReq.Header.Set("x-api-key", apiKey)
+	if apiKey != "" {
+		httpReq.Header.Set("x-api-key", apiKey)
+	}
 	httpReq.Header.Set("anthropic-version", "2023-06-01")
 
 	start := time.Now()
@@ -144,7 +140,10 @@ func (d *httpDriver) invokeAnthropic(ctx context.Context, prompt string, apiKey 
 	}
 	defer resp.Body.Close()
 
-	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 8*1024*1024))
+	respBody, readErr := io.ReadAll(io.LimitReader(resp.Body, 8*1024*1024))
+	if readErr != nil {
+		return errResult(DriverHTTP, time.Since(start), fmt.Sprintf("read anthropic response: %v", readErr))
+	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return errResult(DriverHTTP, time.Since(start), fmt.Sprintf("anthropic %d: %s", resp.StatusCode, trimErr(string(respBody))))
 	}
@@ -264,7 +263,9 @@ func (d *httpDriver) invokeOpenAI(ctx context.Context, prompt string, apiKey str
 		return errResult(DriverHTTP, 0, fmt.Sprintf("build request: %v", err))
 	}
 	httpReq.Header.Set("content-type", "application/json")
-	httpReq.Header.Set("authorization", "Bearer "+apiKey)
+	if apiKey != "" {
+		httpReq.Header.Set("authorization", "Bearer "+apiKey)
+	}
 
 	start := time.Now()
 	resp, err := d.httpClient().Do(httpReq)
@@ -273,7 +274,10 @@ func (d *httpDriver) invokeOpenAI(ctx context.Context, prompt string, apiKey str
 	}
 	defer resp.Body.Close()
 
-	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 8*1024*1024))
+	respBody, readErr := io.ReadAll(io.LimitReader(resp.Body, 8*1024*1024))
+	if readErr != nil {
+		return errResult(DriverHTTP, time.Since(start), fmt.Sprintf("read openai response: %v", readErr))
+	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return errResult(DriverHTTP, time.Since(start), fmt.Sprintf("openai %d: %s", resp.StatusCode, trimErr(string(respBody))))
 	}

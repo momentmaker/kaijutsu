@@ -3,7 +3,6 @@ package agents
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -359,10 +358,48 @@ func TestBuildDriver_RejectsUnimplementedKinds(t *testing.T) {
 	}
 }
 
+func TestBuildDriver_CLISuccessPath(t *testing.T) {
+	cases := []struct {
+		name string
+		want DriverKind
+	}{
+		{"claude", DriverCLI},
+		{"codex", DriverCLI},
+		{"gemini", DriverCLI},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			d, err := BuildDriver(&Provider{Name: tc.name, Driver: DriverCLI})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if d.Driver() != tc.want {
+				t.Errorf("Driver() = %q, want %q", d.Driver(), tc.want)
+			}
+			if d.Name() != tc.name {
+				t.Errorf("Name() = %q, want %q", d.Name(), tc.name)
+			}
+		})
+	}
+}
+
+func TestBuildDriver_CLIRejectsUnknownName(t *testing.T) {
+	_, err := BuildDriver(&Provider{Name: "opencode", Driver: DriverCLI})
+	if err == nil {
+		t.Fatal("expected error for unknown cli provider name; got nil")
+	}
+	if !strings.Contains(err.Error(), "claude|codex|gemini") {
+		t.Errorf("error doesn't hint allowed cli names: %v", err)
+	}
+}
+
 func TestBuildDriver_NilProvider(t *testing.T) {
 	_, err := BuildDriver(nil)
-	if err == nil || !errors.Is(err, err) {
+	if err == nil {
 		t.Fatal("expected error on nil provider")
+	}
+	if !strings.Contains(err.Error(), "nil provider") {
+		t.Errorf("error = %v; want substring 'nil provider'", err)
 	}
 }
 

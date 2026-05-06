@@ -45,13 +45,15 @@ func BuildDriver(p *Provider) (AgentDriver, error) {
 	}
 	switch p.Driver {
 	case DriverCLI:
-		// Stage 1-2: only the three native CLIs are mappable. Stage 4
-		// will allow user-declared cli providers via a generic cmd-
-		// based cliDriver.
+		// Stage 1-3a: cli driver dispatch is name-based and ignores
+		// p.Cmd. Only claude/codex/gemini are mappable; user-declared
+		// cli providers with arbitrary cmds (e.g. opencode, aider) are
+		// rejected. Stage 4 will introduce a generic cmd-based driver
+		// that uses Provider.Cmd + Provider.Args directly.
 		if d := For(p.Name); d != nil {
 			return d, nil
 		}
-		return nil, fmt.Errorf("cli driver for provider %q not implemented (Stage 4 adds generic cmd-based cli drivers)", p.Name)
+		return nil, fmt.Errorf("cli driver for provider %q not implemented (Stage 4 adds generic cmd-based cli drivers; for now, name must be claude|codex|gemini)", p.Name)
 	case DriverHTTP:
 		if p.BaseURL == "" {
 			return nil, fmt.Errorf("provider %q (http): base_url is required", p.Name)
