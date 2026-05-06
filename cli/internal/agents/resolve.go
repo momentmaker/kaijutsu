@@ -242,6 +242,9 @@ func mergeProvider(dst, src *Provider) {
 	if src.Transport != "" {
 		dst.Transport = src.Transport
 	}
+	if src.Command != "" {
+		dst.Command = src.Command
+	}
 	if src.Endpoint != "" {
 		dst.Endpoint = src.Endpoint
 	}

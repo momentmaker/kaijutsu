@@ -29,6 +29,7 @@ type Provider struct {
 
 	// MCP driver fields.
 	Transport      string            `yaml:"transport,omitempty" json:"transport,omitempty"` // "stdio" | "http"
+	Command        string            `yaml:"command,omitempty" json:"command,omitempty"`     // mcp stdio: executable name (separate from cli driver's `Cmd` for clarity in YAML)
 	Endpoint       string            `yaml:"endpoint,omitempty" json:"endpoint,omitempty"`
 	Headers        map[string]string `yaml:"headers,omitempty" json:"headers,omitempty"`         // header-name -> ENV_NAME (indirection)
 	HeadersLiteral map[string]string `yaml:"headers_literal,omitempty" json:"headers_literal,omitempty"`

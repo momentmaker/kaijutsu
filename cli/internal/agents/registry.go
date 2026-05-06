@@ -78,7 +78,16 @@ func BuildDriver(p *Provider) (AgentDriver, error) {
 		}
 		return &cliCompatDriver{provider: p, base: base}, nil
 	case DriverMCP:
-		return nil, fmt.Errorf("mcp driver not implemented in this build (lands in Stage 6)")
+		if p.Transport == "" {
+			return nil, fmt.Errorf("provider %q (mcp): transport is required (stdio | http)", p.Name)
+		}
+		if p.Transport == "stdio" && p.Command == "" {
+			return nil, fmt.Errorf("provider %q (mcp stdio): command is required", p.Name)
+		}
+		if p.Transport == "http" && p.Endpoint == "" {
+			return nil, fmt.Errorf("provider %q (mcp http): endpoint is required", p.Name)
+		}
+		return &mcpDriver{provider: p}, nil
 	}
 	return nil, fmt.Errorf("provider %q: unknown driver kind %q", p.Name, p.Driver)
 }
