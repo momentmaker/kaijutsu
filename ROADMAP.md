@@ -70,19 +70,32 @@ Spec: `docs/specs/2026-05-05-v0.6.0-multi-provider-agents.md`. ADR: `docs/decisi
 - [x] **Stub MCP server** in `cli/internal/agents/testdata/stub_mcp_server/main.go` for driver tests; semgrep-mcp config doc-only in `cli/internal/agents/mcp_examples.md`.
 - [x] **Cache-key compat**: legacy v0.5 mix produces byte-identical keys; non-default mix salted with driver+persona identity.
 
-## v0.7 — quality + extensibility
+## v0.7 — quality fingerprinting (the long-term moat) ✅
 
-- [ ] **Quality fingerprinting + confidence-weighted synthesizer** (the long-term moat): local SQLite at `~/.kaijutsu/findings.db` records user accept/dismiss per (provider, persona, preset, codebase-fingerprint) tuple; synthesizer weights agent votes by observed precision/recall after ~50 runs.
+- [x] **Quality fingerprinting + confidence-weighted synthesizer**: local SQLite at `~/.kaijutsu/findings.db` records user accept/dismiss per (provider, persona, preset, codebase-fingerprint) tuple. Synthesizer weights agent votes by observed precision via 3-state algo (cold=1.0 / bootstrap=0.7 / mature=clamped precision) over a sliding 200-action window. `jutsu finding {list,accept,dismiss,stats,clear,export}` CLI surface. `--show-weights` opt-in for synthesizer column annotations. No-network privacy boundary enforced by import-list test.
+
+## v0.8 — committed targets
+
+- [ ] **Anonymized opt-in telemetry** — share aggregated `(provider, persona, preset, precision)` tuples to a community dashboard. Requires consent flow + scrubbing protocol — separate spec + ADR.
+- [ ] **PR-comment auto-detection** — `gh pr comments` parsing for `accept`/`dismiss` markers in the kaijutsu-pr-review block; closes the loop without requiring CLI subcommand.
+- [ ] **Multi-machine sync** — optional sync of `findings.db` across user's machines via user-configured backend (S3 / gist / syncthing). User-managed, not jutsu-hosted.
+- [ ] **Cross-codebase learning** — opt-in: weight a new codebase's tuples by similar codebases (same language signature). Privacy-sensitive — needs design.
 - [ ] **Multi-stage swarm pipelines**: `jutsu swarm pipeline brainstorm-then-audit` chains presets with structured handoff; new `pipeline.yaml` DSL.
 - [ ] **Live TUI with streaming partial findings**: each provider streams findings as generated; depends on streaming support landing in `http_driver`.
 - [ ] **Reverse swarm — spec-vs-impl drift detector**: run on every PR that closes a spec; flag deviations from declared scope/non-goals.
-- [ ] **Rule-based skip + skill-author skip-policy schema**: deterministic heuristic gate (lockfile/comment-only/whitespace auto-skip), `skip_rules:` in agents.yaml. Replaces the rejected Ollama 7B classifier.
 - [ ] **Persona registry + `jutsu install persona:foo`**: personas as installable artifacts.
 - [ ] **Per-skill provider routing**: skills declare preferred personas/providers; swarm picks accordingly.
-- [ ] **Per-provider retry policy**: 5xx + 429 backoff with jitter.
+- [ ] **Recorder hook moves below Debate** — Pass-2 `[new]` / `[disputes]` / `[agreed]` revisions get DB rows. v0.7 deferred while we collect signal on whether the Pass-1/Pass-2 summary divergence actually surprises users.
+
+## v0.7.x — incremental followups
+
+- [ ] **`--db` flag** for `jutsu finding *` (env override `KAIJUTSU_FINDINGS_DB` ships in v0.7 for tests; user-facing flag deferred).
+- [ ] **Configurable bootstrap weight + window size** — `~/.kaijutsu/findings.toml` once we have real-world tuning data.
+- [ ] **Auto-prune policy** — `prune.toml` with default-365d eviction; v0.7 ships manual `clear --older-than` only.
+- [ ] **`jutsu finding repair`** — vacuum + integrity check + best-effort recovery from corrupt DB.
+- [ ] **Rule-based skip + skill-author skip-policy schema**: deterministic heuristic gate (lockfile/comment-only/whitespace auto-skip), `skip_rules:` in agents.yaml.
 - [ ] **MCP http transport** (deferred from v0.6 Stage 6).
-- [ ] **`--estimate` provider-native tokenizers** (tiktoken-go fallback tightens to ±5%).
-- [ ] **Synthesizer `[deterministic]` tag rendering** for MCP-driver findings + info-severity floor (deferred from v0.6 Stage 6).
+- [ ] **`--estimate` provider-native tokenizers** (tiktoken-go fallback already tight at ±5% for openai-compat).
 
 ## v1 — maturity
 

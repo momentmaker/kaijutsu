@@ -245,6 +245,76 @@ Skills can require persona tags via `requires_persona_tags: [security]` in `skil
 
 `jutsu swarm <preset> --estimate` runs without invoking agents — prints a per-persona table of `{input tokens, output estimate, projected cost}` plus TOTAL. Char-count tokenizer (±20% accuracy). Stale rate-card warning at 90+ days. Vendored providers carry rate cards as of `2026-05-06`; refresh via the v0.6.x cron + bench harness work.
 
+## v0.7 — Quality fingerprinting + confidence-weighted synthesizer
+
+After ~10 swarm runs against a given codebase, you start noticing patterns: claude is great on auth, gemini's style nits get ignored, deepseek's perf finds are gold. v0.7 captures that signal automatically. Every finding goes into a local SQLite store; accepting or dismissing a finding feeds per-(provider, persona, preset, codebase) precision math; the synthesizer weights each agent's vote on the next run by its observed precision.
+
+### Where it lives
+
+- **Database**: `~/.kaijutsu/findings.db` — one file per user, mode `0600`, never in any repo. Pure-Go SQLite via `modernc.org/sqlite` (no CGo).
+- **Per-row schema**: `(run_id, codebase_fp, preset, provider, persona, severity, file, line_range, summary, reasoning, confidence, created_at, user_action, action_at, action_reason)`. Forward-only migrations under `cli/internal/findings/migrations/NNNN_*.sql`.
+- **Codebase fingerprint** is a 16-char hex hash resolved via a 5-step chain: git origin → upstream → alphabetical-first remote → `local-git:` → `local-fs:`. Anchored on `(remote, work-tree-basename)` so identical clones across machines collide; forks cloned to differently-named directories don't.
+
+### Privacy boundary
+
+- **No network**: `cli/internal/cli/finding.go` MUST NOT import `net`, `net/*`, or `golang.org/x/net/*`. Enforced by an import-list test that fails the build on accidental drag-ins.
+- **`jutsu finding clear`** wipes targeted rows + runs `VACUUM` to reclaim disk.
+- **`jutsu finding export`** writes local JSON only — never POSTs anywhere. Use this for your own backup pipeline.
+- **Same-machine boundary**: the DB lives in `$HOME` alongside `agents.yaml`. Multi-user homedir / auto-syncing backup pipelines that surface the file at non-default permissions get an honest "best-effort" boundary, not a guarantee.
+- **No telemetry / phone-home in v0.7**. Anonymized aggregate sharing is deferred to v0.8 with its own spec + ADR — every step toward telemetry is irreversible, so we do nothing rather than do it badly.
+
+### Weight algorithm (3 states)
+
+Per `(provider, persona, preset, codebase_fp)` tuple, measured over the most recent 200 actioned findings (`action_at` desc):
+
+| State | Condition | Weight |
+|---|---|---|
+| Cold-start | DB absent OR `actioned_count == 0` for tuple | **1.0** (byte-identical v0.6.2 behavior) |
+| Bootstrap | `1 ≤ actioned < 10` | **0.7** (slight skepticism without dismissing) |
+| Mature | `actioned ≥ 10` | **`accepted / (accepted+dismissed)`**, clamped to `[0.05, 1.0]` |
+
+The synthesizer's `clusterFindings` uses `weighted_consensus = sum(unique reporter weights)` as the secondary sort key. A high-precision agent's lone finding can outrank a low-precision chorus. Cold-start collapses byte-for-byte to v0.6 ordering.
+
+### CLI usage
+
+```bash
+# Run swarm — DB is created on first run that produces findings.
+jutsu swarm pr-review --personas paranoid-security-claude,default-gemini
+
+# Inspect what got recorded for the current codebase.
+jutsu finding list                        # most recent run, current cwd's codebase
+jutsu finding list --pending              # only unactioned
+jutsu finding list --run <cache-key>      # specific swarm run
+
+# Action findings — the cross-codebase guard refuses if your cwd's
+# fingerprint doesn't match the finding's; --cross-codebase overrides.
+jutsu finding accept 5  --reason "real auth bug"
+jutsu finding dismiss 12 --reason "stylistic nit"
+
+# Inspect per-(provider, persona, preset) precision for current codebase.
+jutsu finding stats
+# PROVIDER  PERSONA                     PRESET     PRECISION  WEIGHT          ACCEPT/DISMISS  PENDING
+# claude    paranoid-security-claude    pr-review  0.85       0.85 (mature)   17/3            22
+# deepseek  performance-deepseek        pr-review  0.92       0.92 (mature)   12/1            8
+# gemini    default-gemini              pr-review  (insuff.)  0.70 (bootstrap) 4/2            14
+
+# Optional: see weights in the swarm output's disagreement-table headers.
+jutsu swarm pr-review --personas ... --show-weights
+
+# Housekeeping. Defaults to dry-run.
+jutsu finding clear --older-than 365d --yes
+jutsu finding export ~/findings-backup.json
+```
+
+### Opt-out
+
+There is no `--no-fingerprinting` flag in v0.7. The two opt-outs are:
+
+1. **Don't action findings**: cold-start state (weight = 1.0) makes synthesis byte-identical to v0.6.2. Recording still happens (rows accumulate); they just don't affect weights until you `accept`/`dismiss`.
+2. **`jutsu finding clear --all-codebases --yes`**: nukes every recorded finding. The DB schema persists (cheap) but every tuple goes back to cold-start.
+
+A persistent disable will arrive in v0.7.x once we see whether the cold-start state is sufficient (it should be — recording without actioning has zero behavioral effect).
+
 ## Sources
 
 - [openai/codex repository](https://github.com/openai/codex)
