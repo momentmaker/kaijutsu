@@ -95,6 +95,61 @@ func TestCacheStatusEnumStable(t *testing.T) {
 	}
 }
 
+func TestStripNestedAgentEnv(t *testing.T) {
+	in := []string{
+		"PATH=/usr/bin",
+		"HOME=/home/test",
+		"CLAUDECODE=1",
+		"CLAUDE_CODE_ENTRYPOINT=cli",
+		"CLAUDE_CODE_EXECPATH=/foo",
+		"CLAUDE_CODE_FUTURE_VAR=baz",
+		"AI_AGENT=claude-code-foo",
+		"GEMINI_SESSION=abc",
+		"DEEPSEEK_API_KEY=sk-keep",
+		"USER=keep",
+	}
+	got := stripNestedAgentEnv(in)
+	keep := map[string]bool{}
+	for _, e := range got {
+		eq := strings.IndexByte(e, '=')
+		if eq > 0 {
+			keep[e[:eq]] = true
+		}
+	}
+	mustKeep := []string{"PATH", "HOME", "DEEPSEEK_API_KEY", "USER"}
+	mustStrip := []string{"CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_EXECPATH", "CLAUDE_CODE_FUTURE_VAR", "AI_AGENT", "GEMINI_SESSION"}
+	for _, k := range mustKeep {
+		if !keep[k] {
+			t.Errorf("expected %q kept, was stripped", k)
+		}
+	}
+	for _, k := range mustStrip {
+		if keep[k] {
+			t.Errorf("expected %q stripped, was kept", k)
+		}
+	}
+}
+
+func TestIsTransientCLIError(t *testing.T) {
+	cases := []struct {
+		msg  string
+		want bool
+	}{
+		{"claude exited exit status 1 after 30s: ", true},
+		{"foo bar broken pipe baz", true},
+		{"transport: stream error: code 0", true},
+		{"context deadline exceeded", false},
+		{"executable file not found in $PATH", false},
+		{"permission denied opening config", false},
+		{"some other error", false},
+	}
+	for _, tc := range cases {
+		if got := isTransientCLIError(tc.msg); got != tc.want {
+			t.Errorf("isTransientCLIError(%q) = %v, want %v", tc.msg, got, tc.want)
+		}
+	}
+}
+
 // TestRunCLI_ErrorPath validates the runCLI invariant: when the child
 // process exits non-zero, Result.Err is populated with the same string
 // the returned error wraps (caller can use either source).

@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -81,16 +82,47 @@ func runCLI(ctx context.Context, opts InvokeOpts, name string, args []string, st
 		ctx, cancel = context.WithTimeout(ctx, opts.Timeout)
 		defer cancel()
 	}
+
+	// Build child env: strip nested-agent markers so the spawned CLI
+	// doesn't take a different code path when it detects it's running
+	// inside another agent's session. Empirically this is the
+	// difference between "claude/gemini works from inside Claude Code"
+	// and "errors with no obvious cause" — both CLIs have logic that
+	// refuses or behaves differently when they see CLAUDECODE=1 etc.
+	parentEnv := stripNestedAgentEnv(os.Environ())
+	if len(opts.ExtraEnv) > 0 {
+		parentEnv = append(parentEnv, formatEnvPairs(opts.ExtraEnv)...)
+	}
+
+	// One retry on transient failure (subprocess wait-state races,
+	// lockfile contention, brief network blip). Auth/permanent errors
+	// fail the same way twice — retry adds at most a few seconds and
+	// fixes the flaky cases without masking real problems.
+	res, err := runCLIOnce(ctx, name, args, stdin, parentEnv)
+	if err != nil && isTransientCLIError(res.Err) {
+		time.Sleep(500 * time.Millisecond)
+		res2, err2 := runCLIOnce(ctx, name, args, stdin, parentEnv)
+		if err2 == nil {
+			return res2, nil
+		}
+	}
+	return res, err
+}
+
+// runCLIOnce is one attempt at the subprocess spawn — runCLI retries
+// on transient errors above.
+func runCLIOnce(ctx context.Context, name string, args []string, stdin string, env []string) (Result, error) {
 	c := exec.CommandContext(ctx, name, args...)
 	c.WaitDelay = 5 * time.Second
+	c.Env = env
+	// Setpgid: detach into a new process group. Without this the child
+	// shares the parent's TTY/job-control state — when the parent is
+	// itself a long-lived agent CLI (Claude Code), signals + wait
+	// state races can lock the inner CLI's stdio. The new pgid
+	// isolates spawned process from parent's TUI.
+	c.SysProcAttr = newProcAttr()
 	if stdin != "" {
 		c.Stdin = bytes.NewBufferString(stdin)
-	}
-	if len(opts.ExtraEnv) > 0 {
-		// Inherit current process environment, then override with
-		// caller-supplied entries (cli-compat injects BASE_URL / API
-		// keys / telemetry-kill flags this way).
-		c.Env = append(os.Environ(), formatEnvPairs(opts.ExtraEnv)...)
 	}
 	var stdout, stderr bytes.Buffer
 	c.Stdout = &stdout
@@ -109,6 +141,80 @@ func runCLI(ctx context.Context, opts InvokeOpts, name string, args []string, st
 		return res, errors.New(errMsg)
 	}
 	return res, nil
+}
+
+// stripNestedAgentEnv removes env vars that signal "running inside
+// another agent CLI" from a slice of KEY=VALUE entries. The spawned
+// CLI sees a clean environment as if it were launched from a fresh
+// shell.
+func stripNestedAgentEnv(in []string) []string {
+	// Strip these prefixes/exact names. Conservative list — only
+	// known nested-agent markers that empirically affect behavior.
+	stripExact := map[string]struct{}{
+		"CLAUDECODE":              {},
+		"CLAUDE_CODE_ENTRYPOINT":  {},
+		"CLAUDE_CODE_EXECPATH":    {},
+		"CLAUDE_CODE_SESSION":     {},
+		"CLAUDE_CODE_SESSION_ID":  {},
+		"AI_AGENT":                {},
+		"CODEX_SESSION":           {},
+		"CODEX_SESSION_ID":        {},
+		"GEMINI_SESSION":          {},
+		"GEMINI_SESSION_ID":       {},
+		"JUTSU_NESTED_AGENT":      {},
+	}
+	stripPrefix := []string{
+		"CLAUDE_CODE_",
+	}
+	out := make([]string, 0, len(in))
+	for _, e := range in {
+		eq := strings.IndexByte(e, '=')
+		if eq <= 0 {
+			out = append(out, e)
+			continue
+		}
+		k := e[:eq]
+		if _, skip := stripExact[k]; skip {
+			continue
+		}
+		skip := false
+		for _, p := range stripPrefix {
+			if strings.HasPrefix(k, p) {
+				skip = true
+				break
+			}
+		}
+		if skip {
+			continue
+		}
+		out = append(out, e)
+	}
+	return out
+}
+
+// isTransientCLIError heuristically detects retry-worthy errors. Auth
+// failures, "command not found", and explicit refusals fail the same
+// way twice — only retry the flaky kinds. Empirically: nil-deref
+// panics, "context deadline" near boundary, subprocess wait races.
+func isTransientCLIError(msg string) bool {
+	lower := strings.ToLower(msg)
+	switch {
+	case strings.Contains(lower, "context deadline exceeded"):
+		return false // ctx ran out — retry won't help, parent will cancel
+	case strings.Contains(lower, "executable file not found"):
+		return false // PATH issue — retry won't fix
+	case strings.Contains(lower, "permission denied"):
+		return false // ACL — retry won't fix
+	case strings.Contains(lower, "exit status 1"):
+		// Generic exit 1 from claude/gemini under nested-agent
+		// conditions — empirically transient.
+		return true
+	case strings.Contains(lower, "broken pipe"):
+		return true
+	case strings.Contains(lower, "stream error"):
+		return true
+	}
+	return false
 }
 
 func trimErr(s string) string {
