@@ -5,7 +5,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
+	"sort"
 	"time"
 )
 
@@ -84,6 +86,12 @@ func runCLI(ctx context.Context, opts InvokeOpts, name string, args []string, st
 	if stdin != "" {
 		c.Stdin = bytes.NewBufferString(stdin)
 	}
+	if len(opts.ExtraEnv) > 0 {
+		// Inherit current process environment, then override with
+		// caller-supplied entries (cli-compat injects BASE_URL / API
+		// keys / telemetry-kill flags this way).
+		c.Env = append(os.Environ(), formatEnvPairs(opts.ExtraEnv)...)
+	}
 	var stdout, stderr bytes.Buffer
 	c.Stdout = &stdout
 	c.Stderr = &stderr
@@ -109,4 +117,19 @@ func trimErr(s string) string {
 		return s[:max] + "…"
 	}
 	return s
+}
+
+// formatEnvPairs converts a name→value map to KEY=VALUE entries
+// suitable for exec.Cmd.Env. Sorted for deterministic ordering
+// (helps debugging + cache-key reproducibility downstream).
+func formatEnvPairs(m map[string]string) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	for i, k := range out {
+		out[i] = k + "=" + m[k]
+	}
+	return out
 }

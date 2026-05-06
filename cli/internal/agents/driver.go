@@ -45,9 +45,17 @@ const (
 // claude cli driver passes it as --max-budget-usd. Stage 4 will drop
 // this in favor of aggregate cost enforcement in the swarm pipeline
 // (see Non-goals in the v0.6.0 spec).
+//
+// ExtraEnv injects additional environment variables onto the child
+// process (cli + cli-compat drivers only; http and mcp drivers ignore
+// it). Stage 4 wires this from the cli-compat driver to override
+// BASE_URL / API_KEY / telemetry-kill envs. Map values are literal
+// strings; env-var indirection happens in the cli-compat driver
+// before this map is built.
 type InvokeOpts struct {
 	Timeout      time.Duration
 	MaxBudgetUSD float64
+	ExtraEnv     map[string]string
 }
 
 // Result is the structured output of one Invoke call.

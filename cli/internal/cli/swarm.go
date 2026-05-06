@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/momentmaker/kaijutsu/cli/internal/agents"
 	"github.com/momentmaker/kaijutsu/cli/internal/swarm"
 	"github.com/spf13/cobra"
 )
@@ -55,6 +57,8 @@ type commonSwarmFlags struct {
 	replayKey      string
 	grantConsent   bool
 	personas       []string // v0.6 Stage 3b — opt into persona-driven dispatch
+	estimate       bool    // v0.6 Stage 4 — dry-run, print cost projection, exit 0
+	noTelemWarn    bool    // v0.6 Stage 4 — suppress the cli-compat one-shot warning
 }
 
 func bindCommonFlags(cmd *cobra.Command, f *commonSwarmFlags, supportsPostComment bool) {
@@ -70,6 +74,8 @@ func bindCommonFlags(cmd *cobra.Command, f *commonSwarmFlags, supportsPostCommen
 	cmd.Flags().StringVar(&f.replayKey, "replay", "", "re-run synthesis on cached per-agent findings for a key (SHA for diff presets, hash for files/prompt) without calling model APIs")
 	cmd.Flags().BoolVar(&f.grantConsent, "grant-consent", false, "persist `allow-multi-model: true` to .kaijutsu/<preset>.yaml and exit (no swarm run). Use this once per repo when running headless / from inside an agent CLI session.")
 	cmd.Flags().StringSliceVar(&f.personas, "personas", nil, "comma-separated persona names to dispatch (v0.6 Stage 3b — opts into agents.yaml-driven dispatch; without this flag, legacy v0.5 cli-only auto-detect path runs)")
+	cmd.Flags().BoolVar(&f.estimate, "estimate", false, "dry-run: print per-persona token + cost projection table, then exit 0 without invoking agents")
+	cmd.Flags().BoolVar(&f.noTelemWarn, "no-telemetry-warning", false, "suppress the cli-compat one-shot warning about metadata leakage to harness CLI vendor")
 	if supportsPostComment {
 		cmd.Flags().BoolVar(&f.postComment, "post-comment", false, "after synthesis, post the markdown as a PR comment via gh (edits prior kaijutsu-pr-review comment if found)")
 	}
@@ -369,6 +375,21 @@ the preset name is part of the cache-key salt.`,
 func runSwarmPipeline(ctx context.Context, cmd *cobra.Command, projectRoot string, preset *swarm.Preset, ictx *swarm.InputContext, f commonSwarmFlags) error {
 	out := cmd.OutOrStdout()
 	stderr := cmd.ErrOrStderr()
+
+	// Estimate dry-run: print cost projection table and exit before
+	// touching the privacy gate / consent / fan-out.
+	if f.estimate {
+		return runEstimate(out, stderr, projectRoot, preset, ictx, f)
+	}
+
+	// Telemetry-warning sink: route the cli-compat one-shot warning
+	// through cobra's stderr so tests can capture it; suppress when
+	// --no-telemetry-warning is set.
+	if f.noTelemWarn {
+		agents.SetCompatWarningSink(io.Discard)
+	} else {
+		agents.SetCompatWarningSink(stderr)
+	}
 
 	// Privacy gate: hard-block on secrets unless explicitly
 	// overridden. InputDiff + InputFiles get scanned; InputPrompt

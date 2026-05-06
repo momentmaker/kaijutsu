@@ -69,7 +69,14 @@ func BuildDriver(p *Provider) (AgentDriver, error) {
 		}
 		return nil, fmt.Errorf("provider %q (http): unsupported protocol %q (allowed: openai-compat, anthropic-compat)", p.Name, p.Protocol)
 	case DriverCLICompat:
-		return nil, fmt.Errorf("cli-compat driver not implemented in this build (lands in Stage 4)")
+		if p.BaseCLI == "" {
+			return nil, fmt.Errorf("provider %q (cli-compat): base_cli is required (claude | codex | gemini)", p.Name)
+		}
+		base := For(p.BaseCLI)
+		if base == nil {
+			return nil, fmt.Errorf("provider %q (cli-compat): base_cli %q is not a known cli driver (allowed: claude, codex, gemini)", p.Name, p.BaseCLI)
+		}
+		return &cliCompatDriver{provider: p, base: base}, nil
 	case DriverMCP:
 		return nil, fmt.Errorf("mcp driver not implemented in this build (lands in Stage 6)")
 	}
