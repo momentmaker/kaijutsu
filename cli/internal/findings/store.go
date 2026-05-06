@@ -91,17 +91,20 @@ func Open(path string) (*Store, error) {
 		return nil, fmt.Errorf("ping sqlite %q: %w", path, err)
 	}
 
-	if err := applyMigrations(db); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("apply migrations: %w", err)
-	}
-
-	// Re-assert restrictive perms after first-time creation. SQLite
-	// creates the file via the standard libc open() with the process
-	// umask, which on many shells is 0022 → 0644. Force 0600.
+	// Lock the file down BEFORE applying migrations. SQLite creates
+	// the file via libc open() with the process umask (often 0022 →
+	// 0644); if a migration later fails we want the partial file to
+	// already be 0600 so a crash doesn't leave findings text readable
+	// to other local users. IsNotExist guard covers an in-memory DSN
+	// where there's no file to chmod.
 	if err := os.Chmod(path, 0o600); err != nil && !os.IsNotExist(err) {
 		_ = db.Close()
 		return nil, fmt.Errorf("chmod findings.db: %w", err)
+	}
+
+	if err := applyMigrations(db); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("apply migrations: %w", err)
 	}
 
 	return &Store{db: db, path: path}, nil
@@ -189,7 +192,7 @@ func loadMigrationFiles() ([]migration, error) {
 		if err != nil {
 			return nil, fmt.Errorf("migration %q: parse version: %w", e.Name(), err)
 		}
-		body, err := fs.ReadFile(migrationsFS, filepath.ToSlash(filepath.Join("migrations", e.Name())))
+		body, err := fs.ReadFile(migrationsFS, "migrations/"+e.Name())
 		if err != nil {
 			return nil, fmt.Errorf("read migration %q: %w", e.Name(), err)
 		}
