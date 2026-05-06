@@ -399,13 +399,13 @@ func runSwarmPipeline(ctx context.Context, cmd *cobra.Command, projectRoot strin
 	)
 	if len(f.personas) > 0 {
 		var err error
-		jobs, personaAdapters, err = assemblePersonaJobs(ensureProjectRootForPersonas(projectRoot), preset, ictx, f.personas)
+		jobs, personaAdapters, err = assemblePersonaJobs(projectRoot, preset, ictx, f.personas)
 		if err != nil {
 			return err
 		}
-		// Consent uses persona names as the provider list. Pass legacy
-		// AgentName(strings) via providerLabelsForPersonas so the
-		// existing EnsureConsent contract holds.
+		// Consent uses persona names as the provider list. The
+		// existing EnsureConsent contract takes []AgentName, so we
+		// reify each persona's name as a synthetic AgentName.
 		consentNames := make([]swarm.AgentName, 0, len(personaAdapters))
 		for _, p := range personaAdapters {
 			consentNames = append(consentNames, p.Name())
@@ -446,6 +446,14 @@ func runSwarmPipeline(ctx context.Context, cmd *cobra.Command, projectRoot strin
 	start := time.Now()
 	results := swarm.FanOut(ctx, jobs, f.perAgentBudget, f.timeout)
 	finished := time.Now()
+
+	// Persona mode: replace estimated costs with the real billed cost
+	// reported by drivers (HTTP driver populates Result.CostUSD from
+	// the API's usage block). cli driver leaves the estimate in place
+	// because Result.CostUSD is 0 there.
+	if len(personaAdapters) > 0 {
+		overlayPersonaCosts(results, personaAdapters)
+	}
 
 	run := swarm.SwarmRun{
 		Preset:     preset.Name,

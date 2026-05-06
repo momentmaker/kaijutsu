@@ -3,7 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
-	"os"
+	"sync"
 
 	"github.com/momentmaker/kaijutsu/cli/internal/agents"
 	"github.com/momentmaker/kaijutsu/cli/internal/swarm"
@@ -15,11 +15,27 @@ import (
 // downstream stderr / synthesis output references the persona instead
 // of the underlying provider.
 //
+// The adapter ALSO captures the underlying driver's reported
+// Result.CostUSD + CacheStatus on each Run so the swarm pipeline can
+// recover the real cost (HTTP driver reports billed cost from the
+// API's usage block; the legacy parallel.go path falls back to
+// EstimateCostUSD which is char-count heuristic). After FanOut the
+// pipeline calls overlayPersonaCosts to replace estimates with
+// captured values.
+//
 // v0.6 Stage 3b — Stage 5 may collapse this into a unified registry
 // once the swarm pipeline migrates fully to agents.AgentDriver.
 type personaAdapter struct {
 	personaName string
 	driver      agents.AgentDriver
+
+	// last captures the most recent Invoke's Result so the pipeline
+	// can recover real cost + cache status. Mutex guards the field
+	// because the adapter MAY in principle be reused (e.g. debate
+	// pass-2). Per-call atomicity is sufficient — we never read while
+	// writing concurrently.
+	mu   sync.Mutex
+	last agents.Result
 }
 
 func (a *personaAdapter) Name() swarm.AgentName {
@@ -28,7 +44,18 @@ func (a *personaAdapter) Name() swarm.AgentName {
 
 func (a *personaAdapter) Run(ctx context.Context, prompt string, budget float64) (string, error) {
 	res, err := a.driver.Invoke(ctx, prompt, agents.InvokeOpts{MaxBudgetUSD: budget})
+	a.mu.Lock()
+	a.last = res
+	a.mu.Unlock()
 	return res.Raw, err
+}
+
+// LastResult returns the most recent driver Result (cost + cache
+// status). Empty when Run has not been called.
+func (a *personaAdapter) LastResult() agents.Result {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.last
 }
 
 // assemblePersonaJobs loads agents.yaml resolved config and builds
@@ -37,9 +64,9 @@ func (a *personaAdapter) Run(ctx context.Context, prompt string, budget float64)
 // route them into the protocol's first-class system field; cli
 // drivers pass the concatenated prompt through unchanged.
 //
-// Returns ErrPersonaProviderNotEnabled when a persona references a
-// provider that isn't in the resolved enabled list (caller surfaces
-// to user with a hint to `jutsu agent enable <provider>`).
+// Errors with a clear hint when a persona is unknown OR when a
+// persona references a provider not in the resolved enabled list
+// (run `jutsu agent enable <provider>` to fix).
 func assemblePersonaJobs(projectRoot string, preset *swarm.Preset, ictx *swarm.InputContext, personaNames []string) ([]swarm.Job, []*personaAdapter, error) {
 	global, err := agents.LoadGlobalConfig()
 	if err != nil {
@@ -135,32 +162,25 @@ func pickPersonaSynthesizer(want string, results []swarm.AgentResult, personas [
 	return nil
 }
 
-// providerLabelsForPersonas surfaces a per-persona consent-prompt
-// label list. Used by the consent gate when --personas is set.
-func providerLabelsForPersonas(personas []*personaAdapter) []string {
-	labels := make([]string, 0, len(personas))
-	seen := map[string]bool{}
+// overlayPersonaCosts replaces each AgentResult's estimated Cost with
+// the real cost reported by the underlying driver, when available. The
+// HTTP driver populates Result.CostUSD from the API's usage block;
+// cli drivers report 0 (cost stays as the EstimateCostUSD char-count
+// fallback computed in swarm.parallel.FanOut). Mutates results in
+// place; safe to call after FanOut completes.
+func overlayPersonaCosts(results []swarm.AgentResult, personas []*personaAdapter) {
+	byName := map[string]*personaAdapter{}
 	for _, p := range personas {
-		l := fmt.Sprintf("%s (driver=%s)", p.personaName, p.driver.Driver())
-		if seen[l] {
+		byName[string(p.Name())] = p
+	}
+	for i, r := range results {
+		p, ok := byName[r.Agent]
+		if !ok {
 			continue
 		}
-		seen[l] = true
-		labels = append(labels, l)
+		last := p.LastResult()
+		if last.CostUSD > 0 {
+			results[i].Cost = last.CostUSD
+		}
 	}
-	return labels
-}
-
-// ensureProjectRootForPersonas wraps os.Getwd to produce a usable
-// projectRoot for assemblePersonaJobs callers in the swarm pipeline.
-// Centralized so the CLI subcommands don't repeat the same Getwd
-// fallback logic.
-func ensureProjectRootForPersonas(projectRoot string) string {
-	if projectRoot != "" {
-		return projectRoot
-	}
-	if cwd, err := os.Getwd(); err == nil {
-		return cwd
-	}
-	return "."
 }
