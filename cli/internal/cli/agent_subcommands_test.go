@@ -83,6 +83,60 @@ func TestListsEqual(t *testing.T) {
 	}
 }
 
+func TestLookupTestProvider_LayerFallthrough(t *testing.T) {
+	global := &agents.GlobalConfig{
+		Providers: map[string]*agents.Provider{
+			"global-only": {Name: "global-only", Driver: agents.DriverHTTP, BaseURL: "https://g", Model: "g"},
+		},
+	}
+	project := &agents.ProjectConfig{
+		Providers: map[string]*agents.Provider{
+			"project-only": {Name: "project-only", Driver: agents.DriverHTTP, BaseURL: "https://p", Model: "p"},
+			"shared":       {Name: "shared", Driver: agents.DriverHTTP, BaseURL: "https://shared-project", Model: "p"},
+		},
+	}
+	cases := []struct {
+		name   string
+		want   string
+		errSub string
+	}{
+		{"project-only", "https://p", ""},
+		{"global-only", "https://g", ""},
+		{"shared", "https://shared-project", ""}, // project beats global
+		{"claude", "", ""},                       // built-in cli, no BaseURL
+		{"nonexistent", "", "not found"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := lookupTestProvider(tc.name, global, project)
+			if tc.errSub != "" {
+				if err == nil {
+					t.Fatalf("expected error for %q; got nil", tc.name)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.BaseURL != tc.want {
+				t.Errorf("BaseURL = %q, want %q", got.BaseURL, tc.want)
+			}
+		})
+	}
+}
+
+func TestLookupTestProvider_FindsBuiltinWithoutEnable(t *testing.T) {
+	// User just installed jutsu — no agents.yaml at all. `agent test claude`
+	// should still work because BuiltinProviders has it.
+	got, err := lookupTestProvider("claude", &agents.GlobalConfig{}, &agents.ProjectConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Name != "claude" || got.Driver != agents.DriverCLI {
+		t.Errorf("got %+v", got)
+	}
+}
+
 func TestUnionStrings_DedupesPreservingOrder(t *testing.T) {
 	got := unionStrings([]string{"a", "b"}, []string{"b", "c", "a"})
 	want := []string{"a", "b", "c"}

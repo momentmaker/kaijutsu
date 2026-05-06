@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -16,6 +18,17 @@ import (
 	"github.com/momentmaker/kaijutsu/cli/internal/agents"
 	"github.com/momentmaker/kaijutsu/cli/internal/manifest"
 )
+
+// projectRoot returns the current working directory, surfacing the
+// rare Getwd failure (deleted cwd, etc.) instead of silently
+// defaulting to "" which would route writes to filesystem root.
+func projectRoot() (string, error) {
+	root, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("resolve working directory: %w", err)
+	}
+	return root, nil
+}
 
 // --- agent add --------------------------------------------------------
 
@@ -49,17 +62,19 @@ Two paths:
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
-			projectRoot, _ := os.Getwd()
-
 			provider, err := buildProviderFromFlags(name, driver, cmd2, argsArg, protocol, baseURL, model, apiKeyEnv, baseCLI, envPairs, envKeyP)
 			if err != nil {
 				return err
 			}
-
+			out := cmd.OutOrStdout()
 			if global {
-				return addToGlobal(provider, force)
+				return addToGlobal(out, provider, force)
 			}
-			return addToProject(projectRoot, provider, force)
+			root, err := projectRoot()
+			if err != nil {
+				return err
+			}
+			return addToProject(out, root, provider, force)
 		},
 	}
 	cmd.Flags().BoolVar(&global, "global", false, "write to ~/.kaijutsu/agents.yaml instead of <repo>/.kaijutsu/agents.yaml")
@@ -134,7 +149,7 @@ func parseKeyValPairs(pairs []string) map[string]string {
 	return out
 }
 
-func addToGlobal(p *agents.Provider, force bool) error {
+func addToGlobal(out io.Writer, p *agents.Provider, force bool) error {
 	c, err := agents.LoadGlobalConfig()
 	if err != nil {
 		return err
@@ -149,11 +164,11 @@ func addToGlobal(p *agents.Provider, force bool) error {
 	if err := agents.SaveGlobalConfig(c); err != nil {
 		return err
 	}
-	fmt.Printf("added %q (driver=%s) to ~/.kaijutsu/agents.yaml\n", p.Name, p.Driver)
+	fmt.Fprintf(out, "added %q (driver=%s) to ~/.kaijutsu/agents.yaml\n", p.Name, p.Driver)
 	return nil
 }
 
-func addToProject(root string, p *agents.Provider, force bool) error {
+func addToProject(out io.Writer, root string, p *agents.Provider, force bool) error {
 	c, err := agents.LoadProjectConfig(root)
 	if err != nil {
 		return err
@@ -168,7 +183,7 @@ func addToProject(root string, p *agents.Provider, force bool) error {
 	if err := agents.SaveProjectConfig(root, c); err != nil {
 		return err
 	}
-	fmt.Printf("added %q (driver=%s) to <repo>/.kaijutsu/agents.yaml\n", p.Name, p.Driver)
+	fmt.Fprintf(out, "added %q (driver=%s) to <repo>/.kaijutsu/agents.yaml\n", p.Name, p.Driver)
 	return nil
 }
 
@@ -180,7 +195,7 @@ func newAgentEnableCmd() *cobra.Command {
 		Short: "Add a provider to the project's enabled list",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return toggleEnabled(args[0], true)
+			return toggleEnabled(cmd.OutOrStdout(), args[0], true)
 		},
 	}
 }
@@ -191,13 +206,16 @@ func newAgentDisableCmd() *cobra.Command {
 		Short: "Remove a provider from the project's enabled list (config preserved)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return toggleEnabled(args[0], false)
+			return toggleEnabled(cmd.OutOrStdout(), args[0], false)
 		},
 	}
 }
 
-func toggleEnabled(name string, enable bool) error {
-	root, _ := os.Getwd()
+func toggleEnabled(out io.Writer, name string, enable bool) error {
+	root, err := projectRoot()
+	if err != nil {
+		return err
+	}
 	c, err := agents.LoadProjectConfig(root)
 	if err != nil {
 		return err
@@ -211,13 +229,13 @@ func toggleEnabled(name string, enable bool) error {
 	}
 	if enable {
 		if idx >= 0 {
-			fmt.Printf("provider %q already enabled\n", name)
+			fmt.Fprintf(out, "provider %q already enabled\n", name)
 			return nil
 		}
 		c.Enabled = append(c.Enabled, name)
 	} else {
 		if idx < 0 {
-			fmt.Printf("provider %q not in enabled list (no-op)\n", name)
+			fmt.Fprintf(out, "provider %q not in enabled list (no-op)\n", name)
 			return nil
 		}
 		c.Enabled = append(c.Enabled[:idx], c.Enabled[idx+1:]...)
@@ -229,7 +247,7 @@ func toggleEnabled(name string, enable bool) error {
 	if !enable {
 		verb = "disabled"
 	}
-	fmt.Printf("%s %q in <repo>/.kaijutsu/agents.yaml\n", verb, name)
+	fmt.Fprintf(out, "%s %q in <repo>/.kaijutsu/agents.yaml\n", verb, name)
 	return nil
 }
 
@@ -251,7 +269,10 @@ Does not write to swarm cache.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
-			root, _ := os.Getwd()
+			root, err := projectRoot()
+			if err != nil {
+				return err
+			}
 			global, err := agents.LoadGlobalConfig()
 			if err != nil {
 				return err
@@ -260,13 +281,9 @@ Does not write to swarm cache.`,
 			if err != nil {
 				return err
 			}
-			resolved, err := agents.Resolve(global, project)
+			provider, err := lookupTestProvider(name, global, project)
 			if err != nil {
 				return err
-			}
-			provider, ok := resolved.Providers[name]
-			if !ok {
-				return fmt.Errorf("agent test %q: not enabled. Run `jutsu agent enable %s` first", name, name)
 			}
 			ctx, cancel := context.WithTimeout(cmd.Context(), 10*time.Second)
 			defer cancel()
@@ -276,7 +293,29 @@ Does not write to swarm cache.`,
 	return cmd
 }
 
-func runAgentTest(ctx context.Context, p *agents.Provider, out interface{ Write(p []byte) (int, error) }) error {
+// lookupTestProvider finds a provider for `agent test` regardless of
+// whether it's currently enabled. Falls through layers in the same
+// order Resolve does, but doesn't require the name to appear in
+// project.Enabled. This lets users validate a freshly-added provider
+// before flipping `agent enable`.
+func lookupTestProvider(name string, global *agents.GlobalConfig, project *agents.ProjectConfig) (*agents.Provider, error) {
+	if project != nil && project.Providers != nil {
+		if p, ok := project.Providers[name]; ok && p != nil {
+			return p, nil
+		}
+	}
+	if global != nil && global.Providers != nil {
+		if p, ok := global.Providers[name]; ok && p != nil {
+			return p, nil
+		}
+	}
+	if p, ok := agents.BuiltinProviders()[name]; ok {
+		return p, nil
+	}
+	return nil, fmt.Errorf("agent test %q: provider not found. Run `jutsu agent add %s ...` to declare it, or `jutsu agent list` to see available providers", name, name)
+}
+
+func runAgentTest(ctx context.Context, p *agents.Provider, out io.Writer) error {
 	switch p.Driver {
 	case agents.DriverCLI, agents.DriverCLICompat:
 		bin := p.Cmd
@@ -301,7 +340,7 @@ func runAgentTest(ctx context.Context, p *agents.Provider, out interface{ Write(
 	return fmt.Errorf("agent test %q: unknown driver kind %q", p.Name, p.Driver)
 }
 
-func runHTTPTest(ctx context.Context, p *agents.Provider, out interface{ Write(p []byte) (int, error) }) error {
+func runHTTPTest(ctx context.Context, p *agents.Provider, out io.Writer) error {
 	apiKey := os.Getenv(p.APIKeyEnv)
 	if p.APIKeyEnv != "" && apiKey == "" {
 		return fmt.Errorf("agent test %q: %s not set in environment", p.Name, p.APIKeyEnv)
@@ -353,7 +392,10 @@ In all three --prefer modes the legacy 'agents' field is removed
 from kaijutsu.json. Personas / overrides blocks in agents.yaml are
 preserved unchanged.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			root, _ := os.Getwd()
+			root, err := projectRoot()
+			if err != nil {
+				return err
+			}
 			return runMigrate(root, prefer, cmd.OutOrStdout())
 		},
 	}
@@ -361,8 +403,8 @@ preserved unchanged.`,
 	return cmd
 }
 
-func runMigrate(root, prefer string, out interface{ Write(p []byte) (int, error) }) error {
-	mfPath := root + "/kaijutsu.json"
+func runMigrate(root, prefer string, out io.Writer) error {
+	mfPath := filepath.Join(root, "kaijutsu.json")
 	mf, err := manifest.Load(mfPath)
 	if err != nil {
 		if os.IsNotExist(err) {
