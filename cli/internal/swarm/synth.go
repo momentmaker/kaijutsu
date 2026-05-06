@@ -101,6 +101,14 @@ func clusterFindings(results []AgentResult) []FindingGroup {
 	clusters := map[string]*FindingGroup{}
 	for _, r := range results {
 		for _, f := range r.Findings {
+			// MCP-driver info-severity floor: deterministic peers
+			// (semgrep, eslint, etc.) often emit a long tail of
+			// info-tier findings that drown out the issue+ signal.
+			// Drop info-tier MCP findings before they reach the
+			// disagreement table. LLM info findings still flow.
+			if r.Driver == "mcp" && f.Severity == SeverityInfo {
+				continue
+			}
 			key := f.File + ":" + f.LineRange
 			if g, ok := clusters[key]; ok {
 				g.Reporters[r.Agent] = f
@@ -192,10 +200,21 @@ func renderDisagreementTable(results []AgentResult, clusters []FindingGroup) str
 		}
 	}
 
+	// Build a name→driver map so we can tag mcp columns + cells with
+	// [deterministic] to distinguish them from LLM peers.
+	driverByAgent := map[string]string{}
+	for _, r := range results {
+		driverByAgent[r.Agent] = r.Driver
+	}
+
 	var b strings.Builder
 	fmt.Fprintf(&b, "| Finding | Severity | Consensus |")
 	for _, c := range cols {
-		fmt.Fprintf(&b, " %s |", c)
+		label := c
+		if driverByAgent[c] == "mcp" {
+			label = c + " [deterministic]"
+		}
+		fmt.Fprintf(&b, " %s |", label)
 	}
 	b.WriteString("\n")
 	fmt.Fprintf(&b, "|---|---|---|")
@@ -213,7 +232,11 @@ func renderDisagreementTable(results []AgentResult, clusters []FindingGroup) str
 			g.Key, escapePipes(firstSummary), g.Severity, g.ConsensusOf, g.OutOfTotal)
 		for _, c := range cols {
 			if f, ok := g.Reporters[c]; ok {
-				fmt.Fprintf(&b, " ✓ (%s) |", f.Severity)
+				marker := "✓"
+				if driverByAgent[c] == "mcp" {
+					marker = "✓⚙"
+				}
+				fmt.Fprintf(&b, " %s (%s) |", marker, f.Severity)
 			} else {
 				b.WriteString(" — |")
 			}

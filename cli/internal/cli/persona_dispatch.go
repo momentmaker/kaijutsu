@@ -162,6 +162,21 @@ func pickPersonaSynthesizer(want string, results []swarm.AgentResult, personas [
 	return nil
 }
 
+// stampDriverKind populates AgentResult.Driver from each persona's
+// underlying driver. Synthesizer reads this to tag mcp findings as
+// [deterministic] and apply the info-severity floor.
+func stampDriverKind(results []swarm.AgentResult, personas []*personaAdapter) {
+	byName := map[string]*personaAdapter{}
+	for _, p := range personas {
+		byName[string(p.Name())] = p
+	}
+	for i, r := range results {
+		if p, ok := byName[r.Agent]; ok {
+			results[i].Driver = string(p.driver.Driver())
+		}
+	}
+}
+
 // overlayPersonaCosts replaces each AgentResult's estimated Cost with
 // the real cost reported by the underlying driver, when available. The
 // HTTP driver populates Result.CostUSD from the API's usage block;

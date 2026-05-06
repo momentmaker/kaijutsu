@@ -475,9 +475,12 @@ func runSwarmPipeline(ctx context.Context, cmd *cobra.Command, projectRoot strin
 	// Persona mode: replace estimated costs with the real billed cost
 	// reported by drivers (HTTP driver populates Result.CostUSD from
 	// the API's usage block). cli driver leaves the estimate in place
-	// because Result.CostUSD is 0 there.
+	// because Result.CostUSD is 0 there. Also stamp the driver kind
+	// on each result so the synthesizer can tag mcp findings as
+	// [deterministic] and apply the info-severity floor.
 	if len(personaAdapters) > 0 {
 		overlayPersonaCosts(results, personaAdapters)
+		stampDriverKind(results, personaAdapters)
 	}
 
 	run := swarm.SwarmRun{
