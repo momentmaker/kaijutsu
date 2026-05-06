@@ -23,7 +23,7 @@
 
 ---
 
-> **Status: alpha.** The `jutsu` CLI works end-to-end (init / install / list / remove / upgrade / lint / search / info / publish / agent / swarm). 26 core skills currently ship across task-oriented (decide, journal, polish, unstuck, scope-check, session-retro, agent-doctor, pr-review, readme-update, doc-review, brainstorm, refactor-plan, security-audit, spec-driven-development, planning-and-task-breakdown, security-and-hardening, code-simplification, incremental-implementation), composable primitives (blunder-hunt, lie-to-them, convergence-detect, deslop, dispatch-parallel, multi-model-synth, project-memory), and a hooks bundle (dcg). v0.6 ships multi-provider swarm (driver abstraction + agents.yaml + personas) — see below. Install paths, skill schema, and command surface are stable for v0.x. The public skill catalog at [kaijutsu.dev](https://kaijutsu.dev) is still maturing — see [`ROADMAP.md`](./ROADMAP.md). Security model: [`SECURITY.md`](./SECURITY.md).
+> **Status: alpha.** The `jutsu` CLI works end-to-end (init / install / list / remove / upgrade / lint / search / info / publish / agent / swarm / finding). 26 core skills currently ship across task-oriented (decide, journal, polish, unstuck, scope-check, session-retro, agent-doctor, pr-review, readme-update, doc-review, brainstorm, refactor-plan, security-audit, spec-driven-development, planning-and-task-breakdown, security-and-hardening, code-simplification, incremental-implementation), composable primitives (blunder-hunt, lie-to-them, convergence-detect, deslop, dispatch-parallel, multi-model-synth, project-memory), and a hooks bundle (dcg). v0.6 ships multi-provider swarm (driver abstraction + agents.yaml + personas); v0.7 adds quality fingerprinting (`jutsu finding *` + confidence-weighted synthesizer) — see below. Install paths, skill schema, and command surface are stable for v0.x. The public skill catalog at [kaijutsu.dev](https://kaijutsu.dev) is still maturing — see [`ROADMAP.md`](./ROADMAP.md). Security model: [`SECURITY.md`](./SECURITY.md).
 
 ## Why
 
@@ -114,6 +114,25 @@ jutsu swarm pr-review --estimate                 # dry-run cost projection (±20
 ```
 
 `jutsu agent` ships 8 subcommands (list, doctor, add, enable, disable, remove, test, migrate). See [`docs/multi-agent.md`](./docs/multi-agent.md) for the full driver reference + persona authoring guide.
+
+### v0.7 — Quality fingerprinting + confidence-weighted synthesizer
+
+After ~10 swarm runs you've built up an implicit sense of which agent's findings consistently land vs which get dismissed. v0.7 captures that signal: every finding goes into a local SQLite store at `~/.kaijutsu/findings.db`, and the synthesizer weights each agent's vote by its observed precision per `(provider, persona, preset, codebase)` tuple. Cold-start behavior is byte-identical to v0.6.2 — no DB → no change.
+
+```bash
+jutsu swarm pr-review --personas paranoid-security-claude,default-gemini
+jutsu finding list --pending          # what's actionable
+jutsu finding accept 5 --reason "real auth bug"
+jutsu finding dismiss 12 --reason "stylistic nit"
+jutsu finding stats                   # per-(provider, persona, preset) precision
+jutsu swarm pr-review --personas ... --show-weights   # opt-in: see weights in disagreement table
+```
+
+Three-state weight algorithm: cold-start (1.0) → bootstrap (0.7 after first action) → mature (clamped precision after 10 actioned). Sliding window of 200 actioned findings catches model drift after ~50 actions.
+
+**Privacy**: no network calls. `cli/internal/cli/finding.go` is forbidden from importing any networking package — enforced by an import-list test. The DB lives in `$HOME` at mode `0600`, never in any repo. Telemetry / multi-machine sync deferred to v0.8 with separate spec + ADR.
+
+See [`docs/multi-agent.md`](./docs/multi-agent.md#v07--quality-fingerprinting--confidence-weighted-synthesizer) for the full algorithm + CLI reference.
 
 ## Trust model
 

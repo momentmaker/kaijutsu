@@ -1,7 +1,7 @@
 # ADR: Quality fingerprinting via local SQLite + per-tuple confidence weighting
 
 **Date:** 2026-05-06
-**Status:** Accepted (pending implementation in v0.7.0)
+**Status:** Accepted, implemented in v0.7.0
 **Spec:** [`docs/specs/2026-05-06-v0.7.0-quality-fingerprinting.md`](../specs/2026-05-06-v0.7.0-quality-fingerprinting.md)
 **Author:** rubberduck
 
