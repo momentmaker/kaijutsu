@@ -54,6 +54,7 @@ type commonSwarmFlags struct {
 	yes            bool
 	replayKey      string
 	grantConsent   bool
+	personas       []string // v0.6 Stage 3b — opt into persona-driven dispatch
 }
 
 func bindCommonFlags(cmd *cobra.Command, f *commonSwarmFlags, supportsPostComment bool) {
@@ -68,6 +69,7 @@ func bindCommonFlags(cmd *cobra.Command, f *commonSwarmFlags, supportsPostCommen
 	cmd.Flags().BoolVarP(&f.yes, "yes", "y", false, "non-interactive: skip the consent prompt; require .kaijutsu/<preset>.yaml has allow-multi-model: true")
 	cmd.Flags().StringVar(&f.replayKey, "replay", "", "re-run synthesis on cached per-agent findings for a key (SHA for diff presets, hash for files/prompt) without calling model APIs")
 	cmd.Flags().BoolVar(&f.grantConsent, "grant-consent", false, "persist `allow-multi-model: true` to .kaijutsu/<preset>.yaml and exit (no swarm run). Use this once per repo when running headless / from inside an agent CLI session.")
+	cmd.Flags().StringSliceVar(&f.personas, "personas", nil, "comma-separated persona names to dispatch (v0.6 Stage 3b — opts into agents.yaml-driven dispatch; without this flag, legacy v0.5 cli-only auto-detect path runs)")
 	if supportsPostComment {
 		cmd.Flags().BoolVar(&f.postComment, "post-comment", false, "after synthesis, post the markdown as a PR comment via gh (edits prior kaijutsu-pr-review comment if found)")
 	}
@@ -387,31 +389,58 @@ func runSwarmPipeline(ctx context.Context, cmd *cobra.Command, projectRoot strin
 		}
 	}
 
-	available := swarm.AvailableAgents()
-	if len(available) == 0 {
-		return errors.New("no agent CLI available. Install at least one of: claude, codex, gemini, then re-run")
-	}
-
-	if cerr := swarm.EnsureConsent(projectRoot, preset, cmd.InOrStdin(), stderr, available, f.yes); cerr != nil {
-		return cerr
-	}
-
-	fmt.Fprintf(stderr, "swarm: %d agent(s) available: %v\n", len(available), available)
-
-	jobs := make([]swarm.Job, 0, len(available))
-	for _, name := range available {
-		tmpl, ok := preset.PerAgent[name]
-		if !ok {
-			fmt.Fprintf(stderr, "swarm: no preset prompt for %s; skipping\n", name)
-			continue
+	// Persona-driven dispatch (v0.6 Stage 3b): when --personas is set,
+	// jobs are assembled from agents.yaml-resolved personas instead of
+	// auto-detected native CLIs. Legacy v0.5 path runs unchanged when
+	// the flag is absent.
+	var (
+		jobs            []swarm.Job
+		personaAdapters []*personaAdapter
+	)
+	if len(f.personas) > 0 {
+		var err error
+		jobs, personaAdapters, err = assemblePersonaJobs(ensureProjectRootForPersonas(projectRoot), preset, ictx, f.personas)
+		if err != nil {
+			return err
 		}
-		jobs = append(jobs, swarm.Job{
-			Agent:  swarm.AgentFor(name),
-			Prompt: fmt.Sprintf(tmpl, ictx.Body),
-		})
-	}
-	if len(jobs) == 0 {
-		return fmt.Errorf("no jobs assembled — preset %q is missing prompts for every available agent", preset.Name)
+		// Consent uses persona names as the provider list. Pass legacy
+		// AgentName(strings) via providerLabelsForPersonas so the
+		// existing EnsureConsent contract holds.
+		consentNames := make([]swarm.AgentName, 0, len(personaAdapters))
+		for _, p := range personaAdapters {
+			consentNames = append(consentNames, p.Name())
+		}
+		if cerr := swarm.EnsureConsent(projectRoot, preset, cmd.InOrStdin(), stderr, consentNames, f.yes); cerr != nil {
+			return cerr
+		}
+		fmt.Fprintf(stderr, "swarm: %d persona(s) dispatching: %v\n", len(personaAdapters), f.personas)
+	} else {
+		available := swarm.AvailableAgents()
+		if len(available) == 0 {
+			return errors.New("no agent CLI available. Install at least one of: claude, codex, gemini, then re-run (or pass --personas to dispatch via agents.yaml)")
+		}
+
+		if cerr := swarm.EnsureConsent(projectRoot, preset, cmd.InOrStdin(), stderr, available, f.yes); cerr != nil {
+			return cerr
+		}
+
+		fmt.Fprintf(stderr, "swarm: %d agent(s) available: %v\n", len(available), available)
+
+		jobs = make([]swarm.Job, 0, len(available))
+		for _, name := range available {
+			tmpl, ok := preset.PerAgent[name]
+			if !ok {
+				fmt.Fprintf(stderr, "swarm: no preset prompt for %s; skipping\n", name)
+				continue
+			}
+			jobs = append(jobs, swarm.Job{
+				Agent:  swarm.AgentFor(name),
+				Prompt: fmt.Sprintf(tmpl, ictx.Body),
+			})
+		}
+		if len(jobs) == 0 {
+			return fmt.Errorf("no jobs assembled — preset %q is missing prompts for every available agent", preset.Name)
+		}
 	}
 
 	start := time.Now()
@@ -466,8 +495,14 @@ func runSwarmPipeline(ctx context.Context, cmd *cobra.Command, projectRoot strin
 		return nil
 	}
 
-	// Markdown synthesis path.
-	synthAgent := pickSynthesizer(f.synthesizer, results)
+	// Markdown synthesis path. In persona mode the synthesizer is
+	// picked from the persona list; legacy mode uses native CLI lookup.
+	var synthAgent swarm.Agent
+	if len(personaAdapters) > 0 {
+		synthAgent = pickPersonaSynthesizer(f.synthesizer, results, personaAdapters)
+	} else {
+		synthAgent = pickSynthesizer(f.synthesizer, results)
+	}
 	if synthAgent == nil {
 		fmt.Fprintln(stderr, "warning: no synthesizer agent available; falling back to JSON dump")
 		enc := json.NewEncoder(out)
