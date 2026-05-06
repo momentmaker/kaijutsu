@@ -121,3 +121,35 @@ func saltedHashKey(salt, body string) string {
 	full := hex.EncodeToString(h.Sum(nil))
 	return full[:12]
 }
+
+// MixCacheKeyWithPersonas re-salts an existing cache key with the
+// persona names participating in the run. v0.6 spec D6 mandates that
+// non-default-mix swarm runs invalidate the legacy cache key:
+//   `--personas A,B,C` and `--personas X,Y,Z` against the same input
+//   MUST produce distinct cache keys, otherwise the second run reads
+//   the first's cached findings.
+//
+// When personas is empty (legacy v0.5 mode), the original key is
+// returned unchanged — preserves byte-identical cache compat.
+//
+// When personas is non-empty, persona names are sorted (so flag-order
+// doesn't matter), joined with NUL, hashed alongside the base key,
+// and the first 12 hex chars are returned. Same prefix length as
+// saltedHashKey so cache paths stay one segment.
+func MixCacheKeyWithPersonas(baseKey string, personas []string) string {
+	if len(personas) == 0 {
+		return baseKey
+	}
+	sorted := append([]string(nil), personas...)
+	sort.Strings(sorted)
+	h := sha256.New()
+	h.Write([]byte(baseKey))
+	h.Write([]byte{0})
+	for i, p := range sorted {
+		if i > 0 {
+			h.Write([]byte{0})
+		}
+		h.Write([]byte(p))
+	}
+	return hex.EncodeToString(h.Sum(nil))[:12]
+}

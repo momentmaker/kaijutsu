@@ -96,6 +96,13 @@ func main() {
 			}
 			_ = wtr.Flush()
 		default:
+			// Notifications (no id) are silent per JSON-RPC 2.0 — drop
+			// without responding. Without this guard the *req.ID
+			// dereference below panicked the stub on
+			// notifications/initialized → cascading client-side EOF.
+			if req.ID == nil {
+				continue
+			}
 			_ = enc.Encode(rpcResponse{
 				JSONRPC: "2.0", ID: *req.ID,
 				Error: &struct {

@@ -434,6 +434,10 @@ func runSwarmPipeline(ctx context.Context, cmd *cobra.Command, projectRoot strin
 		if cerr := swarm.EnsureConsent(projectRoot, preset, cmd.InOrStdin(), stderr, consentNames, f.yes); cerr != nil {
 			return cerr
 		}
+		// Spec D6: --personas mode invalidates the legacy v0.5 cache
+		// key. Mix persona names into the key so two different
+		// persona mixes against the same input don't collide.
+		ictx.CacheKey = swarm.MixCacheKeyWithPersonas(ictx.CacheKey, f.personas)
 		fmt.Fprintf(stderr, "swarm: %d persona(s) dispatching: %v\n", len(personaAdapters), f.personas)
 	} else {
 		available := swarm.AvailableAgents()

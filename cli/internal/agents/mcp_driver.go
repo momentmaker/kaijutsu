@@ -116,7 +116,7 @@ func (d *mcpDriver) invokeStdio(ctx context.Context, prompt string) (Result, err
 	// 1. initialize handshake.
 	const initID = 1
 	if err := rpc.send(initID, "initialize", map[string]any{
-		"protocolVersion": "2024-11-05",
+		"protocolVersion": "2025-11-25",
 		"clientInfo":      map[string]string{"name": "jutsu", "version": "0.6.0"},
 		"capabilities":    map[string]any{},
 	}); err != nil {
@@ -228,9 +228,14 @@ type mcpStdioClient struct {
 
 type mcpRPCRequest struct {
 	JSONRPC string `json:"jsonrpc"`
-	ID      int    `json:"id,omitempty"`
-	Method  string `json:"method"`
-	Params  any    `json:"params,omitempty"`
+	// ID uses *int so the omitempty tag genuinely distinguishes
+	// "absent" (notification) from "ID=0" (request). With a plain
+	// int, ID=0 would silently serialize as a notification, leaving
+	// the client deadlocked on a recv() that the server will never
+	// answer.
+	ID     *int   `json:"id,omitempty"`
+	Method string `json:"method"`
+	Params any    `json:"params,omitempty"`
 }
 
 type mcpRPCError struct {
@@ -246,7 +251,7 @@ type mcpRPCResponse struct {
 }
 
 func (c *mcpStdioClient) send(id int, method string, params any) error {
-	req := mcpRPCRequest{JSONRPC: "2.0", ID: id, Method: method, Params: params}
+	req := mcpRPCRequest{JSONRPC: "2.0", ID: &id, Method: method, Params: params}
 	data, err := json.Marshal(req)
 	if err != nil {
 		return err

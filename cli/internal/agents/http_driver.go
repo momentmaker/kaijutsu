@@ -221,9 +221,13 @@ type openaiMessage struct {
 }
 
 type openaiRequest struct {
-	Model     string          `json:"model"`
-	Messages  []openaiMessage `json:"messages"`
-	MaxTokens int             `json:"max_tokens,omitempty"`
+	Model    string          `json:"model"`
+	Messages []openaiMessage `json:"messages"`
+	// MaxCompletionTokens is the post-2024 OpenAI field; replaces the
+	// deprecated max_tokens which is rejected by o-series reasoning
+	// models (o1, o3, o4-mini). All current OpenAI-compat providers
+	// (deepseek, glm, kimi) accept it as of 2026-05.
+	MaxCompletionTokens int `json:"max_completion_tokens,omitempty"`
 }
 
 type openaiPromptDetails struct {
@@ -255,9 +259,9 @@ func (d *httpDriver) invokeOpenAI(ctx context.Context, prompt string, apiKey str
 	msgs = append(msgs, openaiMessage{Role: "user", Content: user})
 
 	req := openaiRequest{
-		Model:     d.provider.Model,
-		Messages:  msgs,
-		MaxTokens: defaultMaxTokens,
+		Model:               d.provider.Model,
+		Messages:            msgs,
+		MaxCompletionTokens: defaultMaxTokens,
 	}
 	body, err := json.Marshal(req)
 	if err != nil {

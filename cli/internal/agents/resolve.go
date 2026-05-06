@@ -22,9 +22,14 @@ type Resolved struct {
 	// project config, or the legacy mix when both layers are absent).
 	Enabled []string
 
-	// MissingKeys names enabled providers whose APIKeyEnv is set but
-	// the env var is not. Callers decide whether this is hard-fail
-	// (swarm dispatch) or warn-only (`agent list`, `agent doctor`).
+	// MissingKeys names enabled providers whose required env vars
+	// are not present. Two formats coexist:
+	//   - "<provider>"            — APIKeyEnv unset
+	//   - "<provider>:<envname>"  — cli-compat EnvKey indirection
+	//                               where ENV_NAME is unset
+	// Callers split on ':' for provider-name lookup. Used by
+	// `agent list`/`agent doctor` (warn) and the swarm pipeline pre-
+	// flight (hard-fail).
 	MissingKeys []string
 
 	// Defaults from the global config (HTTP timeouts, telemetry kill

@@ -38,11 +38,15 @@ func BuiltinProviders() map[string]*Provider {
 		// users with negotiated enterprise rates should override
 		// per-project via agents.yaml `overrides:` block.
 		"deepseek": {
-			Name:      "deepseek",
-			Driver:    DriverHTTP,
-			Protocol:  "openai-compat",
-			BaseURL:   "https://api.deepseek.com/v1",
-			Model:     "deepseek-coder",
+			Name:     "deepseek",
+			Driver:   DriverHTTP,
+			Protocol: "openai-compat",
+			BaseURL:  "https://api.deepseek.com/v1",
+			// "deepseek-chat" is the post-v2.5 unified non-thinking
+			// model name; "deepseek-coder" was an alias scheduled to
+			// retire 2026-07-24. Use the canonical name to avoid
+			// surprises after the deprecation date.
+			Model:     "deepseek-chat",
 			APIKeyEnv: "DEEPSEEK_API_KEY",
 			Cost: &CostRates{
 				InputPerMtok:       0.27,
