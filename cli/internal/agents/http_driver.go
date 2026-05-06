@@ -145,7 +145,7 @@ func (d *httpDriver) invokeAnthropic(ctx context.Context, prompt string, apiKey 
 		return errResult(DriverHTTP, time.Since(start), fmt.Sprintf("read anthropic response: %v", readErr))
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return errResult(DriverHTTP, time.Since(start), fmt.Sprintf("anthropic %d: %s", resp.StatusCode, trimErr(string(respBody))))
+		return errResult(DriverHTTP, time.Since(start), fmt.Sprintf("anthropic %d: %s", resp.StatusCode, SanitizeForLog(trimErr(string(respBody)))))
 	}
 	var ar anthropicResponse
 	if err := json.Unmarshal(respBody, &ar); err != nil {
@@ -155,6 +155,12 @@ func (d *httpDriver) invokeAnthropic(ctx context.Context, prompt string, apiKey 
 	raw := joinAnthropicContent(ar.Content)
 	cost := computeAnthropicCost(d.provider.Cost, ar.Usage)
 	cs := classifyAnthropicCache(ar.Usage)
+	// When no system block was sent (sentinel-less prompt) Anthropic
+	// has nothing to cache. Report that explicitly so users don't
+	// chase ghost CacheMiss readings in the cost report.
+	if system == "" {
+		cs = CacheSkippedShort
+	}
 
 	return Result{
 		Raw:         raw,
@@ -279,7 +285,7 @@ func (d *httpDriver) invokeOpenAI(ctx context.Context, prompt string, apiKey str
 		return errResult(DriverHTTP, time.Since(start), fmt.Sprintf("read openai response: %v", readErr))
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return errResult(DriverHTTP, time.Since(start), fmt.Sprintf("openai %d: %s", resp.StatusCode, trimErr(string(respBody))))
+		return errResult(DriverHTTP, time.Since(start), fmt.Sprintf("openai %d: %s", resp.StatusCode, SanitizeForLog(trimErr(string(respBody)))))
 	}
 	var or openaiResponse
 	if err := json.Unmarshal(respBody, &or); err != nil {

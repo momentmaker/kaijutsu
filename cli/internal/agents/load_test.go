@@ -98,6 +98,61 @@ func TestLoadProject_AbsentFileReturnsZeroValue(t *testing.T) {
 	}
 }
 
+func TestBuiltinProviders_AllEntriesValid(t *testing.T) {
+	for name, p := range BuiltinProviders() {
+		if p == nil {
+			t.Errorf("provider %q: nil entry", name)
+			continue
+		}
+		if p.Name != name {
+			t.Errorf("provider %q: Name field = %q, want %q", name, p.Name, name)
+		}
+		switch p.Driver {
+		case DriverCLI:
+			if p.Cmd == "" {
+				t.Errorf("provider %q (cli): Cmd is empty", name)
+			}
+		case DriverHTTP:
+			if p.Protocol == "" {
+				t.Errorf("provider %q (http): Protocol empty", name)
+			}
+			if p.BaseURL == "" {
+				t.Errorf("provider %q (http): BaseURL empty", name)
+			}
+			if p.Model == "" {
+				t.Errorf("provider %q (http): Model empty", name)
+			}
+			if p.Cost != nil {
+				if p.Cost.InputPerMtok < 0 {
+					t.Errorf("provider %q: InputPerMtok negative (%v)", name, p.Cost.InputPerMtok)
+				}
+				if p.Cost.OutputPerMtok < 0 {
+					t.Errorf("provider %q: OutputPerMtok negative (%v)", name, p.Cost.OutputPerMtok)
+				}
+				// Output normally costs more than input — sanity check
+				// that we didn't transpose them when filling the rate card.
+				if p.Cost.OutputPerMtok > 0 && p.Cost.InputPerMtok > 0 && p.Cost.OutputPerMtok < p.Cost.InputPerMtok {
+					t.Errorf("provider %q: OutputPerMtok (%v) < InputPerMtok (%v); fields likely transposed", name, p.Cost.OutputPerMtok, p.Cost.InputPerMtok)
+				}
+				if p.Cost.RateCardDate == "" {
+					t.Errorf("provider %q: rate card has no RateCardDate; --estimate stale-warning logic will misbehave", name)
+				}
+			}
+		default:
+			t.Errorf("provider %q: unexpected Driver kind %q in catalog", name, p.Driver)
+		}
+	}
+}
+
+func TestBuiltinProviders_HasLegacyMix(t *testing.T) {
+	cat := BuiltinProviders()
+	for _, name := range LegacyEnabledMix() {
+		if _, ok := cat[name]; !ok {
+			t.Errorf("legacy mix references %q but BuiltinProviders has no entry", name)
+		}
+	}
+}
+
 func TestLoadProject_EnabledAndOverrides(t *testing.T) {
 	tmp := t.TempDir()
 	dir := filepath.Join(tmp, ".kaijutsu")

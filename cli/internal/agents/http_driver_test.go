@@ -33,7 +33,10 @@ func TestHTTPDriver_AnthropicHappyPath(t *testing.T) {
 	t.Setenv("FAKE_ANTHROPIC_KEY", "test-key-XYZ")
 
 	d := newTestHTTPDriver(srv.URL, protocolAnthropic, "claude-test-1", "FAKE_ANTHROPIC_KEY")
-	res, err := d.Invoke(context.Background(), "user prompt", InvokeOpts{})
+	// Use sentinel-bearing prompt so the system block is sent and
+	// cache_control is applied — bare "user prompt" would route as
+	// CacheSkippedShort (no system block to cache).
+	res, err := d.Invoke(context.Background(), "system pre"+userSentinel+"user body", InvokeOpts{})
 	if err != nil {
 		t.Fatalf("Invoke: %v", err)
 	}

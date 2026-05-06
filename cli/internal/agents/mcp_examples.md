@@ -113,6 +113,23 @@ implementation.
   severity '<sev>'"` and discards the entire response. Misconfigured
   servers fail loudly instead of polluting findings silently.
 
+## Trust model
+
+Project-layer `<repo>/.kaijutsu/agents.yaml` is checked into the repo.
+Running `jutsu swarm` against a cloned repo executes the configured
+MCP `command` as a child process. **This is the same trust model as
+running `make`, `npm install`, or any tool that reads project-scoped
+config.** Treat untrusted repos accordingly:
+
+- Audit `agents.yaml` before first `jutsu swarm` against an unfamiliar
+  repo. The existing per-repo consent gate (`.kaijutsu/<preset>.yaml`
+  `allow-multi-model: true`) is your prompt to do this.
+- Prefer `--global` MCP providers (in `~/.kaijutsu/agents.yaml`) for
+  trusted analyzers; project-layer entries are easier to inject into.
+- Inside CI: pass `JUTSU_REPO_SCAN_ROOTS=""` and avoid setting `--force`
+  on `agent remove` so cross-repo reference checks fail loud rather
+  than swallow misconfiguration.
+
 ## Limitations (v0.6 / Stage 6)
 
 - **stdio transport only.** http transport (with optional secret

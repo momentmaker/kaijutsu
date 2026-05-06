@@ -120,6 +120,15 @@ func Resolve(global *GlobalConfig, project *ProjectConfig) (*Resolved, error) {
 		if base.APIKeyEnv != "" && os.Getenv(base.APIKeyEnv) == "" {
 			missing = append(missing, name)
 		}
+		// cli-compat declares secret env vars via EnvKey indirection
+		// (VAR -> ENV_NAME mapping). When ENV_NAME is unset the child
+		// process invocation fails opaquely; surface in MissingKeys
+		// so `agent doctor` and `agent list` warn upfront.
+		for _, envName := range base.EnvKey {
+			if envName != "" && os.Getenv(envName) == "" {
+				missing = append(missing, name+":"+envName)
+			}
+		}
 	}
 
 	// --- Persona resolution ------------------------------------------

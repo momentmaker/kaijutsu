@@ -106,19 +106,28 @@ func (d *mcpDriver) invokeStdio(ctx context.Context, prompt string) (Result, err
 		_ = cmd.Wait()
 	}()
 
-	rdr := bufio.NewReader(stdout)
-	rpc := &mcpStdioClient{stdin: stdin, stdout: rdr}
+	// Cap stdout reads at 8 MB to prevent OOM if a misbehaving server
+	// streams without ever emitting a newline. Same cap as the http
+	// driver's response-body reader.
+	const maxStdoutBytes = 8 * 1024 * 1024
+	rdr := bufio.NewReader(io.LimitReader(stdout, maxStdoutBytes))
+	rpc := &mcpStdioClient{stdin: stdin, stdout: rdr, ctx: subCtx}
 
 	// 1. initialize handshake.
-	if err := rpc.send(1, "initialize", map[string]any{
+	const initID = 1
+	if err := rpc.send(initID, "initialize", map[string]any{
 		"protocolVersion": "2024-11-05",
 		"clientInfo":      map[string]string{"name": "jutsu", "version": "0.6.0"},
 		"capabilities":    map[string]any{},
 	}); err != nil {
-		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("send initialize: %v (stderr: %s)", err, trimErr(stderrBuf.String())))
+		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("send initialize: %v (stderr: %s)", err, SanitizeForLog(trimErr(stderrBuf.String()))))
 	}
-	if _, err := rpc.recv(); err != nil {
-		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("recv initialize: %v (stderr: %s)", err, trimErr(stderrBuf.String())))
+	initResp, err := rpc.recv()
+	if err != nil {
+		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("recv initialize: %v (stderr: %s)", err, SanitizeForLog(trimErr(stderrBuf.String()))))
+	}
+	if initResp.ID != initID {
+		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("initialize response id mismatch: got %d, want %d (server out-of-order or interleaved notification)", initResp.ID, initID))
 	}
 	// 2. initialized notification (no id; no response expected).
 	if err := rpc.notify("notifications/initialized", nil); err != nil {
@@ -130,7 +139,8 @@ func (d *mcpDriver) invokeStdio(ctx context.Context, prompt string) (Result, err
 	if tool == "" {
 		tool = mcpDefaultToolName
 	}
-	if err := rpc.send(2, "tools/call", map[string]any{
+	const callID = 2
+	if err := rpc.send(callID, "tools/call", map[string]any{
 		"name": tool,
 		"arguments": AnalyzeArgs{
 			Preset:        "swarm",                      // preset name fed via prompt today; refined in v0.6.x
@@ -138,11 +148,14 @@ func (d *mcpDriver) invokeStdio(ctx context.Context, prompt string) (Result, err
 			Input:         prompt,
 		},
 	}); err != nil {
-		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("send tools/call: %v (stderr: %s)", err, trimErr(stderrBuf.String())))
+		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("send tools/call: %v (stderr: %s)", err, SanitizeForLog(trimErr(stderrBuf.String()))))
 	}
 	resp, err := rpc.recv()
 	if err != nil {
-		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("recv tools/call: %v (stderr: %s)", err, trimErr(stderrBuf.String())))
+		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("recv tools/call: %v (stderr: %s)", err, SanitizeForLog(trimErr(stderrBuf.String()))))
+	}
+	if resp.ID != callID {
+		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("tools/call response id mismatch: got %d, want %d", resp.ID, callID))
 	}
 
 	raw, err := extractMCPText(resp)
@@ -189,10 +202,16 @@ func extractMCPText(resp *mcpRPCResponse) (string, error) {
 // prompt and lets the analyzer infer. Stage 6.x will plumb the preset
 // metadata directly.
 func defaultSeverityVocab(prompt string) []string {
+	// Pattern matching on common preset-prompt phrasings. Stage 6.x
+	// will plumb the preset metadata explicitly so this heuristic
+	// becomes unnecessary.
 	switch {
-	case strings.Contains(prompt, "critical | high | medium | low"):
+	case strings.Contains(prompt, "critical | high | medium | low") ||
+		strings.Contains(prompt, "CVSS"):
 		return []string{"critical", "high", "medium", "low", "informational"}
-	case strings.Contains(prompt, "recommended | alternative"):
+	case strings.Contains(prompt, "recommended | alternative") ||
+		strings.Contains(prompt, "recommended → alternative") ||
+		strings.Contains(prompt, "recommended -> alternative"):
 		return []string{"recommended", "alternative", "risky", "speculative"}
 	default:
 		return []string{"blocker", "issue", "minor", "info"}
@@ -204,6 +223,7 @@ func defaultSeverityVocab(prompt string) []string {
 type mcpStdioClient struct {
 	stdin  io.WriteCloser
 	stdout *bufio.Reader
+	ctx    context.Context // ctx-aware writes; bounds blocking on full pipe buffers if subprocess hangs
 }
 
 type mcpRPCRequest struct {
@@ -232,8 +252,7 @@ func (c *mcpStdioClient) send(id int, method string, params any) error {
 		return err
 	}
 	data = append(data, '\n')
-	_, err = c.stdin.Write(data)
-	return err
+	return c.writeCtx(data)
 }
 
 func (c *mcpStdioClient) notify(method string, params any) error {
@@ -247,8 +266,32 @@ func (c *mcpStdioClient) notify(method string, params any) error {
 		return err
 	}
 	data = append(data, '\n')
-	_, err = c.stdin.Write(data)
-	return err
+	return c.writeCtx(data)
+}
+
+// writeCtx wraps stdin.Write in a select against ctx.Done. Without
+// this, a subprocess that's alive but not reading stdin (init bug,
+// infinite loop) saturates the pipe buffer and Write blocks until
+// the parent ctx cancels and exec.CommandContext kills the child.
+// That kill releases the pipe via EPIPE — but the wait can be up to
+// the full ctx timeout. The select-aware goroutine returns
+// promptly with ctx.Err() on cancellation.
+func (c *mcpStdioClient) writeCtx(data []byte) error {
+	if c.ctx == nil {
+		_, err := c.stdin.Write(data)
+		return err
+	}
+	done := make(chan error, 1)
+	go func() {
+		_, err := c.stdin.Write(data)
+		done <- err
+	}()
+	select {
+	case <-c.ctx.Done():
+		return c.ctx.Err()
+	case err := <-done:
+		return err
+	}
 }
 
 func (c *mcpStdioClient) recv() (*mcpRPCResponse, error) {
