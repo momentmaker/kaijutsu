@@ -8,10 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
 	"strings"
-	"sync/atomic"
 	"time"
 )
 
@@ -94,6 +92,7 @@ func (d *mcpDriver) invokeStdio(ctx context.Context, prompt string) (Result, err
 	}
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
+		_ = stdin.Close()
 		return errResult(DriverMCP, 0, fmt.Sprintf("stdout pipe: %v", err))
 	}
 	var stderrBuf bytes.Buffer
@@ -205,7 +204,6 @@ func defaultSeverityVocab(prompt string) []string {
 type mcpStdioClient struct {
 	stdin  io.WriteCloser
 	stdout *bufio.Reader
-	idCtr  atomic.Int64
 }
 
 type mcpRPCRequest struct {
@@ -265,8 +263,3 @@ func (c *mcpStdioClient) recv() (*mcpRPCResponse, error) {
 	return &resp, nil
 }
 
-// --- Test helper (used by stub server scaffolding) -------------------
-
-// noLeak prevents the unused-import linter from complaining when the
-// os import is only kept for documentation cross-references.
-var _ = os.PathSeparator
