@@ -55,6 +55,35 @@ Working consume-and-author loop. No bells, no eval gate, no static site.
 - [ ] `jutsu eval` (deferred from v0.3) — per-skill eval runner that consumes `evals/cases.yaml`; CI integration via `lint-skills.yml`
 - [ ] `git-commit` and `reorient` skills (deferred from v0.1)
 
+## v0.6 — multi-provider agents (driver abstraction) ✅
+
+Spec: `docs/specs/2026-05-05-v0.6.0-multi-provider-agents.md`. ADR: `docs/decisions/2026-05-05-driver-abstraction.md`.
+
+- [x] **`AgentDriver` interface** + 4 concrete drivers: `cli` (claude/codex/gemini singletons), `http` (OpenAI-compat + Anthropic-compat with prompt-cache awareness), `cli-compat` (wraps a native CLI with env override + telemetry-kill), `mcp` (JSON-RPC stdio against MCP servers).
+- [x] **`agents.yaml` two-layer config**: `~/.kaijutsu/agents.yaml` (global catalog) + `<repo>/.kaijutsu/agents.yaml` (project enabled list + overrides). `version: 1` schema.
+- [x] **Personas as first-class**: 7 built-ins (3 default-* with empty system_prompt for v0.5 cache compat + 4 reference flavored: paranoid-security-claude, pragmatic-codex, architecture-purist-gemini, brainstorm-creative-claude). Auto-synth of `default-<provider>` for any enabled provider lacking one.
+- [x] **`--personas` flag** wired into all 5 swarm subcommands (pr-review, doc-review, brainstorm, refactor-plan, security-audit). Personas dispatched in parallel, system prompts prepended via sentinel split by HTTP driver into protocol's first-class system field.
+- [x] **`--estimate` dry-run**: char-count tokenizer (±20% accuracy), per-persona cost projection table, TOTAL row, stale-rate-card warning at 90+ days.
+- [x] **`--no-telemetry-warning`** suppression flag for the cli-compat one-shot warning.
+- [x] **`jutsu agent` subcommand group**: list (with `--personas`), doctor (driver-aware probes: cli `--version`, http `/models`, mcp stub), add (catalog + non-catalog paths), enable, disable, remove (with cross-repo scan via `JUTSU_REPO_SCAN_ROOTS`), test (driver-aware: cli/cli-compat `--version`, http `/models` + 1-token completion fallback), migrate (kaijutsu.json → agents.yaml with `--prefer legacy|yaml|merge`).
+- [x] **Vendored provider catalog**: claude/codex/gemini cli + deepseek/glm/kimi/ollama-local http with rate cards.
+- [x] **Stub MCP server** in `cli/internal/agents/testdata/stub_mcp_server/main.go` for driver tests; semgrep-mcp config doc-only in `cli/internal/agents/mcp_examples.md`.
+- [x] **Cache-key compat**: legacy v0.5 mix produces byte-identical keys; non-default mix salted with driver+persona identity.
+
+## v0.7 — quality + extensibility
+
+- [ ] **Quality fingerprinting + confidence-weighted synthesizer** (the long-term moat): local SQLite at `~/.kaijutsu/findings.db` records user accept/dismiss per (provider, persona, preset, codebase-fingerprint) tuple; synthesizer weights agent votes by observed precision/recall after ~50 runs.
+- [ ] **Multi-stage swarm pipelines**: `jutsu swarm pipeline brainstorm-then-audit` chains presets with structured handoff; new `pipeline.yaml` DSL.
+- [ ] **Live TUI with streaming partial findings**: each provider streams findings as generated; depends on streaming support landing in `http_driver`.
+- [ ] **Reverse swarm — spec-vs-impl drift detector**: run on every PR that closes a spec; flag deviations from declared scope/non-goals.
+- [ ] **Rule-based skip + skill-author skip-policy schema**: deterministic heuristic gate (lockfile/comment-only/whitespace auto-skip), `skip_rules:` in agents.yaml. Replaces the rejected Ollama 7B classifier.
+- [ ] **Persona registry + `jutsu install persona:foo`**: personas as installable artifacts.
+- [ ] **Per-skill provider routing**: skills declare preferred personas/providers; swarm picks accordingly.
+- [ ] **Per-provider retry policy**: 5xx + 429 backoff with jitter.
+- [ ] **MCP http transport** (deferred from v0.6 Stage 6).
+- [ ] **`--estimate` provider-native tokenizers** (tiktoken-go fallback tightens to ±5%).
+- [ ] **Synthesizer `[deterministic]` tag rendering** for MCP-driver findings + info-severity floor (deferred from v0.6 Stage 6).
+
 ## v1 — maturity
 
 - [ ] Skill DNA / fingerprinting for semantic dedup
