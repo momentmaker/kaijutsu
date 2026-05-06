@@ -246,7 +246,12 @@ func clusterFindings(results []AgentResult, weights map[string]float64) []Findin
 			return out[i].Key < out[j].Key
 		}
 		wi, wj := weightedSums[out[i].Key], weightedSums[out[j].Key]
-		if wi != wj {
+		// Float tolerance: weighted_consensus is a sum of weights in
+		// [0.05, 1.0]. Two equivalent reporter sets summing to the
+		// same theoretical value can differ in the last bit due to
+		// IEEE-754 ordering. Treat anything within 1e-9 as equal so
+		// we still hit the ConsensusOf / severity tiebreakers.
+		if diff := wi - wj; diff > 1e-9 || diff < -1e-9 {
 			return wi > wj
 		}
 		if out[i].ConsensusOf != out[j].ConsensusOf {

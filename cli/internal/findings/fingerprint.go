@@ -67,11 +67,23 @@ func hashRemoteWithBasename(cwd, remote string) string {
 	if top, err := gitToplevel(cwd); err == nil {
 		base = filepath.Base(top)
 	} else {
-		// Fallback: use cwd basename. Less ideal because the user may
-		// be inside a subdir, but with no toplevel (which means git
-		// itself is broken or cwd was deleted) we have nothing better.
-		abs, _ := filepath.Abs(cwd)
-		base = filepath.Base(abs)
+		// Fallback: try filepath.Abs(cwd) first; only on its rare
+		// failure (Getwd failed AND cwd is relative) drop down to
+		// the raw cwd basename. Previously we ignored the Abs error
+		// and let "" → "." collapse the basename, which would map
+		// every cwd lacking a git toplevel to the same fingerprint.
+		if abs, err := filepath.Abs(cwd); err == nil {
+			base = filepath.Base(abs)
+		} else {
+			base = filepath.Base(cwd)
+		}
+		// Even with the fallback, basename of "" or "/" produces "."
+		// or "/" — treat both as the unstable case and stamp the cwd
+		// itself in to avoid same-fp collisions across truly different
+		// roots. Cheap belt-and-suspenders.
+		if base == "." || base == "/" || base == "" {
+			base = cwd
+		}
 	}
 	return hash16(strings.TrimSpace(remote) + ":" + base)
 }

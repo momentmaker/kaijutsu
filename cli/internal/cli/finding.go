@@ -16,6 +16,7 @@ import (
 	"strings"
 	"text/tabwriter"
 	"time"
+	"unicode/utf8"
 
 	"github.com/spf13/cobra"
 
@@ -152,10 +153,23 @@ func renderFindingList(out io.Writer, rows []findings.Row, fp string, allCodebas
 }
 
 func truncate(s string, n int) string {
-	if len(s) <= n {
+	// Operate on runes, not bytes — `len(s)` and `s[:n]` count bytes,
+	// which corrupts multi-byte UTF-8 characters. Summary text from
+	// agents may contain CJK / emoji / diacritics; cutting at a byte
+	// boundary would emit invalid UTF-8 to terminals that strict-decode.
+	if utf8.RuneCountInString(s) <= n {
 		return s
 	}
-	return s[:n-1] + "…"
+	out := make([]rune, 0, n)
+	count := 0
+	for _, r := range s {
+		if count >= n-1 {
+			break
+		}
+		out = append(out, r)
+		count++
+	}
+	return string(out) + "…"
 }
 
 // --- accept / dismiss ---
@@ -293,10 +307,12 @@ func renderStats(out io.Writer, stats []findings.TupleStats, fp string, allCodeb
 			p := t.Precision()
 			precision = fmt.Sprintf("%.2f", p)
 			// Mirror Weighter's clamp-to-floor — final weight matches
-			// what synthesizer will use in Stage 4.
+			// what the synthesizer uses. Reference the canonical
+			// constant so a future tuning of the floor stays in sync
+			// across this rendering and the actual weight algorithm.
 			w := p
-			if w < 0.05 {
-				w = 0.05
+			if w < findings.PrecisionFloor {
+				w = findings.PrecisionFloor
 			}
 			weight = fmt.Sprintf("%.2f (mature)", w)
 		}
@@ -373,9 +389,17 @@ Runs VACUUM after deletion to reclaim disk.`,
 
 			n, err := findings.Clear(store, opts)
 			if err != nil {
-				// Clear returns count + error when VACUUM fails after
-				// successful delete — surface both pieces of info.
-				fmt.Fprintf(cmd.ErrOrStderr(), "warning: %v\n", err)
+				if errors.Is(err, findings.ErrVacuumFailed) {
+					// Vacuum failed AFTER successful delete — rows are
+					// gone, only disk reclaim missed. Warn + exit 0.
+					fmt.Fprintf(cmd.ErrOrStderr(), "warning: %v\n", err)
+				} else {
+					// Begin / Exec / Commit / RowsAffected failed —
+					// rows are NOT deleted. Surface the error so the
+					// shell sees a non-zero exit instead of mistaking
+					// "deleted 0 rows" for success.
+					return fmt.Errorf("clear: %w", err)
+				}
 			}
 			fmt.Fprintf(out, "deleted %d row(s)\n", n)
 			return nil

@@ -29,7 +29,7 @@ ADR: [`docs/decisions/2026-05-06-quality-fingerprinting.md`](docs/decisions/2026
 - **Synthesizer integration** — `clusterFindings` secondary sort uses `weighted_consensus = sum(unique reporter weights)` (each agent contributes its weight EXACTLY once per cluster, even if it merged multiple findings). Tiebreaker order: weighted_consensus desc → ConsensusOf desc → severity desc → key asc. Cold-start (no weights data) collapses byte-for-byte to v0.6.2 ordering.
 - **`--show-weights`** flag on every swarm subcommand. Off by default in v0.7 — adopt weights via `jutsu finding stats` first; v0.7.x or v0.8 may flip the default.
 - **Synthesizer prompt `weights:` section** — emitted only when at least one weight differs from 1.0. Cold-start prompts are byte-identical to v0.6.2.
-- **Best-effort recording** — DB write failures emit a single yellow stderr warning and the swarm pipeline continues. Quality fingerprinting is non-critical; a corrupt or read-only DB never blocks the markdown render.
+- **Best-effort recording** — DB write failures emit a single stderr warning line and the swarm pipeline continues. Quality fingerprinting is non-critical; a corrupt or read-only DB never blocks the markdown render.
 - **`KAIJUTSU_FINDINGS_DB` env override** — used by tests for isolation; user-facing override via `--db` flag deferred to v0.7.x.
 
 ### Changed

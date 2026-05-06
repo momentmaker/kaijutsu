@@ -9,25 +9,35 @@ import (
 
 // Row is the in-memory shape of a single findings row. Mirrors the
 // schema; nullable columns become *string / *float64 so callers can
-// distinguish "agent omitted" from "agent emitted empty".
+// distinguish "agent omitted" from "agent emitted empty". JSON tags
+// use snake_case so `jutsu finding export` produces a payload whose
+// keys line up with the schema column names + the top-level
+// schema_version key — matters for forward-compat imports.
 type Row struct {
-	ID           int64
-	RunID        string
-	CodebaseFP   string
-	Preset       string
-	Provider     string
-	Persona      string
-	Severity     string
-	File         string
-	LineRange    string
-	Summary      string
-	Reasoning    *string
-	Confidence   *float64
-	CreatedAt    time.Time
-	UserAction   *string // "accepted" | "dismissed" | nil (pending)
-	ActionAt     *time.Time
-	ActionReason *string
+	ID           int64      `json:"id"`
+	RunID        string     `json:"run_id"`
+	CodebaseFP   string     `json:"codebase_fp"`
+	Preset       string     `json:"preset"`
+	Provider     string     `json:"provider"`
+	Persona      string     `json:"persona"`
+	Severity     string     `json:"severity"`
+	File         string     `json:"file"`
+	LineRange    string     `json:"line_range"`
+	Summary      string     `json:"summary"`
+	Reasoning    *string    `json:"reasoning,omitempty"`
+	Confidence   *float64   `json:"confidence,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UserAction   *string    `json:"user_action,omitempty"` // "accepted" | "dismissed" | nil (pending)
+	ActionAt     *time.Time `json:"action_at,omitempty"`
+	ActionReason *string    `json:"action_reason,omitempty"`
 }
+
+// ErrVacuumFailed signals that DELETE succeeded + Commit succeeded
+// but post-commit VACUUM did not. Rows are gone; only disk reclaim
+// failed. Callers (e.g. `jutsu finding clear`) use errors.Is to
+// distinguish this from fatal Begin/Exec/Commit failures so they
+// don't mis-report a real DELETE failure as a successful clear.
+var ErrVacuumFailed = errors.New("findings: vacuum failed (rows already deleted)")
 
 // ListOpts narrows the rows returned by ListFindings. Empty defaults
 // match the spec's `jutsu finding list` UX:
@@ -179,9 +189,11 @@ func (t TupleStats) Precision() float64 {
 }
 
 // StatsByTuple returns one row per (provider, persona, preset) tuple
-// for the given codebase, sorted by precision desc. Used by `jutsu
-// finding stats` to render the per-tuple table. AllCodebases=true
-// drops the codebase filter — useful for `--all-codebases` flag.
+// for the given codebase. The caller (e.g. renderStats in finding.go)
+// is responsible for ordering — the SQL has no ORDER BY because the
+// CLI sort puts bootstrap-state tuples below mature ones, which is
+// post-aggregation logic the DB doesn't have visibility into.
+// AllCodebases=true drops the codebase filter for `--all-codebases`.
 func StatsByTuple(s *Store, codebaseFP string, allCodebases bool) ([]TupleStats, error) {
 	q := `SELECT provider, persona, preset,
 	             SUM(CASE WHEN user_action='accepted' THEN 1 ELSE 0 END)  AS accepted,
@@ -260,9 +272,11 @@ func Clear(s *Store, opts ClearOpts) (int, error) {
 
 	// VACUUM after commit — required by SQLite (cannot run in tx).
 	// Failing here is non-fatal: the rows are gone, the disk just
-	// isn't reclaimed yet. Return the count + error so caller can warn.
+	// isn't reclaimed yet. Wrap with ErrVacuumFailed so callers can
+	// errors.Is-distinguish "delete worked, vacuum failed" from
+	// "delete failed entirely" (which returns 0 + a non-vacuum err).
 	if _, err := s.db.Exec(`VACUUM`); err != nil {
-		return int(n), fmt.Errorf("vacuum: %w (rows already deleted)", err)
+		return int(n), fmt.Errorf("%w: %v", ErrVacuumFailed, err)
 	}
 	return int(n), nil
 }
