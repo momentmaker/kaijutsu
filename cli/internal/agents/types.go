@@ -10,7 +10,7 @@ type Provider struct {
 	Name string `yaml:"-" json:"name"`
 
 	// Driver kind: "cli" | "http" | "cli-compat" | "mcp".
-	Driver DriverKind `yaml:"driver" json:"driver"`
+	Driver DriverKind `yaml:"driver,omitempty" json:"driver,omitempty"`
 
 	// CLI driver fields.
 	Cmd  string   `yaml:"cmd,omitempty" json:"cmd,omitempty"`

@@ -2,6 +2,7 @@ package agents
 
 import (
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -161,6 +162,85 @@ func TestResolve_GlobalProvidersWithoutEnabled_FallsBackToCatalog(t *testing.T) 
 	}
 	if len(r.Enabled) != 1 || r.Enabled[0] != "deepseek" {
 		t.Errorf("Enabled = %v, want [deepseek]", r.Enabled)
+	}
+}
+
+func TestResolve_RejectsUnknownDriverKind(t *testing.T) {
+	global := &GlobalConfig{
+		Providers: map[string]*Provider{
+			"weird": {Name: "weird", Driver: "clil"}, // typo
+		},
+	}
+	project := &ProjectConfig{Enabled: []string{"weird"}}
+	_, err := Resolve(global, project)
+	if err == nil {
+		t.Fatal("expected error for unknown driver kind; got nil")
+	}
+	if !strings.Contains(err.Error(), "unknown driver kind") {
+		t.Errorf("error = %v; want substring 'unknown driver kind'", err)
+	}
+}
+
+func TestResolve_RejectsMissingDriverKind(t *testing.T) {
+	global := &GlobalConfig{
+		Providers: map[string]*Provider{
+			"naked": {Name: "naked"}, // no Driver
+		},
+	}
+	project := &ProjectConfig{Enabled: []string{"naked"}}
+	_, err := Resolve(global, project)
+	if err == nil {
+		t.Fatal("expected error for missing driver kind; got nil")
+	}
+	if !strings.Contains(err.Error(), "no driver kind") {
+		t.Errorf("error = %v; want substring 'no driver kind'", err)
+	}
+}
+
+// TestMergeProvider_DeepCopiesMaps locks in the invariant that
+// mergeProvider deep-copies map fields from src. Without this, a
+// project Override map shared between two enabled providers (or
+// re-used across resolutions) would alias the resolved provider's
+// state and a later mutation would leak back.
+func TestMergeProvider_DeepCopiesMaps(t *testing.T) {
+	src := &Provider{
+		Env:    map[string]string{"FOO": "bar"},
+		EnvKey: map[string]string{"VAR": "ENV"},
+		Headers: map[string]string{"H": "V"},
+		HeadersLiteral: map[string]string{"L": "M"},
+	}
+	dst := &Provider{}
+	mergeProvider(dst, src)
+
+	// Mutate src AFTER merge — dst must not observe.
+	src.Env["FOO"] = "MUTATED"
+	src.EnvKey["VAR"] = "MUTATED"
+	src.Headers["H"] = "MUTATED"
+	src.HeadersLiteral["L"] = "MUTATED"
+
+	if dst.Env["FOO"] != "bar" {
+		t.Errorf("dst.Env aliased src.Env: got %q, want %q", dst.Env["FOO"], "bar")
+	}
+	if dst.EnvKey["VAR"] != "ENV" {
+		t.Errorf("dst.EnvKey aliased src.EnvKey: got %q, want %q", dst.EnvKey["VAR"], "ENV")
+	}
+	if dst.Headers["H"] != "V" {
+		t.Errorf("dst.Headers aliased src.Headers: got %q, want %q", dst.Headers["H"], "V")
+	}
+	if dst.HeadersLiteral["L"] != "M" {
+		t.Errorf("dst.HeadersLiteral aliased src.HeadersLiteral: got %q, want %q", dst.HeadersLiteral["L"], "M")
+	}
+}
+
+// TestMergeProvider_DeepCopiesCost confirms the same invariant for
+// the *CostRates pointer field.
+func TestMergeProvider_DeepCopiesCost(t *testing.T) {
+	src := &Provider{Cost: &CostRates{InputPerMtok: 1.0}}
+	dst := &Provider{}
+	mergeProvider(dst, src)
+	src.Cost.InputPerMtok = 99.0
+	if dst.Cost.InputPerMtok != 1.0 {
+		t.Errorf("dst.Cost aliased src.Cost: got %v, want 1.0", dst.Cost.InputPerMtok)
 	}
 }
 

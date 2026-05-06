@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"sort"
 	"text/tabwriter"
@@ -130,7 +131,7 @@ Exits 0 only if every enabled provider's required env vars are set.`,
 	return cmd
 }
 
-func printProviders(w interface{ Write(p []byte) (int, error) }, r *agents.Resolved) {
+func printProviders(w io.Writer, r *agents.Resolved) {
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(tw, "PROVIDER\tDRIVER\tDETAIL")
 	names := make([]string, 0, len(r.Providers))
@@ -161,10 +162,24 @@ func providerDetail(p *agents.Provider) string {
 	case agents.DriverMCP:
 		return fmt.Sprintf("transport=%s tool=%s", p.Transport, p.ToolName)
 	}
-	return ""
+	return fmt.Sprintf("(unknown driver kind: %q)", p.Driver)
 }
 
-func printPersonas(w interface{ Write(p []byte) (int, error) }, r *agents.Resolved) {
+// truncateRunes returns s if it has at most max runes; otherwise the
+// first (max-3) runes followed by "...". Rune-aware so non-ASCII
+// system_prompts (Japanese, emoji, etc.) don't get sliced mid-codepoint.
+func truncateRunes(s string, max int) string {
+	r := []rune(s)
+	if len(r) <= max {
+		return s
+	}
+	if max < 4 {
+		return string(r[:max])
+	}
+	return string(r[:max-3]) + "..."
+}
+
+func printPersonas(w io.Writer, r *agents.Resolved) {
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(tw, "PERSONA\tPROVIDER\tTAGS\tSYSTEM_PROMPT")
 	names := make([]string, 0, len(r.Personas))
@@ -174,10 +189,7 @@ func printPersonas(w interface{ Write(p []byte) (int, error) }, r *agents.Resolv
 	sort.Strings(names)
 	for _, name := range names {
 		p := r.Personas[name]
-		sp := p.SystemPrompt
-		if len(sp) > 60 {
-			sp = sp[:57] + "..."
-		}
+		sp := truncateRunes(p.SystemPrompt, 60)
 		if sp == "" {
 			sp = "(empty)"
 		}

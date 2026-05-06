@@ -116,10 +116,10 @@ func loadProject(path string) (*ProjectConfig, error) {
 	return &c, nil
 }
 
-// validateVersion enforces SchemaVersion compat. Version=0 is treated
-// as "absent" (default zero-value when YAML omits the field) and
-// permitted with a soft warning printed by the caller. Other values
-// are hard errors.
+// validateVersion enforces SchemaVersion compat. Version=0 means the
+// YAML omitted the field (Go zero-value); we accept it as equivalent
+// to the current SchemaVersion. Other non-matching values hard-fail
+// so users get a clear migration message instead of silent field-drop.
 func validateVersion(v int, path string) error {
 	if v == 0 || v == SchemaVersion {
 		return nil

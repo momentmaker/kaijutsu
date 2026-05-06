@@ -32,18 +32,28 @@ type Resolved struct {
 	Defaults *Defaults
 }
 
-// Resolve produces a unified view from global ⊕ project configs. Order
-// of precedence (highest → lowest):
-//   1. project.Overrides[name] merged onto base provider
-//   2. project.Personas[name] (full replacement)
-//   3. global.Personas[name]  (full replacement of built-in)
-//   4. global.Providers[name] (base catalog)
-//   5. BuiltinProviders[name] (vendored catalog fallback)
-//   6. BuiltinPersonas[name]  (default-* + reference flavored)
+// Resolve produces a unified view from global ⊕ project configs.
 //
-// When project.Enabled is empty AND global.Providers is empty, the
-// legacy v0.5 mix is synthesized (`[claude, codex, gemini]`) so users
-// who never wrote agents.yaml get byte-identical v0.5 behavior.
+// Provider resolution per name (highest → lowest priority):
+//   1. project.Providers[name]   (project-scoped full definition)
+//   2. global.Providers[name]    (user global catalog)
+//   3. BuiltinProviders[name]    (vendored catalog fallback)
+// Then project.Overrides[name] is merged ON TOP of whichever base
+// won (overrides modify the resolved base; they do not become the
+// base themselves).
+//
+// Persona resolution per name (highest → lowest priority, full
+// replacement at each layer — no field merge):
+//   1. project.Personas[name]
+//   2. global.Personas[name]
+//   3. BuiltinPersonas[name]   (default-* + 4 reference flavored)
+// After the user layers apply, default-<provider> personas are
+// auto-synthesized for any enabled provider that lacks one.
+//
+// When project.Enabled is empty AND no provider catalog exists in
+// either layer, the legacy v0.5 mix is synthesized (`[claude, codex,
+// gemini]`) so users who never wrote agents.yaml get byte-identical
+// v0.5 behavior.
 func Resolve(global *GlobalConfig, project *ProjectConfig) (*Resolved, error) {
 	if global == nil {
 		global = &GlobalConfig{}
@@ -102,6 +112,10 @@ func Resolve(global *GlobalConfig, project *ProjectConfig) (*Resolved, error) {
 		}
 		base.Name = name
 		resolvedProviders[name] = base
+
+		if err := validateDriverKind(base); err != nil {
+			return nil, err
+		}
 
 		if base.APIKeyEnv != "" && os.Getenv(base.APIKeyEnv) == "" {
 			missing = append(missing, name)
@@ -163,30 +177,10 @@ func cloneProvider(p *Provider) *Provider {
 	if p.Args != nil {
 		c.Args = append([]string(nil), p.Args...)
 	}
-	if p.Env != nil {
-		c.Env = make(map[string]string, len(p.Env))
-		for k, v := range p.Env {
-			c.Env[k] = v
-		}
-	}
-	if p.EnvKey != nil {
-		c.EnvKey = make(map[string]string, len(p.EnvKey))
-		for k, v := range p.EnvKey {
-			c.EnvKey[k] = v
-		}
-	}
-	if p.Headers != nil {
-		c.Headers = make(map[string]string, len(p.Headers))
-		for k, v := range p.Headers {
-			c.Headers[k] = v
-		}
-	}
-	if p.HeadersLiteral != nil {
-		c.HeadersLiteral = make(map[string]string, len(p.HeadersLiteral))
-		for k, v := range p.HeadersLiteral {
-			c.HeadersLiteral[k] = v
-		}
-	}
+	c.Env = copyStringMap(p.Env)
+	c.EnvKey = copyStringMap(p.EnvKey)
+	c.Headers = copyStringMap(p.Headers)
+	c.HeadersLiteral = copyStringMap(p.HeadersLiteral)
 	if p.Cost != nil {
 		costCopy := *p.Cost
 		c.Cost = &costCopy
@@ -208,7 +202,9 @@ func clonePersona(p *Persona) *Persona {
 
 // mergeProvider applies non-zero fields from src onto dst (project
 // overrides global). Slice/map fields fully replace when src declares
-// them non-empty; scalar fields replace when non-zero.
+// them non-empty; scalar fields replace when non-zero. Map and slice
+// fields are deep-copied so mutating dst later cannot leak back to
+// src (which may be a long-lived config struct shared across calls).
 func mergeProvider(dst, src *Provider) {
 	if src == nil {
 		return
@@ -238,10 +234,10 @@ func mergeProvider(dst, src *Provider) {
 		dst.BaseCLI = src.BaseCLI
 	}
 	if len(src.Env) > 0 {
-		dst.Env = src.Env
+		dst.Env = copyStringMap(src.Env)
 	}
 	if len(src.EnvKey) > 0 {
-		dst.EnvKey = src.EnvKey
+		dst.EnvKey = copyStringMap(src.EnvKey)
 	}
 	if src.Transport != "" {
 		dst.Transport = src.Transport
@@ -250,10 +246,10 @@ func mergeProvider(dst, src *Provider) {
 		dst.Endpoint = src.Endpoint
 	}
 	if len(src.Headers) > 0 {
-		dst.Headers = src.Headers
+		dst.Headers = copyStringMap(src.Headers)
 	}
 	if len(src.HeadersLiteral) > 0 {
-		dst.HeadersLiteral = src.HeadersLiteral
+		dst.HeadersLiteral = copyStringMap(src.HeadersLiteral)
 	}
 	if src.ToolName != "" {
 		dst.ToolName = src.ToolName
@@ -262,6 +258,32 @@ func mergeProvider(dst, src *Provider) {
 		dst.TimeoutSec = src.TimeoutSec
 	}
 	if src.Cost != nil {
-		dst.Cost = src.Cost
+		costCopy := *src.Cost
+		dst.Cost = &costCopy
 	}
+}
+
+// validateDriverKind rejects providers with an unrecognized driver
+// kind. Loader-level enum validation — without this, a YAML typo like
+// `driver: clil` parses silently and surfaces as a confusing dispatch
+// error downstream.
+func validateDriverKind(p *Provider) error {
+	switch p.Driver {
+	case DriverCLI, DriverHTTP, DriverCLICompat, DriverMCP:
+		return nil
+	case "":
+		return fmt.Errorf("provider %q has no driver kind set; declare driver: cli|http|cli-compat|mcp", p.Name)
+	}
+	return fmt.Errorf("provider %q has unknown driver kind %q (allowed: cli, http, cli-compat, mcp)", p.Name, p.Driver)
+}
+
+func copyStringMap(m map[string]string) map[string]string {
+	if m == nil {
+		return nil
+	}
+	out := make(map[string]string, len(m))
+	for k, v := range m {
+		out[k] = v
+	}
+	return out
 }
