@@ -16,6 +16,9 @@
 kaijutsu.lock.json
 kaijutsu.json
 
+# Swarm consent + run cache (per-repo, never committed)
+.kaijutsu/
+
 # IDE
 .idea/
 .vscode/
