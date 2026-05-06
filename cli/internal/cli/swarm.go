@@ -59,6 +59,7 @@ type commonSwarmFlags struct {
 	personas       []string // v0.6 Stage 3b — opt into persona-driven dispatch
 	estimate       bool    // v0.6 Stage 4 — dry-run, print cost projection, exit 0
 	noTelemWarn    bool    // v0.6 Stage 4 — suppress the cli-compat one-shot warning
+	showWeights    bool    // v0.7 — append (weight) annotation to disagreement-table column headers
 }
 
 func bindCommonFlags(cmd *cobra.Command, f *commonSwarmFlags, supportsPostComment bool) {
@@ -76,6 +77,7 @@ func bindCommonFlags(cmd *cobra.Command, f *commonSwarmFlags, supportsPostCommen
 	cmd.Flags().StringSliceVar(&f.personas, "personas", nil, "comma-separated persona names to dispatch (v0.6 Stage 3b — opts into agents.yaml-driven dispatch; without this flag, legacy v0.5 cli-only auto-detect path runs)")
 	cmd.Flags().BoolVar(&f.estimate, "estimate", false, "dry-run: print per-persona token + cost projection table, then exit 0 without invoking agents")
 	cmd.Flags().BoolVar(&f.noTelemWarn, "no-telemetry-warning", false, "suppress the cli-compat one-shot warning about metadata leakage to harness CLI vendor")
+	cmd.Flags().BoolVar(&f.showWeights, "show-weights", false, "v0.7: annotate disagreement-table column headers with per-agent confidence weights from the findings DB")
 	if supportsPostComment {
 		cmd.Flags().BoolVar(&f.postComment, "post-comment", false, "after synthesis, post the markdown as a PR comment via gh (edits prior kaijutsu-pr-review comment if found)")
 	}
@@ -563,6 +565,15 @@ func runSwarmPipeline(ctx context.Context, cmd *cobra.Command, projectRoot strin
 		fmt.Fprintf(stderr, "warning: Pass-1 cost $%.2f already exceeds --max-cost $%.2f; skipping optional debate/strict passes\n", run.TotalCost, f.maxCostUSD)
 	}
 
+	// v0.7 quality fingerprinting: compute per-agent weights from the
+	// findings DB BEFORE synthesis. Best-effort — when the DB is
+	// absent, weights collapses to nil and Synthesize behaves
+	// byte-identical to v0.6.2 (cold-start contract).
+	synthOpts := swarm.SynthOpts{
+		Weights:     resolveSynthWeights(stderr, projectRoot, preset.Name, results, personaAdapters),
+		ShowWeights: f.showWeights,
+	}
+
 	var (
 		synth    *swarm.Synthesis
 		synthErr error
@@ -573,9 +584,9 @@ func runSwarmPipeline(ctx context.Context, cmd *cobra.Command, projectRoot strin
 		for _, r := range pass2 {
 			run.TotalCost += r.Cost
 		}
-		synth, synthErr = swarm.SynthesizeWithDebate(ctx, results, pass2, synthAgent, preset, f.perAgentBudget, f.timeout)
+		synth, synthErr = swarm.SynthesizeWithDebate(ctx, results, pass2, synthAgent, preset, f.perAgentBudget, f.timeout, synthOpts)
 	} else {
-		synth, synthErr = swarm.Synthesize(ctx, results, synthAgent, preset, f.perAgentBudget, f.timeout)
+		synth, synthErr = swarm.Synthesize(ctx, results, synthAgent, preset, f.perAgentBudget, f.timeout, synthOpts)
 	}
 	if synth != nil {
 		run.TotalCost += synth.Cost
@@ -645,7 +656,11 @@ func runReplay(ctx context.Context, cmd *cobra.Command, projectRoot, presetName,
 	if synthAgent == nil {
 		return errors.New("--replay: no synthesizer agent available; install claude/codex/gemini first")
 	}
-	synth, synthErr := swarm.Synthesize(ctx, results, synthAgent, preset, budget, timeout)
+	// --replay re-uses cached results without invoking models. We
+	// intentionally pass empty SynthOpts so replays remain reproducible
+	// — tying replay output to the current weights snapshot would
+	// surprise users by changing markdown across runs of the same key.
+	synth, synthErr := swarm.Synthesize(ctx, results, synthAgent, preset, budget, timeout, swarm.SynthOpts{})
 	if synthErr != nil {
 		fmt.Fprintf(stderr, "warning: synthesis: %v (using fallback markdown)\n", synthErr)
 	}

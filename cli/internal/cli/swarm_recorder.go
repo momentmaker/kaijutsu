@@ -123,3 +123,52 @@ func providerMap(personas []*personaAdapter) map[string]string {
 func warnFindings(stderr io.Writer, format string, args ...any) {
 	fmt.Fprintf(stderr, "findings: warning: "+format+" (continuing — quality fingerprinting is non-critical)\n", args...)
 }
+
+// resolveSynthWeights computes the per-agent weights map the
+// synthesizer's clusterFindings sort + (optional) --show-weights
+// table-column annotation consume. Returns nil when:
+//   - the findings DB doesn't exist yet (cold-start byte-identical
+//     contract: synthesizer behaves like v0.6.2),
+//   - no agents produced findings (nothing to weight),
+//   - the DB read fails (best-effort — weights are non-critical).
+//
+// The map keys match AgentResult.Agent (persona name in v0.6+, native
+// CLI name in v0.5 legacy mode). swarm.weightFor falls back to 1.0
+// for missing keys, so partial maps are safe.
+func resolveSynthWeights(stderr io.Writer, projectRoot, preset string, results []swarm.AgentResult, personas []*personaAdapter) map[string]float64 {
+	if !anyFindings(results) {
+		return nil
+	}
+	dbPath, err := findings.DefaultPath()
+	if err != nil {
+		return nil
+	}
+	if _, err := os.Stat(dbPath); err != nil {
+		// DB absent → cold-start. Don't warn — that's the v0.6
+		// byte-identical contract, not a degraded path.
+		return nil
+	}
+	store, err := findings.Open(dbPath)
+	if err != nil {
+		warnFindings(stderr, "open db for weights: %v", err)
+		return nil
+	}
+	defer store.Close()
+
+	cwd := projectRoot
+	if cwd == "" {
+		if wd, werr := os.Getwd(); werr == nil {
+			cwd = wd
+		}
+	}
+	fp := findings.Fingerprint(cwd)
+
+	personaNames := make([]string, 0, len(results))
+	for _, r := range results {
+		if r.Err == "" {
+			personaNames = append(personaNames, r.Agent)
+		}
+	}
+	w := findings.NewWeighter(store)
+	return w.WeightsForResults(personaNames, providerMap(personas), preset, fp)
+}
