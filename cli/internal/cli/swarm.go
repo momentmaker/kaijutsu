@@ -483,6 +483,14 @@ func runSwarmPipeline(ctx context.Context, cmd *cobra.Command, projectRoot strin
 		stampDriverKind(results, personaAdapters)
 	}
 
+	// v0.7 quality fingerprinting hook. Best-effort — a failed record
+	// must NOT block the markdown render. Cache key (ictx.CacheKey) is
+	// the run_id; codebase fp is computed from cwd. In legacy mode the
+	// provider-for-persona map is empty (RecordRun falls back to using
+	// the agent name as provider, which is correct: "claude" persona
+	// dispatches via "claude" provider).
+	recordFindingsBestEffort(stderr, projectRoot, ictx.CacheKey, preset.Name, results, personaAdapters)
+
 	run := swarm.SwarmRun{
 		Preset:     preset.Name,
 		PR:         ictx.PR,

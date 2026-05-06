@@ -27,7 +27,14 @@ import (
 // once the swarm pipeline migrates fully to agents.AgentDriver.
 type personaAdapter struct {
 	personaName string
-	driver      agents.AgentDriver
+	// providerName is the underlying provider (e.g. "claude", "deepseek")
+	// the persona dispatches through. Distinct from driver kind: two
+	// personas may share a driver kind (cli) but route to different
+	// providers (claude vs gemini). v0.7 recorder uses this to populate
+	// the `provider` column so per-tuple weight math can scope by
+	// (provider, persona) without re-resolving the registry.
+	providerName string
+	driver       agents.AgentDriver
 
 	// last captures the most recent Invoke's Result so the pipeline
 	// can recover real cost + cache status. Mutex guards the field
@@ -123,7 +130,7 @@ func assemblePersonaJobs(projectRoot string, preset *swarm.Preset, ictx *swarm.I
 			fullPrompt = persona.SystemPrompt + userSentinel + body
 		}
 
-		adapter := &personaAdapter{personaName: name, driver: driver}
+		adapter := &personaAdapter{personaName: name, providerName: persona.Provider, driver: driver}
 		adapters = append(adapters, adapter)
 		jobs = append(jobs, swarm.Job{Agent: adapter, Prompt: fullPrompt})
 	}
