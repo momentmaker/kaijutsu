@@ -40,9 +40,10 @@ func retryableStatus(code int) bool {
 	return code == 429 || (code >= 500 && code < 600)
 }
 
-// nextBackoff returns the wait before the next attempt. Uses Retry-After
-// when the server provides it (honors RFC 7231 — both delta-seconds and
-// HTTP-date); falls back to exponential backoff with full jitter.
+// nextBackoff returns the wait before the next attempt. Uses
+// Retry-After (RFC 7231 delta-seconds form only — HTTP-date deferred)
+// when the server provides it; falls back to exponential backoff with
+// full jitter.
 func nextBackoff(attempt int, retryAfter string) time.Duration {
 	if retryAfter != "" {
 		if secs, err := strconv.Atoi(strings.TrimSpace(retryAfter)); err == nil && secs > 0 {
@@ -389,17 +390,10 @@ func classifyOpenAICache(u openaiUsage) CacheStatus {
 func (d *httpDriver) doWithRetry(ctx context.Context, req *http.Request, body []byte) ([]byte, int, error) {
 	var lastBody []byte
 	var lastStatus int
+	var lastRetryAfter string
 	for attempt := 0; attempt <= httpMaxRetries; attempt++ {
 		if attempt > 0 {
-			retryAfter := ""
-			if lastStatus == 429 || (lastStatus >= 500 && lastStatus < 600) {
-				// Use last response's Retry-After if present.
-				// (We don't have the response object here anymore;
-				// nextBackoff falls back to jitter when retryAfter
-				// is empty. Future enhancement: capture Retry-After
-				// inline.)
-			}
-			delay := nextBackoff(attempt-1, retryAfter)
+			delay := nextBackoff(attempt-1, lastRetryAfter)
 			select {
 			case <-ctx.Done():
 				return nil, 0, ctx.Err()
@@ -418,6 +412,11 @@ func (d *httpDriver) doWithRetry(ctx context.Context, req *http.Request, body []
 			return nil, 0, err
 		}
 		readBody, readErr := io.ReadAll(io.LimitReader(resp.Body, 8*1024*1024))
+		// Capture Retry-After before closing — used by the next
+		// attempt's nextBackoff(). RFC 7231 says servers MAY send
+		// this on 429/503; honoring it avoids hammering when the
+		// server has explicitly asked us to wait.
+		lastRetryAfter = resp.Header.Get("Retry-After")
 		_ = resp.Body.Close()
 		if readErr != nil {
 			return nil, resp.StatusCode, fmt.Errorf("read body: %v", readErr)

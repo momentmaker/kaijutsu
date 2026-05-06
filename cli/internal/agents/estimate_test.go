@@ -122,6 +122,52 @@ func TestFormatProjection_NoRateCardLabel(t *testing.T) {
 	}
 }
 
+func TestCountTokensForProvider_OpenAICompatUsesTiktoken(t *testing.T) {
+	p := &Provider{Protocol: "openai-compat", Model: "gpt-4o"}
+	// "Hello world" is 2 tokens with cl100k_base / o200k_base.
+	tokens, accuracy := CountTokensForProvider(p, "Hello world")
+	if tokens != 2 {
+		t.Errorf("openai-compat tokens = %d, want 2 (tiktoken accuracy)", tokens)
+	}
+	if accuracy != EstimateAccuracyTokenizerPct {
+		t.Errorf("accuracy = %d, want %d", accuracy, EstimateAccuracyTokenizerPct)
+	}
+}
+
+func TestCountTokensForProvider_AnthropicFallsBackToCharCount(t *testing.T) {
+	p := &Provider{Protocol: "anthropic-compat", Model: "claude-opus-4-7"}
+	tokens, accuracy := CountTokensForProvider(p, "Hello world")
+	// Char fallback: 11 chars / 4 = 3 (rounded up).
+	if tokens != 3 {
+		t.Errorf("anthropic char-fallback tokens = %d, want 3", tokens)
+	}
+	if accuracy != EstimateAccuracyFallbackPct {
+		t.Errorf("accuracy = %d, want %d (char-count fallback)", accuracy, EstimateAccuracyFallbackPct)
+	}
+}
+
+func TestCountTokensForProvider_UnknownOpenAIModelFallsBackToCl100k(t *testing.T) {
+	// deepseek-chat isn't in tiktoken's model registry, but
+	// countTokensTiktoken falls back to cl100k_base which still
+	// gives a real token count (better than char-count).
+	p := &Provider{Protocol: "openai-compat", Model: "deepseek-chat"}
+	tokens, accuracy := CountTokensForProvider(p, "Hello world")
+	if tokens == 0 {
+		t.Fatal("expected non-zero token count from cl100k_base fallback")
+	}
+	if accuracy != EstimateAccuracyTokenizerPct {
+		t.Errorf("accuracy = %d, want %d (cl100k_base counts as native)", accuracy, EstimateAccuracyTokenizerPct)
+	}
+}
+
+func TestCountTokensForProvider_EmptyInput(t *testing.T) {
+	p := &Provider{Protocol: "openai-compat", Model: "gpt-4o"}
+	tokens, _ := CountTokensForProvider(p, "")
+	if tokens != 0 {
+		t.Errorf("empty input tokens = %d, want 0", tokens)
+	}
+}
+
 func floatNear(a, b, eps float64) bool {
 	d := a - b
 	if d < 0 {

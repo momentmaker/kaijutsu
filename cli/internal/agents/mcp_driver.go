@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 	"time"
 )
@@ -126,7 +127,7 @@ func (d *mcpDriver) invokeHTTP(ctx context.Context, prompt string) (Result, erro
 		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("tools/list: %v", err))
 	}
 	available, _ := extractToolNames(listResp)
-	if len(available) > 0 && !containsString(available, tool) {
+	if len(available) > 0 && !slices.Contains(available, tool) {
 		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("tool %q not exposed by mcp server %q (available: %v). Set tool_name: in agents.yaml.", tool, d.provider.Name, available))
 	}
 
@@ -332,7 +333,7 @@ func (d *mcpDriver) invokeStdio(ctx context.Context, prompt string) (Result, err
 		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("tools/list response id mismatch: got %d, want %d", listResp.ID, listID))
 	}
 	available, err := extractToolNames(listResp)
-	if err == nil && len(available) > 0 && !containsString(available, tool) {
+	if err == nil && len(available) > 0 && !slices.Contains(available, tool) {
 		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("tool %q not exposed by mcp server %q (available: %v). Set tool_name: in agents.yaml to one of those.", tool, d.provider.Name, available))
 	}
 	// 4. tools/call for analyze.
@@ -390,15 +391,6 @@ func extractToolNames(resp *mcpRPCResponse) ([]string, error) {
 		out = append(out, t.Name)
 	}
 	return out, nil
-}
-
-func containsString(haystack []string, needle string) bool {
-	for _, s := range haystack {
-		if s == needle {
-			return true
-		}
-	}
-	return false
 }
 
 // extractMCPText reads the response's content[0].text field, which is
