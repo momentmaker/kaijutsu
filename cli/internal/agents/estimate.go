@@ -4,12 +4,23 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/pkoukk/tiktoken-go"
 )
 
 // EstimateAccuracyPct is the disclaimer band reported in --estimate's
-// footer. Char-count fallback (current) is ±20% per spec D9; provider-
-// native tokenizers (deferred to v0.6.x) will tighten to ±5%.
-const EstimateAccuracyPct = 20
+// footer. tiktoken-go for openai-compat providers tightens accuracy
+// to ±5%; char-count fallback for unknown providers + Anthropic is
+// ±20% (Anthropic's count_tokens API requires a key + network call,
+// not worth the round-trip in a dry-run command).
+const (
+	EstimateAccuracyTokenizerPct = 5
+	EstimateAccuracyFallbackPct  = 20
+	// EstimateAccuracyPct is the LARGER of the two — surfaces the
+	// worst case in the footer disclaimer when a swarm spans both
+	// kinds of providers.
+	EstimateAccuracyPct = EstimateAccuracyFallbackPct
+)
 
 // CharsPerToken is the rough heuristic used by the char-count
 // fallback tokenizer: 1 token ≈ 4 chars for English code/markdown.
@@ -19,13 +30,33 @@ const CharsPerToken = 4
 
 // CountTokensCharFallback estimates token count from byte length using
 // the 4-chars-per-token heuristic. Returns 0 for empty input. Used by
-// estimate when no provider-native tokenizer is available.
+// estimate when no provider-native tokenizer is available (Anthropic
+// providers, unknown protocols).
 func CountTokensCharFallback(s string) int {
 	if s == "" {
 		return 0
 	}
 	// Round up so a 1-char prompt counts as 1 token, not 0.
 	return (len(s) + CharsPerToken - 1) / CharsPerToken
+}
+
+// CountTokensForProvider picks the most accurate tokenizer for a given
+// provider and falls back to char-count when no native tokenizer is
+// available.
+//
+// Returns (tokenCount, accuracyPct). accuracyPct is 5 when a native
+// tokenizer ran and 20 for the char-count fallback — caller surfaces
+// this in the --estimate footer.
+func CountTokensForProvider(p *Provider, s string) (int, int) {
+	if s == "" {
+		return 0, EstimateAccuracyTokenizerPct
+	}
+	if p != nil && p.Protocol == "openai-compat" {
+		if n, ok := countTokensTiktoken(p.Model, s); ok {
+			return n, EstimateAccuracyTokenizerPct
+		}
+	}
+	return CountTokensCharFallback(s), EstimateAccuracyFallbackPct
 }
 
 // OutputTokensEstimate is a fixed conservative estimate of how many
@@ -47,6 +78,28 @@ type CostProjection struct {
 	Stale          bool    // true when rate_card_date is older than 90 days
 	StaleDays      int     // age of rate card; 0 if not stale or absent
 	HasRateCard    bool
+	// AccuracyPct is the tokenizer's accuracy band for this projection
+	// (5 for native tiktoken, 20 for char-count fallback). Used by
+	// the footer to show the worst case across all rows.
+	AccuracyPct int
+}
+
+// countTokensTiktoken runs tiktoken-go against the provider's model.
+// Returns (tokens, true) on success, (0, false) when the model isn't
+// recognized by tiktoken (unknown openai-compat models like
+// deepseek-chat fall back to cl100k_base which is close enough for
+// dry-run purposes).
+func countTokensTiktoken(model, s string) (int, bool) {
+	enc, err := tiktoken.EncodingForModel(model)
+	if err != nil {
+		// Unknown model: fall back to cl100k_base (GPT-4 / GPT-3.5
+		// tokenizer; covers most openai-compat dialects within ±10%).
+		enc, err = tiktoken.GetEncoding("cl100k_base")
+		if err != nil {
+			return 0, false
+		}
+	}
+	return len(enc.Encode(s, nil, nil)), true
 }
 
 // ProjectCost computes the projected cost of one Invoke call given a
@@ -63,13 +116,14 @@ type CostProjection struct {
 // 1024-token threshold) bill cached input at 10-50% of normal rate.
 // `--estimate` shows the worst case so users budget against the ceiling.
 func ProjectCost(personaName string, provider *Provider, prompt string) CostProjection {
-	in := CountTokensCharFallback(prompt)
+	in, accuracy := CountTokensForProvider(provider, prompt)
 	cp := CostProjection{
 		PersonaName:    personaName,
 		ProviderName:   provider.Name,
 		DriverKind:     provider.Driver,
 		InputTokens:    in,
 		OutputEstimate: OutputTokensEstimate,
+		AccuracyPct:    accuracy,
 	}
 	if provider.Cost == nil {
 		return cp

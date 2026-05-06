@@ -63,6 +63,51 @@ func TestRenderDisagreementTable_OrdersAgentsCanonically(t *testing.T) {
 	}
 }
 
+func TestClusterFindings_DropsMCPInfoSeverity(t *testing.T) {
+	results := []AgentResult{
+		{Agent: "claude", Driver: "cli", Findings: []Finding{
+			{Severity: SeverityInfo, File: "a.go", LineRange: "10", Summary: "llm-info kept"},
+		}},
+		{Agent: "semgrep-mcp", Driver: "mcp", Findings: []Finding{
+			{Severity: SeverityInfo, File: "b.go", LineRange: "20", Summary: "mcp-info dropped"},
+			{Severity: SeverityIssue, File: "c.go", LineRange: "30", Summary: "mcp-issue kept"},
+		}},
+	}
+	clusters := clusterFindings(results)
+	for _, g := range clusters {
+		if g.Key == "b.go:20" {
+			t.Errorf("MCP info-tier finding should have been dropped, but cluster present: %+v", g)
+		}
+	}
+	// LLM info kept + MCP issue kept = 2 clusters.
+	if len(clusters) != 2 {
+		t.Errorf("expected 2 clusters (llm-info kept + mcp-issue kept), got %d", len(clusters))
+	}
+}
+
+func TestRenderDisagreementTable_TagsMCPColumns(t *testing.T) {
+	results := []AgentResult{
+		{Agent: "claude", Driver: "cli", Findings: []Finding{
+			{Severity: SeverityIssue, File: "a", LineRange: "1", Summary: "s"},
+		}},
+		{Agent: "semgrep-mcp", Driver: "mcp", Findings: []Finding{
+			{Severity: SeverityIssue, File: "a", LineRange: "1", Summary: "s"},
+		}},
+	}
+	clusters := clusterFindings(results)
+	table := renderDisagreementTable(results, clusters)
+	if !strings.Contains(table, "semgrep-mcp [deterministic]") {
+		t.Errorf("expected '[deterministic]' tag on MCP column header; got:\n%s", table)
+	}
+	if !strings.Contains(table, "✓⚙") {
+		t.Errorf("expected gear-marked check ✓⚙ for MCP cell; got:\n%s", table)
+	}
+	// LLM column should NOT carry the gear marker or tag.
+	if strings.Contains(table, "claude [deterministic]") {
+		t.Errorf("cli column should not carry [deterministic] tag; got:\n%s", table)
+	}
+}
+
 func TestRenderDisagreementTable_EmptyOnNoClusters(t *testing.T) {
 	if got := renderDisagreementTable(nil, nil); got != "" {
 		t.Fatalf("want empty, got %q", got)

@@ -2,6 +2,11 @@ package agents
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -67,15 +72,96 @@ func TestMCPDriver_StdioServerErrorSurfaces(t *testing.T) {
 	}
 }
 
-func TestMCPDriver_RejectsHTTPTransport(t *testing.T) {
+func TestMCPDriver_HTTPRequiresEndpoint(t *testing.T) {
 	d := &mcpDriver{provider: &Provider{
-		Name: "x", Driver: DriverMCP, Transport: "http", Endpoint: "https://x",
+		Name: "x", Driver: DriverMCP, Transport: "http",
 	}}
 	_, err := d.Invoke(context.Background(), "x", InvokeOpts{})
 	if err == nil {
-		t.Fatal("expected error for http transport (not implemented); got nil")
+		t.Fatal("expected error for missing endpoint; got nil")
 	}
-	if !strings.Contains(err.Error(), "http transport not implemented") {
+	if !strings.Contains(err.Error(), "endpoint field") {
+		t.Errorf("error = %v", err)
+	}
+}
+
+func TestMCPDriver_HTTPHappyPath(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			ID     int    `json:"id"`
+			Method string `json:"method"`
+		}
+		body, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(body, &req)
+		w.Header().Set("content-type", "application/json")
+		switch req.Method {
+		case "initialize":
+			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%d,"result":{"protocolVersion":"2025-11-25","capabilities":{}}}`, req.ID)
+		case "notifications/initialized":
+			w.WriteHeader(http.StatusAccepted)
+		case "tools/list":
+			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%d,"result":{"tools":[{"name":"analyze"}]}}`, req.ID)
+		case "tools/call":
+			findings := `[{"severity":"issue","summary":"http-stub finding","file":"x","line_range":"1"}]`
+			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%d,"result":{"content":[{"type":"text","text":%q}]}}`, req.ID, findings)
+		}
+	}))
+	defer srv.Close()
+
+	d := &mcpDriver{provider: &Provider{
+		Name:      "stub-http-mcp",
+		Driver:    DriverMCP,
+		Transport: "http",
+		Endpoint:  srv.URL,
+	}}
+	res, err := d.Invoke(context.Background(), "x", InvokeOpts{})
+	if err != nil {
+		t.Fatalf("Invoke: %v", err)
+	}
+	if res.Driver != DriverMCP {
+		t.Errorf("Driver = %q, want %q", res.Driver, DriverMCP)
+	}
+	if res.CostUSD != 0 {
+		t.Errorf("CostUSD = %v, want 0", res.CostUSD)
+	}
+	if !strings.Contains(res.Raw, "http-stub finding") {
+		t.Errorf("Raw = %q", res.Raw)
+	}
+}
+
+func TestMCPDriver_HTTPRejectsToolNotInList(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			ID     int    `json:"id"`
+			Method string `json:"method"`
+		}
+		body, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(body, &req)
+		w.Header().Set("content-type", "application/json")
+		switch req.Method {
+		case "initialize":
+			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}`, req.ID)
+		case "notifications/initialized":
+			w.WriteHeader(http.StatusAccepted)
+		case "tools/list":
+			// Server only exposes "scan", not "analyze".
+			fmt.Fprintf(w, `{"jsonrpc":"2.0","id":%d,"result":{"tools":[{"name":"scan"}]}}`, req.ID)
+		}
+	}))
+	defer srv.Close()
+
+	d := &mcpDriver{provider: &Provider{
+		Name:      "x",
+		Driver:    DriverMCP,
+		Transport: "http",
+		Endpoint:  srv.URL,
+		// ToolName left empty → defaults to "analyze" → rejected.
+	}}
+	_, err := d.Invoke(context.Background(), "x", InvokeOpts{})
+	if err == nil {
+		t.Fatal("expected error for missing tool; got nil")
+	}
+	if !strings.Contains(err.Error(), "not exposed") {
 		t.Errorf("error = %v", err)
 	}
 }

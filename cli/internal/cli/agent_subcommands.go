@@ -233,7 +233,29 @@ func toggleEnabled(out io.Writer, name string, enable bool) error {
 			fmt.Fprintf(out, "provider %q already enabled\n", name)
 			return nil
 		}
-		c.Enabled = append(c.Enabled, name)
+		// First-time enable on an empty list seeds the legacy v0.5
+		// mix to avoid the "agent add deepseek + agent enable
+		// deepseek silently dropped my claude/codex/gemini" UX trap.
+		// Resolve was reading an absent enabled list as "fall back to
+		// legacy mix"; the moment the user wrote a single entry, the
+		// legacy mix evaporated. Now the first enable explicitly
+		// preserves it.
+		if len(c.Enabled) == 0 {
+			c.Enabled = append(c.Enabled, agents.LegacyEnabledMix()...)
+			fmt.Fprintf(out, "(seeded enabled list with legacy v0.5 mix: %v)\n", agents.LegacyEnabledMix())
+		}
+		// Skip if seeding already added it (e.g. enabling claude on
+		// an empty list).
+		seeded := false
+		for _, n := range c.Enabled {
+			if n == name {
+				seeded = true
+				break
+			}
+		}
+		if !seeded {
+			c.Enabled = append(c.Enabled, name)
+		}
 	} else {
 		if idx < 0 {
 			fmt.Fprintf(out, "provider %q not in enabled list (no-op)\n", name)

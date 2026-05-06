@@ -406,6 +406,114 @@ func TestBuildDriver_NilProvider(t *testing.T) {
 	}
 }
 
+// --- Retry tests -----------------------------------------------------
+
+func TestHTTPDriver_RetriesOn429ThenSucceeds(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if calls < 2 {
+			w.Header().Set("Retry-After", "0")
+			http.Error(w, "rate limited", http.StatusTooManyRequests)
+			return
+		}
+		_, _ = w.Write([]byte(`{"content":[{"type":"text","text":"recovered"}],"usage":{}}`))
+	}))
+	defer srv.Close()
+	t.Setenv("K", "v")
+
+	d := newTestHTTPDriver(srv.URL, protocolAnthropic, "m", "K")
+	res, err := d.Invoke(context.Background(), "x", InvokeOpts{})
+	if err != nil {
+		t.Fatalf("Invoke after retry: %v", err)
+	}
+	if res.Raw != "recovered" {
+		t.Errorf("Raw = %q, want %q", res.Raw, "recovered")
+	}
+	if calls != 2 {
+		t.Errorf("expected exactly 2 server hits (one 429, one 200), got %d", calls)
+	}
+}
+
+func TestHTTPDriver_RetriesOn503(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if calls == 1 {
+			http.Error(w, "down", http.StatusServiceUnavailable)
+			return
+		}
+		_, _ = w.Write([]byte(`{"content":[{"type":"text","text":"ok"}],"usage":{}}`))
+	}))
+	defer srv.Close()
+	t.Setenv("K", "v")
+
+	d := newTestHTTPDriver(srv.URL, protocolAnthropic, "m", "K")
+	res, err := d.Invoke(context.Background(), "x", InvokeOpts{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Raw != "ok" {
+		t.Errorf("Raw = %q", res.Raw)
+	}
+	if calls != 2 {
+		t.Errorf("calls = %d, want 2", calls)
+	}
+}
+
+func TestHTTPDriver_DoesNotRetryOn401(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		http.Error(w, "bad key", http.StatusUnauthorized)
+	}))
+	defer srv.Close()
+	t.Setenv("K", "v")
+
+	d := newTestHTTPDriver(srv.URL, protocolAnthropic, "m", "K")
+	_, err := d.Invoke(context.Background(), "x", InvokeOpts{})
+	if err == nil {
+		t.Fatal("expected error on 401")
+	}
+	if calls != 1 {
+		t.Errorf("auth errors should not retry; got %d calls", calls)
+	}
+}
+
+func TestHTTPDriver_GivesUpAfterMaxRetries(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		http.Error(w, "still 429", http.StatusTooManyRequests)
+	}))
+	defer srv.Close()
+	t.Setenv("K", "v")
+
+	d := newTestHTTPDriver(srv.URL, protocolAnthropic, "m", "K")
+	_, err := d.Invoke(context.Background(), "x", InvokeOpts{})
+	if err == nil {
+		t.Fatal("expected error after exhausted retries")
+	}
+	want := httpMaxRetries + 1 // 1 initial + retries
+	if calls != want {
+		t.Errorf("expected %d total attempts (%d retries + 1 initial), got %d", want, httpMaxRetries, calls)
+	}
+}
+
+func TestNextBackoff_HonorsRetryAfter(t *testing.T) {
+	d := nextBackoff(0, "2")
+	if d < 2*time.Second || d > 2*time.Second {
+		t.Errorf("Retry-After=2 should give exactly 2s, got %v", d)
+	}
+}
+
+func TestNextBackoff_NoRetryAfterUsesJitter(t *testing.T) {
+	d := nextBackoff(0, "")
+	if d < 0 || d > httpBaseBackoff {
+		t.Errorf("attempt 0 jitter should be in [0, %v], got %v", httpBaseBackoff, d)
+	}
+}
+
 // --- Test helper -----------------------------------------------------
 
 // newTestHTTPDriver constructs a Provider + httpDriver pointing at a

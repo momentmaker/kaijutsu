@@ -7,8 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand/v2"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -21,6 +23,46 @@ import (
 type httpDriver struct {
 	provider *Provider
 	client   *http.Client
+}
+
+// Retry policy: on 429 (rate limit) and 5xx (server error) only.
+// Auth errors (4xx other than 429) and parse errors don't retry —
+// they're not transient. Honors Retry-After header when present;
+// otherwise exponential backoff with full jitter.
+const (
+	httpMaxRetries     = 2 // total attempts = retries + 1 = 3
+	httpBaseBackoff    = 500 * time.Millisecond
+	httpMaxBackoff     = 8 * time.Second
+)
+
+// retryableStatus reports whether an HTTP status warrants a retry.
+func retryableStatus(code int) bool {
+	return code == 429 || (code >= 500 && code < 600)
+}
+
+// nextBackoff returns the wait before the next attempt. Uses
+// Retry-After (RFC 7231 delta-seconds form only — HTTP-date deferred)
+// when the server provides it; falls back to exponential backoff with
+// full jitter.
+func nextBackoff(attempt int, retryAfter string) time.Duration {
+	if retryAfter != "" {
+		if secs, err := strconv.Atoi(strings.TrimSpace(retryAfter)); err == nil && secs > 0 {
+			d := time.Duration(secs) * time.Second
+			if d > httpMaxBackoff {
+				return httpMaxBackoff
+			}
+			return d
+		}
+	}
+	// Full-jitter exponential: rand[0, base * 2^attempt], capped.
+	cap := time.Duration(1<<attempt) * httpBaseBackoff
+	if cap > httpMaxBackoff {
+		cap = httpMaxBackoff
+	}
+	// math/rand/v2 — goroutine-safe by design (Go 1.22+). N(int64) is
+	// equivalent to v1's Int63n; eliminates the data-race risk under
+	// concurrent retry loops.
+	return time.Duration(rand.Int64N(int64(cap) + 1))
 }
 
 // Anthropic-compat protocol values.
@@ -134,18 +176,12 @@ func (d *httpDriver) invokeAnthropic(ctx context.Context, prompt string, apiKey 
 	httpReq.Header.Set("anthropic-version", "2023-06-01")
 
 	start := time.Now()
-	resp, err := d.httpClient().Do(httpReq)
+	respBody, status, err := d.doWithRetry(ctx, httpReq, body)
 	if err != nil {
 		return errResult(DriverHTTP, time.Since(start), fmt.Sprintf("anthropic request: %v", err))
 	}
-	defer resp.Body.Close()
-
-	respBody, readErr := io.ReadAll(io.LimitReader(resp.Body, 8*1024*1024))
-	if readErr != nil {
-		return errResult(DriverHTTP, time.Since(start), fmt.Sprintf("read anthropic response: %v", readErr))
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return errResult(DriverHTTP, time.Since(start), fmt.Sprintf("anthropic %d: %s", resp.StatusCode, SanitizeForLog(trimErr(string(respBody)))))
+	if status < 200 || status >= 300 {
+		return errResult(DriverHTTP, time.Since(start), fmt.Sprintf("anthropic %d: %s", status, SanitizeForLog(trimErr(string(respBody)))))
 	}
 	var ar anthropicResponse
 	if err := json.Unmarshal(respBody, &ar); err != nil {
@@ -278,18 +314,12 @@ func (d *httpDriver) invokeOpenAI(ctx context.Context, prompt string, apiKey str
 	}
 
 	start := time.Now()
-	resp, err := d.httpClient().Do(httpReq)
+	respBody, status, err := d.doWithRetry(ctx, httpReq, body)
 	if err != nil {
 		return errResult(DriverHTTP, time.Since(start), fmt.Sprintf("openai request: %v", err))
 	}
-	defer resp.Body.Close()
-
-	respBody, readErr := io.ReadAll(io.LimitReader(resp.Body, 8*1024*1024))
-	if readErr != nil {
-		return errResult(DriverHTTP, time.Since(start), fmt.Sprintf("read openai response: %v", readErr))
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return errResult(DriverHTTP, time.Since(start), fmt.Sprintf("openai %d: %s", resp.StatusCode, SanitizeForLog(trimErr(string(respBody)))))
+	if status < 200 || status >= 300 {
+		return errResult(DriverHTTP, time.Since(start), fmt.Sprintf("openai %d: %s", status, SanitizeForLog(trimErr(string(respBody)))))
 	}
 	var or openaiResponse
 	if err := json.Unmarshal(respBody, &or); err != nil {
@@ -350,6 +380,59 @@ func classifyOpenAICache(u openaiUsage) CacheStatus {
 }
 
 // --- Helpers ----------------------------------------------------------
+
+// doWithRetry sends the request and reads the body. On 429/5xx it
+// retries up to httpMaxRetries times with exponential backoff +
+// full jitter (or Retry-After when the server provides it). Returns
+// the final body bytes + status code; (nil, 0, error) on transport
+// failures or context cancellation.
+//
+// The original request body is reused across retries by re-cloning
+// from the captured `body` byte slice — http.Request.Body is a
+// io.ReadCloser that's consumed on first send.
+func (d *httpDriver) doWithRetry(ctx context.Context, req *http.Request, body []byte) ([]byte, int, error) {
+	var lastBody []byte
+	var lastStatus int
+	var lastRetryAfter string
+	for attempt := 0; attempt <= httpMaxRetries; attempt++ {
+		if attempt > 0 {
+			delay := nextBackoff(attempt-1, lastRetryAfter)
+			select {
+			case <-ctx.Done():
+				return nil, 0, ctx.Err()
+			case <-time.After(delay):
+			}
+			// Recreate the body reader (consumed on prior attempt).
+			req.Body = io.NopCloser(bytes.NewReader(body))
+			req.GetBody = func() (io.ReadCloser, error) {
+				return io.NopCloser(bytes.NewReader(body)), nil
+			}
+		}
+		resp, err := d.httpClient().Do(req)
+		if err != nil {
+			// Transport-level error — not retryable (DNS / connection
+			// refused / cert problem / context cancellation).
+			return nil, 0, err
+		}
+		readBody, readErr := io.ReadAll(io.LimitReader(resp.Body, 8*1024*1024))
+		// Capture Retry-After before closing — used by the next
+		// attempt's nextBackoff(). RFC 7231 says servers MAY send
+		// this on 429/503; honoring it avoids hammering when the
+		// server has explicitly asked us to wait.
+		lastRetryAfter = resp.Header.Get("Retry-After")
+		_ = resp.Body.Close()
+		if readErr != nil {
+			return nil, resp.StatusCode, fmt.Errorf("read body: %v", readErr)
+		}
+		lastBody = readBody
+		lastStatus = resp.StatusCode
+		if !retryableStatus(resp.StatusCode) {
+			return readBody, resp.StatusCode, nil
+		}
+		// Will retry (if attempts remain).
+	}
+	return lastBody, lastStatus, nil
+}
 
 func (d *httpDriver) httpClient() *http.Client {
 	if d.client != nil {

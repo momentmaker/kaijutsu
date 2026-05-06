@@ -35,6 +35,13 @@ type Preset struct {
 	// receive in Pass 1. Templates expect %s where the input
 	// (diff/files/prompt) is substituted in.
 	PerAgent map[AgentName]string
+	// DefaultPrompt is the template used when persona dispatch picks a
+	// provider that has no PerAgent entry (e.g. deepseek/glm/kimi —
+	// any new HTTP provider added via `jutsu agent add`). Without
+	// this, the persona pipeline errored out for non-claude/codex/
+	// gemini providers per the Stage 3b note. Falls back to PerAgent
+	// [AgentClaude] when DefaultPrompt is empty.
+	DefaultPrompt string
 	// Synthesizer prompt template. Consumes the marshalled per-agent
 	// findings JSON via %s.
 	Synthesizer string
@@ -55,6 +62,30 @@ type Preset struct {
 	// .kaijutsu/. Defaults to "<Name>.yaml" when empty. Used by
 	// consent.go.
 	ConfigBaseName string
+}
+
+// PromptFor returns the per-agent prompt template for the given
+// provider name, falling back to DefaultPrompt (or PerAgent[AgentClaude]
+// when DefaultPrompt is also unset). Returns ok=false when neither
+// the agent-specific template, nor DefaultPrompt, nor a claude
+// template exists — caller errors with a clear hint.
+//
+// Resolution order (highest priority first):
+//  1. PerAgent[AgentName(name)]   — exact match for claude/codex/gemini
+//  2. DefaultPrompt               — preset's generalist fallback
+//  3. PerAgent[AgentClaude]       — implicit fallback for presets
+//                                    that didn't author a Default
+func (p *Preset) PromptFor(name string) (string, bool) {
+	if t, ok := p.PerAgent[AgentName(name)]; ok {
+		return t, true
+	}
+	if p.DefaultPrompt != "" {
+		return p.DefaultPrompt, true
+	}
+	if t, ok := p.PerAgent[AgentClaude]; ok {
+		return t, true
+	}
+	return "", false
 }
 
 // cachePathSegment returns the per-preset cache subdir, falling back

@@ -63,6 +63,16 @@ func main() {
 			_ = wtr.Flush()
 		case "notifications/initialized":
 			// no response for notifications
+		case "tools/list":
+			_ = enc.Encode(rpcResponse{
+				JSONRPC: "2.0", ID: *req.ID,
+				Result: map[string]any{
+					"tools": []map[string]any{
+						{"name": "analyze", "description": "stub analyze tool"},
+					},
+				},
+			})
+			_ = wtr.Flush()
 		case "tools/call":
 			behavior := os.Getenv("STUB_BEHAVIOR")
 			if behavior == "" {

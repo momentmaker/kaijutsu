@@ -63,6 +63,12 @@ type AgentResult struct {
 	Duration time.Duration `json:"duration_ns"`
 	Err      string    `json:"error,omitempty"`
 	Raw      string    `json:"-"` // not serialized; used for cache/replay
+	// Driver kind that produced this result ("cli" | "http" |
+	// "cli-compat" | "mcp"). Populated by the persona-mode pipeline
+	// in cli/swarm.go; empty for legacy v0.5 cli-only path. Used by
+	// the synthesizer to tag deterministic-peer findings (mcp) and
+	// apply the info-severity floor for mcp-only entries.
+	Driver string `json:"driver,omitempty"`
 }
 
 // SwarmRun is the top-level result of a single jutsu-swarm invocation.

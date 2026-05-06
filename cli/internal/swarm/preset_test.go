@@ -8,6 +8,59 @@ import (
 	"testing"
 )
 
+func TestPromptFor_ExactAgentMatchWins(t *testing.T) {
+	p := &Preset{
+		Name: "test",
+		PerAgent: map[AgentName]string{
+			AgentClaude: "claude-template",
+			AgentCodex:  "codex-template",
+		},
+	}
+	got, ok := p.PromptFor("codex")
+	if !ok || got != "codex-template" {
+		t.Errorf("got %q ok=%v, want codex-template true", got, ok)
+	}
+}
+
+func TestPromptFor_FallsBackToDefaultPrompt(t *testing.T) {
+	p := &Preset{
+		Name: "test",
+		PerAgent: map[AgentName]string{
+			AgentClaude: "claude-template",
+		},
+		DefaultPrompt: "default-template",
+	}
+	got, ok := p.PromptFor("deepseek")
+	if !ok || got != "default-template" {
+		t.Errorf("got %q ok=%v, want default-template true", got, ok)
+	}
+}
+
+func TestPromptFor_FallsBackToClaudeWhenNoDefault(t *testing.T) {
+	p := &Preset{
+		Name: "test",
+		PerAgent: map[AgentName]string{
+			AgentClaude: "claude-template",
+			AgentGemini: "gemini-template",
+		},
+	}
+	got, ok := p.PromptFor("deepseek")
+	if !ok || got != "claude-template" {
+		t.Errorf("got %q ok=%v, want claude-template (implicit fallback) true", got, ok)
+	}
+}
+
+func TestPromptFor_NoMatchReturnsFalse(t *testing.T) {
+	p := &Preset{
+		Name:     "test",
+		PerAgent: map[AgentName]string{AgentCodex: "codex-template"},
+	}
+	_, ok := p.PromptFor("deepseek")
+	if ok {
+		t.Error("expected ok=false when no match + no default + no claude template")
+	}
+}
+
 // TestGeminiPromptToolsPolicyInSync asserts that the TOOLS POLICY
 // paragraph is byte-identical between the in-binary fallback prompt
 // (preset.PerAgent[AgentGemini] in preset.go) and the skill-shipped

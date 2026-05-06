@@ -8,7 +8,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
+	"os"
 	"os/exec"
+	"slices"
 	"strings"
 	"time"
 )
@@ -63,9 +66,210 @@ func (d *mcpDriver) Invoke(ctx context.Context, prompt string, opts InvokeOpts) 
 	case "stdio":
 		return d.invokeStdio(ctx, prompt)
 	case "http":
-		return errResult(DriverMCP, 0, fmt.Sprintf("provider %q (mcp): http transport not implemented in v0.6 (stdio only)", d.provider.Name))
+		return d.invokeHTTP(ctx, prompt)
 	}
-	return errResult(DriverMCP, 0, fmt.Sprintf("provider %q (mcp): unsupported transport %q (allowed: stdio)", d.provider.Name, d.provider.Transport))
+	return errResult(DriverMCP, 0, fmt.Sprintf("provider %q (mcp): unsupported transport %q (allowed: stdio, http)", d.provider.Name, d.provider.Transport))
+}
+
+
+// invokeHTTP implements MCP over HTTP per the 2025-11-25 Streamable
+// HTTP transport — synchronous JSON response only (SSE streaming
+// deferred to v0.7). Each JSON-RPC message is POSTed to the configured
+// endpoint and the response read inline.
+//
+// Headers: HeadersLiteral entries are sent as-is; Headers entries
+// resolve env-var indirection at invoke time (header-name → value of
+// the env var named in Headers[header-name]).
+func (d *mcpDriver) invokeHTTP(ctx context.Context, prompt string) (Result, error) {
+	if d.provider.Endpoint == "" {
+		return errResult(DriverMCP, 0, fmt.Sprintf("provider %q: http transport requires endpoint field", d.provider.Name))
+	}
+	timeout := mcpStdioTimeout
+	if d.provider.TimeoutSec > 0 {
+		timeout = time.Duration(d.provider.TimeoutSec) * time.Second
+	}
+	subCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	start := time.Now()
+
+	httpRPC := &mcpHTTPClient{
+		ctx:      subCtx,
+		endpoint: d.provider.Endpoint,
+		headers:  buildMCPHeaders(d.provider),
+	}
+
+	// 1. initialize
+	const initID = 1
+	initResp, err := httpRPC.call(initID, "initialize", map[string]any{
+		"protocolVersion": "2025-11-25",
+		"clientInfo":      map[string]string{"name": "jutsu", "version": "0.6.1"},
+		"capabilities":    map[string]any{},
+	})
+	if err != nil {
+		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("initialize: %v", err))
+	}
+	if initResp.ID != initID {
+		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("initialize id mismatch: got %d want %d", initResp.ID, initID))
+	}
+	// 2. notifications/initialized — http MCP servers per spec accept
+	// notifications as POSTs without expecting a response body
+	// (server typically 200/202 with empty body). Any non-2xx means
+	// the handshake desynced; abort instead of pressing on.
+	if err := httpRPC.notify("notifications/initialized", nil); err != nil {
+		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("notify initialized: %v", err))
+	}
+
+	// 3. tools/list discovery
+	tool := d.provider.ToolName
+	if tool == "" {
+		tool = mcpDefaultToolName
+	}
+	const listID = 100
+	listResp, err := httpRPC.call(listID, "tools/list", map[string]any{})
+	if err != nil {
+		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("tools/list: %v", err))
+	}
+	available, listErr := extractToolNames(listResp)
+	if listErr != nil {
+		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("tools/list parse: %v (cannot validate tool name; failing closed)", listErr))
+	}
+	if len(available) > 0 && !slices.Contains(available, tool) {
+		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("tool %q not exposed by mcp server %q (available: %v). Set tool_name: in agents.yaml.", tool, d.provider.Name, available))
+	}
+
+	// 4. tools/call
+	const callID = 2
+	resp, err := httpRPC.call(callID, "tools/call", map[string]any{
+		"name": tool,
+		"arguments": AnalyzeArgs{
+			Preset:        "swarm",
+			SeverityVocab: defaultSeverityVocab(prompt),
+			Input:         prompt,
+		},
+	})
+	if err != nil {
+		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("tools/call: %v", err))
+	}
+	if resp.ID != callID {
+		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("tools/call id mismatch: got %d want %d", resp.ID, callID))
+	}
+	raw, err := extractMCPText(resp)
+	if err != nil {
+		return errResult(DriverMCP, time.Since(start), err.Error())
+	}
+	return Result{
+		Raw:         raw,
+		CostUSD:     0,
+		Duration:    time.Since(start),
+		Driver:      DriverMCP,
+		CacheStatus: CacheUnsupported,
+	}, nil
+}
+
+// buildMCPHeaders resolves env-var indirection in provider.Headers
+// and merges with HeadersLiteral. Env-resolved Headers wins on
+// collision — matches the codebase convention that secrets-from-env
+// take precedence over literal values (mirrors the cli-compat driver
+// where Env literal wins over EnvKey indirection only when the user
+// explicitly sets it; the secret-handling boundary stays consistent).
+//
+// Apply order: HeadersLiteral first (so non-secret defaults land),
+// then env-resolved Headers overwrites — secrets in env take final
+// value.
+func buildMCPHeaders(p *Provider) map[string]string {
+	out := map[string]string{}
+	for k, v := range p.HeadersLiteral {
+		out[k] = v
+	}
+	for hdr, envName := range p.Headers {
+		if v := os.Getenv(envName); v != "" {
+			out[hdr] = v
+		}
+	}
+	return out
+}
+
+// mcpHTTPClient sends JSON-RPC messages over HTTP POSTs. Each call
+// is independent (no persistent connection state); MCP servers
+// implementing Streamable HTTP MUST tolerate this.
+type mcpHTTPClient struct {
+	ctx      context.Context
+	endpoint string
+	headers  map[string]string
+}
+
+func (c *mcpHTTPClient) call(id int, method string, params any) (*mcpRPCResponse, error) {
+	body, err := json.Marshal(mcpRPCRequest{JSONRPC: "2.0", ID: &id, Method: method, Params: params})
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(c.ctx, "POST", c.endpoint, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("content-type", "application/json")
+	req.Header.Set("accept", "application/json")
+	for k, v := range c.headers {
+		req.Header.Set(k, v)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 8*1024*1024))
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, SanitizeForLog(trimErr(string(respBody))))
+	}
+	var rpcResp mcpRPCResponse
+	if err := json.Unmarshal(respBody, &rpcResp); err != nil {
+		return nil, fmt.Errorf("parse response: %v", err)
+	}
+	// JSON-RPC error: HTTP 200 + result.error means the server
+	// rejected the call (auth failure, bad params, method not
+	// allowed). Surface it now rather than letting downstream code
+	// dereference rpcResp.Result on an empty body.
+	if rpcResp.Error != nil {
+		return nil, fmt.Errorf("jsonrpc error: %s", rpcResp.Error.Message)
+	}
+	return &rpcResp, nil
+}
+
+// notify sends a JSON-RPC notification (no id, no response expected).
+// HTTP servers MAY respond with 200/202 + empty body. We discard the
+// response.
+func (c *mcpHTTPClient) notify(method string, params any) error {
+	body := map[string]any{"jsonrpc": "2.0", "method": method}
+	if params != nil {
+		body["params"] = params
+	}
+	data, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(c.ctx, "POST", c.endpoint, bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("content-type", "application/json")
+	for k, v := range c.headers {
+		req.Header.Set(k, v)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	// Notifications are usually 200/202; surface non-2xx so the
+	// handshake can't silently drift into "client thinks server
+	// is initialized, server thinks otherwise".
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("notification %s returned HTTP %d", method, resp.StatusCode)
+	}
+	return nil
 }
 
 // invokeStdio spawns the MCP server, performs the JSON-RPC handshake
@@ -134,11 +338,32 @@ func (d *mcpDriver) invokeStdio(ctx context.Context, prompt string) (Result, err
 		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("notify initialized: %v", err))
 	}
 
-	// 3. tools/call for analyze.
+	// 3. tools/list discovery — validates the configured ToolName
+	// exists on this server. Real-world servers (semgrep-mcp,
+	// eslint-mcp) may expose `scan` or `audit` instead of the
+	// default `analyze`; without discovery the tools/call fails
+	// opaquely with method-not-found and the user has no clue what
+	// tool name to pass via `tool_name:`.
 	tool := d.provider.ToolName
 	if tool == "" {
 		tool = mcpDefaultToolName
 	}
+	const listID = 100
+	if err := rpc.send(listID, "tools/list", map[string]any{}); err != nil {
+		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("send tools/list: %v", err))
+	}
+	listResp, err := rpc.recv()
+	if err != nil {
+		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("recv tools/list: %v (stderr: %s)", err, SanitizeForLog(trimErr(stderrBuf.String()))))
+	}
+	if listResp.ID != listID {
+		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("tools/list response id mismatch: got %d, want %d", listResp.ID, listID))
+	}
+	available, err := extractToolNames(listResp)
+	if err == nil && len(available) > 0 && !slices.Contains(available, tool) {
+		return errResult(DriverMCP, time.Since(start), fmt.Sprintf("tool %q not exposed by mcp server %q (available: %v). Set tool_name: in agents.yaml to one of those.", tool, d.provider.Name, available))
+	}
+	// 4. tools/call for analyze.
 	const callID = 2
 	if err := rpc.send(callID, "tools/call", map[string]any{
 		"name": tool,
@@ -170,6 +395,29 @@ func (d *mcpDriver) invokeStdio(ctx context.Context, prompt string) (Result, err
 		Driver:      DriverMCP,
 		CacheStatus: CacheUnsupported,
 	}, nil
+}
+
+// extractToolNames pulls the tool names from a tools/list response.
+// MCP returns `result: {tools: [{name, description, inputSchema}]}`.
+// Returns an empty slice when the server returns no tools array
+// (caller skips the validation in that case rather than blocking).
+func extractToolNames(resp *mcpRPCResponse) ([]string, error) {
+	if resp.Error != nil {
+		return nil, fmt.Errorf("tools/list error: %s", resp.Error.Message)
+	}
+	var result struct {
+		Tools []struct {
+			Name string `json:"name"`
+		} `json:"tools"`
+	}
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(result.Tools))
+	for _, t := range result.Tools {
+		out = append(out, t.Name)
+	}
+	return out, nil
 }
 
 // extractMCPText reads the response's content[0].text field, which is
