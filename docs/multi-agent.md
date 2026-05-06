@@ -130,6 +130,121 @@ once. Claude is the only outlier and needs its own write under `~/.claude/`.
   skill folders" but Windows behavior (developer-mode requirement, junctions)
   is not spelled out. kaijutsu should default to copy-on-install on Windows.
 
+## v0.6 — Multi-provider swarm (driver abstraction)
+
+The Skills layout above describes how `jutsu install <skill>` writes to disk
+for the three native CLIs. v0.6 expands `jutsu swarm` to dispatch to providers
+beyond those three CLIs via a **driver abstraction**. Skills are unchanged;
+only swarm's runtime gains new participants.
+
+Spec: [`specs/2026-05-05-v0.6.0-multi-provider-agents.md`](specs/2026-05-05-v0.6.0-multi-provider-agents.md).
+ADR: [`decisions/2026-05-05-driver-abstraction.md`](decisions/2026-05-05-driver-abstraction.md).
+
+### Drivers
+
+| Kind | Mechanism | Use case |
+|---|---|---|
+| `cli` | shell out to native CLI binary | claude / codex / gemini (existing v0.5 behavior) |
+| `http` | direct OpenAI-compat or Anthropic-compat HTTP via `net/http` | DeepSeek, GLM, Kimi, local Ollama, any compat endpoint |
+| `cli-compat` | wraps a base CLI with `BASE_URL` + `KEY` override + telemetry-kill envs | "claude harness routing through DeepSeek" — opt-in with one-shot warning about metadata leak via undocumented telemetry endpoints |
+| `mcp` | JSON-RPC 2.0 over stdio against MCP servers | deterministic peers (semgrep, eslint, custom analyzers) tagged `[deterministic]` in disagreement table; free at the API level |
+
+### HTTP-driver providers
+
+The vendored catalog (`cli/internal/agents/catalog.go`) ships entries for:
+
+- **claude / codex / gemini** — the original three CLIs (driver: `cli`).
+- **deepseek** — `https://api.deepseek.com/v1`, `deepseek-coder` model, OpenAI-compat. Set `DEEPSEEK_API_KEY` env.
+- **glm** — `https://open.bigmodel.cn/api/paas/v4`, `glm-4.6` model, OpenAI-compat. Set `GLM_API_KEY`.
+- **kimi** — `https://api.moonshot.cn/v1`, `moonshot-v1-32k` model, OpenAI-compat. Set `KIMI_API_KEY`.
+- **ollama-local** — `http://localhost:11434/v1` (no auth required for default localhost setup), `qwen2.5-coder:14b` model, OpenAI-compat. Free at the API level for local inference.
+
+Add to your project via:
+
+```bash
+jutsu agent add deepseek          # writes catalog default to .kaijutsu/agents.yaml
+export DEEPSEEK_API_KEY=sk-...
+jutsu agent enable deepseek       # adds to the project's enabled list
+jutsu agent test deepseek         # /models GET (or 1-token completion fallback)
+```
+
+To declare an HTTP provider not in the catalog:
+
+```bash
+jutsu agent add my-provider \
+    --driver http \
+    --protocol openai-compat \
+    --base-url https://api.my-provider.com/v1 \
+    --model my-model \
+    --api-key-env MY_PROVIDER_API_KEY
+```
+
+### cli-compat (route claude through deepseek)
+
+Use when you specifically want claude CLI's harness behavior with a different model. Bears a runtime warning about telemetry metadata leakage to the harness vendor (Anthropic in this case).
+
+```yaml
+# <repo>/.kaijutsu/agents.yaml
+providers:
+  deepseek-via-claude:
+    driver: cli-compat
+    base_cli: claude
+    env:
+      ANTHROPIC_BASE_URL: https://api.deepseek.com
+    env_key:
+      ANTHROPIC_API_KEY: DEEPSEEK_API_KEY
+```
+
+The `env:` block sets literal env vars; `env_key:` resolves env-var indirection (`ANTHROPIC_API_KEY` is set on the child to the value of the local `DEEPSEEK_API_KEY`). Default telemetry-kill envs (`DISABLE_TELEMETRY=1` etc.) are layered in automatically.
+
+### MCP-as-peer
+
+See [`../cli/internal/agents/mcp_examples.md`](../cli/internal/agents/mcp_examples.md) for the full reference (semgrep-mcp, eslint-mcp, custom analyzer protocol). One YAML block:
+
+```yaml
+providers:
+  semgrep-mcp:
+    driver: mcp
+    transport: stdio
+    command: npx
+    args: ["semgrep-mcp"]
+    tool_name: analyze
+```
+
+Driver implements the JSON-RPC 2.0 handshake (initialize + notifications/initialized + tools/call). Server's `analyze` tool receives `{preset, severity_vocab, input}` and returns a JSON findings array conforming to the preset's vocabulary. `Result.CostUSD = 0` always (deterministic local execution).
+
+### Personas
+
+A persona is a `(provider, optional model override, system prompt, tags)` tuple — the unit of swarm participant identity. `jutsu agent list --personas` shows the 7 built-ins:
+
+- `default-claude` / `default-codex` / `default-gemini` — empty system prompts; reproduce v0.5 cache-key behavior byte-for-byte.
+- `paranoid-security-claude` / `pragmatic-codex` / `architecture-purist-gemini` / `brainstorm-creative-claude` — reference flavored personas demonstrating tag-driven dispatch.
+
+Author your own in `agents.yaml`:
+
+```yaml
+personas:
+  cautious-claude:
+    provider: claude
+    system_prompt: |
+      Lean conservative. Flag any change that touches auth or session state.
+    tags: [security, conservative]
+```
+
+Then dispatch via:
+
+```bash
+jutsu swarm pr-review --personas cautious-claude,pragmatic-codex,default-gemini
+```
+
+System prompts are prepended to the per-agent skill prompt via the sentinel `\n\n<<<USER>>>\n\n` — the HTTP driver splits on this and routes the system half into the protocol's first-class `system` field; the cli driver passes the concatenated prompt through unchanged.
+
+Skills can require persona tags via `requires_persona_tags: [security]` in `skill.yaml`; swarm dispatch hard-fails with a hint if no enabled persona satisfies.
+
+### Cost projection
+
+`jutsu swarm <preset> --estimate` runs without invoking agents — prints a per-persona table of `{input tokens, output estimate, projected cost}` plus TOTAL. Char-count tokenizer (±20% accuracy). Stale rate-card warning at 90+ days. Vendored providers carry rate cards as of `2026-05-06`; refresh via the v0.6.x cron + bench harness work.
+
 ## Sources
 
 - [openai/codex repository](https://github.com/openai/codex)

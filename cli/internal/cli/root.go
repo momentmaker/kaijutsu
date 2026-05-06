@@ -27,6 +27,7 @@ func NewRootCmd() *cobra.Command {
 		newInfoCmd(),
 		newPublishCmd(),
 		newSwarmCmd(),
+		newAgentCmd(),
 	)
 	return root
 }

@@ -68,6 +68,44 @@ func TestCacheKeyForFiles_ContentChangeChangesKey(t *testing.T) {
 	}
 }
 
+func TestMixCacheKeyWithPersonas_EmptyReturnsBaseUnchanged(t *testing.T) {
+	got := MixCacheKeyWithPersonas("abc123", nil)
+	if got != "abc123" {
+		t.Errorf("nil personas: got %q, want %q (legacy v0.5 cache compat)", got, "abc123")
+	}
+	got2 := MixCacheKeyWithPersonas("abc123", []string{})
+	if got2 != "abc123" {
+		t.Errorf("empty personas: got %q, want %q", got2, "abc123")
+	}
+}
+
+func TestMixCacheKeyWithPersonas_FlagOrderInvariant(t *testing.T) {
+	a := MixCacheKeyWithPersonas("base", []string{"alice", "bob", "carol"})
+	b := MixCacheKeyWithPersonas("base", []string{"carol", "alice", "bob"})
+	if a != b {
+		t.Errorf("persona ordering should not affect key: %q vs %q", a, b)
+	}
+}
+
+func TestMixCacheKeyWithPersonas_DifferentMixesDiffer(t *testing.T) {
+	a := MixCacheKeyWithPersonas("base", []string{"alice", "bob"})
+	b := MixCacheKeyWithPersonas("base", []string{"carol", "dave"})
+	if a == b {
+		t.Errorf("two different mixes produced the same key: %q (cache collision risk)", a)
+	}
+}
+
+func TestMixCacheKeyWithPersonas_LegacyMixDiffersFromBare(t *testing.T) {
+	// Spec D6: --personas mode invalidates legacy cache. Even passing
+	// the v0.5 default-* names explicitly via --personas is a NEW
+	// cache key — the user opted into the persona path.
+	bare := "abc123"
+	withPersonas := MixCacheKeyWithPersonas("abc123", []string{"default-claude", "default-codex", "default-gemini"})
+	if bare == withPersonas {
+		t.Error("explicit default-* personas should still differ from bare/no-flag mode (user-intent signal)")
+	}
+}
+
 func TestCacheKeyForFilesWithGoal_GoalAffectsKey(t *testing.T) {
 	preset := &Preset{Name: "refactor-plan"}
 	files := []FileEntry{{Path: "a.go", Content: "alpha"}}
