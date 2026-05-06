@@ -1,11 +1,16 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
+	"os/exec"
 	"sort"
+	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -31,6 +36,7 @@ disable, test, migrate. (remove + cross-repo scan land in Stage 5b.)`,
 	cmd.AddCommand(newAgentDisableCmd())
 	cmd.AddCommand(newAgentTestCmd())
 	cmd.AddCommand(newAgentMigrateCmd())
+	cmd.AddCommand(newAgentRemoveCmd())
 	return cmd
 }
 
@@ -79,17 +85,19 @@ Secrets are never printed; api_key_env shows the env-var name only.`,
 func newAgentDoctorCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "doctor",
-		Short: "Audit agents.yaml resolved config for missing env vars",
-		Long: `Walks every enabled provider and reports per-provider health:
-- env-var presence (api_key_env / env_key indirection)
+		Short: "Audit agents.yaml resolved config for env-var presence + driver-kind health",
+		Long: `Per-driver-kind health probe across every enabled provider:
+- cli:        '<cmd> --version' returns 0 within 2s
+- cli-compat: same as cli for the BaseCLI binary, plus api_key_env check
+- http:       api_key_env set in env AND base_url GET /models is reachable
+- mcp:        deferred to Stage 6 (probe will be a list-tools handshake)
 
-v0.6 Stage 2 ships env-var auditing only. Stage 5 adds binary
-existence (cli driver), endpoint reachability (http driver), and
-MCP server handshake (mcp driver).
-
-Exits 0 only if every enabled provider's required env vars are set.`,
+Exits 0 only if every enabled provider passes its driver's checks.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projectRoot, err := os.Getwd()
+			ctx, cancel := context.WithTimeout(cmd.Context(), 30*time.Second)
+			defer cancel()
+
+			root, err := os.Getwd()
 			if err != nil {
 				return err
 			}
@@ -97,7 +105,7 @@ Exits 0 only if every enabled provider's required env vars are set.`,
 			if err != nil {
 				return err
 			}
-			project, err := agents.LoadProjectConfig(projectRoot)
+			project, err := agents.LoadProjectConfig(root)
 			if err != nil {
 				return err
 			}
@@ -105,6 +113,7 @@ Exits 0 only if every enabled provider's required env vars are set.`,
 			if err != nil {
 				return err
 			}
+
 			fail := false
 			tw := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
 			fmt.Fprintln(tw, "PROVIDER\tDRIVER\tCHECK\tSTATUS\tDETAIL")
@@ -115,25 +124,117 @@ Exits 0 only if every enabled provider's required env vars are set.`,
 			sort.Strings(names)
 			for _, name := range names {
 				p := resolved.Providers[name]
-				if p.APIKeyEnv == "" {
-					fmt.Fprintf(tw, "%s\t%s\tenv\t✓\t(no api_key_env declared)\n", p.Name, p.Driver)
-					continue
+				rows := doctorProbe(ctx, p)
+				for _, row := range rows {
+					if !row.pass {
+						fail = true
+					}
+					status := "✓"
+					if !row.pass {
+						status = "✗"
+					}
+					fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", p.Name, p.Driver, row.check, status, row.detail)
 				}
-				if os.Getenv(p.APIKeyEnv) == "" {
-					fmt.Fprintf(tw, "%s\t%s\tenv\t✗\t%s not set\n", p.Name, p.Driver, p.APIKeyEnv)
-					fail = true
-					continue
-				}
-				fmt.Fprintf(tw, "%s\t%s\tenv\t✓\t%s set\n", p.Name, p.Driver, p.APIKeyEnv)
 			}
 			_ = tw.Flush()
 			if fail {
-				return fmt.Errorf("one or more enabled providers have missing env vars (see table)")
+				return fmt.Errorf("one or more enabled providers failed driver-kind health checks (see table)")
 			}
 			return nil
 		},
 	}
 	return cmd
+}
+
+type doctorRow struct {
+	check  string
+	pass   bool
+	detail string
+}
+
+// doctorProbe runs the per-driver-kind health checks for one provider.
+// All probes are bounded by ctx (default 30s aggregate set in the
+// doctor command). Returns one or more rows for the table.
+func doctorProbe(ctx context.Context, p *agents.Provider) []doctorRow {
+	switch p.Driver {
+	case agents.DriverCLI:
+		return []doctorRow{probeCLIVersion(ctx, p.Cmd, "binary")}
+	case agents.DriverCLICompat:
+		bin := p.BaseCLI
+		if bin == "" {
+			bin = p.Name
+		}
+		return []doctorRow{
+			probeCLIVersion(ctx, bin, "base-cli"),
+			probeAPIKeyEnv(p),
+		}
+	case agents.DriverHTTP:
+		return []doctorRow{
+			probeAPIKeyEnv(p),
+			probeHTTPModels(ctx, p),
+		}
+	case agents.DriverMCP:
+		return []doctorRow{{check: "mcp", pass: false, detail: "mcp probe not implemented (Stage 6)"}}
+	}
+	return []doctorRow{{check: "driver", pass: false, detail: fmt.Sprintf("unknown driver kind %q", p.Driver)}}
+}
+
+func probeCLIVersion(ctx context.Context, bin, label string) doctorRow {
+	if bin == "" {
+		return doctorRow{check: label, pass: false, detail: "cmd not set"}
+	}
+	subCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(subCtx, bin, "--version").CombinedOutput()
+	if err != nil {
+		return doctorRow{check: label, pass: false, detail: fmt.Sprintf("%s --version failed: %v", bin, err)}
+	}
+	first := strings.SplitN(strings.TrimSpace(string(out)), "\n", 2)[0]
+	if len(first) > 60 {
+		first = first[:57] + "..."
+	}
+	return doctorRow{check: label, pass: true, detail: first}
+}
+
+func probeAPIKeyEnv(p *agents.Provider) doctorRow {
+	if p.APIKeyEnv == "" {
+		return doctorRow{check: "env", pass: true, detail: "(no api_key_env declared)"}
+	}
+	if os.Getenv(p.APIKeyEnv) == "" {
+		return doctorRow{check: "env", pass: false, detail: fmt.Sprintf("%s not set", p.APIKeyEnv)}
+	}
+	return doctorRow{check: "env", pass: true, detail: fmt.Sprintf("%s set", p.APIKeyEnv)}
+}
+
+func probeHTTPModels(ctx context.Context, p *agents.Provider) doctorRow {
+	if p.BaseURL == "" {
+		return doctorRow{check: "reach", pass: false, detail: "base_url not set"}
+	}
+	subCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	url := strings.TrimRight(p.BaseURL, "/") + "/models"
+	req, err := http.NewRequestWithContext(subCtx, "GET", url, nil)
+	if err != nil {
+		return doctorRow{check: "reach", pass: false, detail: err.Error()}
+	}
+	if k := os.Getenv(p.APIKeyEnv); k != "" {
+		switch p.Protocol {
+		case "anthropic-compat":
+			req.Header.Set("x-api-key", k)
+			req.Header.Set("anthropic-version", "2023-06-01")
+		default:
+			req.Header.Set("authorization", "Bearer "+k)
+		}
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return doctorRow{check: "reach", pass: false, detail: fmt.Sprintf("GET %s: %v", url, err)}
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		return doctorRow{check: "reach", pass: true, detail: fmt.Sprintf("GET /models %d", resp.StatusCode)}
+	}
+	return doctorRow{check: "reach", pass: false, detail: fmt.Sprintf("GET /models %d (provider may not support /models — agent test will fall back to a 1-token completion)", resp.StatusCode)}
 }
 
 func printProviders(w io.Writer, r *agents.Resolved) {

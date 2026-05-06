@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 
 	"github.com/momentmaker/kaijutsu/cli/internal/agents"
 	"github.com/momentmaker/kaijutsu/cli/internal/manifest"
@@ -345,31 +346,91 @@ func runHTTPTest(ctx context.Context, p *agents.Provider, out io.Writer) error {
 	if p.APIKeyEnv != "" && apiKey == "" {
 		return fmt.Errorf("agent test %q: %s not set in environment", p.Name, p.APIKeyEnv)
 	}
+
+	// Probe order per spec D4: GET /models first (free for OpenAI-compat
+	// providers); fall back to a 1-token completion when /models is
+	// unsupported or returns non-2xx.
+	if status, err := httpProbeModels(ctx, p, apiKey); err != nil {
+		return err
+	} else if status >= 200 && status < 300 {
+		fmt.Fprintf(out, "✓ %s GET /models: HTTP %d\n", p.Name, status)
+		return nil
+	} else {
+		fmt.Fprintf(out, "  %s GET /models: HTTP %d (unsupported by provider; falling back to 1-token completion)\n", p.Name, status)
+	}
+
+	if err := httpProbeMinimalCompletion(ctx, p, apiKey); err != nil {
+		return err
+	}
+	fmt.Fprintf(out, "✓ %s 1-token completion: HTTP 2xx\n", p.Name)
+	return nil
+}
+
+// httpProbeModels returns the HTTP status code from GET <base>/models.
+// err is non-nil only on transport / build failure (4xx / 5xx is a
+// status, not an error — the caller decides whether to fall back).
+func httpProbeModels(ctx context.Context, p *agents.Provider, apiKey string) (int, error) {
+	subCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 	url := strings.TrimRight(p.BaseURL, "/") + "/models"
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(subCtx, "GET", url, nil)
+	if err != nil {
+		return 0, err
+	}
+	applyHTTPAuth(req, p, apiKey)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("GET %s: %w", url, err)
+	}
+	defer resp.Body.Close()
+	return resp.StatusCode, nil
+}
+
+// httpProbeMinimalCompletion sends a 1-token completion request (the
+// cheapest possible billable call). Used as the /models fallback for
+// providers that don't expose model-listing.
+func httpProbeMinimalCompletion(ctx context.Context, p *agents.Provider, apiKey string) error {
+	subCtx, cancel := context.WithTimeout(ctx, 8*time.Second)
+	defer cancel()
+
+	var url string
+	var body []byte
+	switch p.Protocol {
+	case "anthropic-compat":
+		url = strings.TrimRight(p.BaseURL, "/") + "/v1/messages"
+		body = []byte(fmt.Sprintf(`{"model":%q,"max_tokens":1,"messages":[{"role":"user","content":"hi"}]}`, p.Model))
+	default:
+		url = strings.TrimRight(p.BaseURL, "/") + "/chat/completions"
+		body = []byte(fmt.Sprintf(`{"model":%q,"max_tokens":1,"messages":[{"role":"user","content":"hi"}]}`, p.Model))
+	}
+	req, err := http.NewRequestWithContext(subCtx, "POST", url, strings.NewReader(string(body)))
 	if err != nil {
 		return err
 	}
-	if apiKey != "" {
-		switch p.Protocol {
-		case "anthropic-compat":
-			req.Header.Set("x-api-key", apiKey)
-			req.Header.Set("anthropic-version", "2023-06-01")
-		default:
-			req.Header.Set("authorization", "Bearer "+apiKey)
-		}
-	}
+	req.Header.Set("content-type", "application/json")
+	applyHTTPAuth(req, p, apiKey)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("GET %s: %w", url, err)
+		return fmt.Errorf("POST %s: %w", url, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		fmt.Fprintf(out, "✓ %s GET /models: HTTP %d\n", p.Name, resp.StatusCode)
 		return nil
 	}
-	fmt.Fprintf(out, "× %s GET /models: HTTP %d (provider may not support /models — fallback completion not implemented in this stage)\n", p.Name, resp.StatusCode)
-	return fmt.Errorf("HTTP %d from /models", resp.StatusCode)
+	return fmt.Errorf("POST %s: HTTP %d", url, resp.StatusCode)
+}
+
+func applyHTTPAuth(req *http.Request, p *agents.Provider, apiKey string) {
+	if apiKey == "" {
+		return
+	}
+	switch p.Protocol {
+	case "anthropic-compat":
+		req.Header.Set("x-api-key", apiKey)
+		req.Header.Set("anthropic-version", "2023-06-01")
+	default:
+		req.Header.Set("authorization", "Bearer "+apiKey)
+	}
 }
 
 // --- agent migrate ---------------------------------------------------
@@ -474,6 +535,169 @@ func listsEqual(a, b []string) bool {
 		}
 	}
 	return true
+}
+
+// --- agent remove ----------------------------------------------------
+
+func newAgentRemoveCmd() *cobra.Command {
+	var (
+		global bool
+		force  bool
+	)
+	cmd := &cobra.Command{
+		Use:   "remove <name>",
+		Short: "Delete a provider entry from agents.yaml (project default; --global for ~/)",
+		Long: `Hard delete from .kaijutsu/agents.yaml:
+- (default): removes the named provider from <repo>/.kaijutsu/agents.yaml
+  AND from the project's enabled list if present.
+- --global: removes from ~/.kaijutsu/agents.yaml.
+
+When --global is set AND the JUTSU_REPO_SCAN_ROOTS env var is non-empty
+(colon-separated path list, max-depth 4), other repos under those
+roots that reference the provider in their .kaijutsu/agents.yaml
+'enabled' list are listed as a warning. Without --force, the command
+refuses to proceed when any such references are found.`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			name := args[0]
+			out := cmd.OutOrStdout()
+			stderr := cmd.ErrOrStderr()
+			if global {
+				return removeFromGlobal(out, stderr, name, force)
+			}
+			root, err := projectRoot()
+			if err != nil {
+				return err
+			}
+			return removeFromProject(out, root, name)
+		},
+	}
+	cmd.Flags().BoolVar(&global, "global", false, "remove from ~/.kaijutsu/agents.yaml instead of <repo>/.kaijutsu/agents.yaml")
+	cmd.Flags().BoolVar(&force, "force", false, "proceed even when JUTSU_REPO_SCAN_ROOTS finds repos still referencing the provider")
+	return cmd
+}
+
+func removeFromProject(out io.Writer, root, name string) error {
+	c, err := agents.LoadProjectConfig(root)
+	if err != nil {
+		return err
+	}
+	removedFromProviders := false
+	if _, ok := c.Providers[name]; ok {
+		delete(c.Providers, name)
+		removedFromProviders = true
+	}
+	idx := -1
+	for i, n := range c.Enabled {
+		if n == name {
+			idx = i
+			break
+		}
+	}
+	if idx >= 0 {
+		c.Enabled = append(c.Enabled[:idx], c.Enabled[idx+1:]...)
+	}
+	if !removedFromProviders && idx < 0 {
+		fmt.Fprintf(out, "no project entry for %q (not in providers or enabled list)\n", name)
+		return nil
+	}
+	if err := agents.SaveProjectConfig(root, c); err != nil {
+		return err
+	}
+	fmt.Fprintf(out, "removed %q from <repo>/.kaijutsu/agents.yaml\n", name)
+	return nil
+}
+
+func removeFromGlobal(out, stderr io.Writer, name string, force bool) error {
+	c, err := agents.LoadGlobalConfig()
+	if err != nil {
+		return err
+	}
+	if _, ok := c.Providers[name]; !ok {
+		fmt.Fprintf(out, "no global entry for %q\n", name)
+		return nil
+	}
+
+	// Cross-repo scan when JUTSU_REPO_SCAN_ROOTS is set.
+	if scanRoots := os.Getenv("JUTSU_REPO_SCAN_ROOTS"); scanRoots != "" {
+		hits := scanCrossRepoReferences(scanRoots, name)
+		if len(hits) > 0 {
+			fmt.Fprintf(stderr, "\nwarning: %d repo(s) still reference %q in .kaijutsu/agents.yaml:\n", len(hits), name)
+			for _, h := range hits {
+				fmt.Fprintf(stderr, "  - %s\n", h)
+			}
+			if !force {
+				return fmt.Errorf("refusing to remove %q from global agents.yaml; pass --force to proceed", name)
+			}
+		}
+	}
+
+	delete(c.Providers, name)
+	if err := agents.SaveGlobalConfig(c); err != nil {
+		return err
+	}
+	fmt.Fprintf(out, "removed %q from ~/.kaijutsu/agents.yaml\n", name)
+	return nil
+}
+
+// scanCrossRepoReferences walks each path in JUTSU_REPO_SCAN_ROOTS
+// (colon-separated) up to max-depth 4 looking for .kaijutsu/agents.yaml
+// files whose enabled list contains `name`. Best-effort — unreadable
+// files are silently skipped.
+func scanCrossRepoReferences(scanRoots, name string) []string {
+	const maxDepth = 4
+	var hits []string
+	for _, rootPath := range strings.Split(scanRoots, string(os.PathListSeparator)) {
+		rootPath = strings.TrimSpace(rootPath)
+		if rootPath == "" {
+			continue
+		}
+		_ = filepath.WalkDir(rootPath, func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				return nil // skip unreadable
+			}
+			rel, _ := filepath.Rel(rootPath, path)
+			depth := strings.Count(rel, string(os.PathSeparator))
+			if depth > maxDepth {
+				if d.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if d.IsDir() || filepath.Base(path) != "agents.yaml" || filepath.Base(filepath.Dir(path)) != ".kaijutsu" {
+				return nil
+			}
+			cfg, err := loadProjectConfigForScan(path)
+			if err != nil {
+				return nil // skip malformed
+			}
+			for _, n := range cfg.Enabled {
+				if n == name {
+					repoDir := filepath.Dir(filepath.Dir(path))
+					hits = append(hits, repoDir)
+					break
+				}
+			}
+			return nil
+		})
+	}
+	sort.Strings(hits)
+	return hits
+}
+
+// loadProjectConfigForScan parses an agents.yaml at an arbitrary path
+// without going through agents.LoadProjectConfig (which derives the
+// path from a project root).
+func loadProjectConfigForScan(path string) (*agents.ProjectConfig, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var c agents.ProjectConfig
+	if err := yaml.Unmarshal(data, &c); err != nil {
+		return nil, err
+	}
+	return &c, nil
 }
 
 func unionStrings(a, b []string) []string {

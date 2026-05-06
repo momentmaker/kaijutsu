@@ -1,6 +1,9 @@
 package cli
 
 import (
+	"bytes"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/momentmaker/kaijutsu/cli/internal/agents"
@@ -134,6 +137,95 @@ func TestLookupTestProvider_FindsBuiltinWithoutEnable(t *testing.T) {
 	}
 	if got.Name != "claude" || got.Driver != agents.DriverCLI {
 		t.Errorf("got %+v", got)
+	}
+}
+
+func TestRemoveFromProject_DropsProviderAndEnabled(t *testing.T) {
+	tmp := t.TempDir()
+	dir := tmp + "/.kaijutsu"
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	yamlIn := `version: 1
+enabled: [claude, deepseek, gemini]
+providers:
+  deepseek:
+    driver: http
+    protocol: openai-compat
+    base_url: https://x
+    model: m
+`
+	if err := os.WriteFile(dir+"/agents.yaml", []byte(yamlIn), 0644); err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	if err := removeFromProject(&buf, tmp, "deepseek"); err != nil {
+		t.Fatal(err)
+	}
+	c, err := agents.LoadProjectConfig(tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := c.Providers["deepseek"]; ok {
+		t.Error("deepseek not removed from providers")
+	}
+	for _, n := range c.Enabled {
+		if n == "deepseek" {
+			t.Error("deepseek still in enabled list")
+		}
+	}
+}
+
+func TestRemoveFromProject_NoOpWhenAbsent(t *testing.T) {
+	tmp := t.TempDir()
+	var buf bytes.Buffer
+	if err := removeFromProject(&buf, tmp, "ghost"); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "no project entry for") {
+		t.Errorf("expected no-op message; got %q", buf.String())
+	}
+}
+
+func TestScanCrossRepoReferences_FindsHits(t *testing.T) {
+	root := t.TempDir()
+	for _, repo := range []string{"a", "b"} {
+		dir := root + "/" + repo + "/.kaijutsu"
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			t.Fatal(err)
+		}
+		var enabled string
+		if repo == "a" {
+			enabled = "[claude, deepseek]"
+		} else {
+			enabled = "[claude]"
+		}
+		body := "version: 1\nenabled: " + enabled + "\n"
+		if err := os.WriteFile(dir+"/agents.yaml", []byte(body), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	hits := scanCrossRepoReferences(root, "deepseek")
+	if len(hits) != 1 {
+		t.Fatalf("hits = %v, want 1", hits)
+	}
+	if !strings.HasSuffix(hits[0], "/a") {
+		t.Errorf("hit = %q, want suffix /a", hits[0])
+	}
+}
+
+func TestScanCrossRepoReferences_NoneFound(t *testing.T) {
+	root := t.TempDir()
+	dir := root + "/empty-repo/.kaijutsu"
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(dir+"/agents.yaml", []byte("version: 1\nenabled: [claude]\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	hits := scanCrossRepoReferences(root, "deepseek")
+	if len(hits) != 0 {
+		t.Errorf("hits = %v, want empty", hits)
 	}
 }
 
