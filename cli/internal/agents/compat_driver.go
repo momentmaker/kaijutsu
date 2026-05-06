@@ -111,8 +111,3 @@ func emitCompatWarningOnce(personaName, baseCLI string) {
 		fmt.Fprintf(w, "warn: cli-compat driver routing through %q CLI; metadata may still leak via undocumented telemetry endpoints (provider %q). Pass --no-telemetry-warning to suppress.\n", baseCLI, personaName)
 	})
 }
-
-// resetCompatWarningForTest is exported via _test files only.
-func resetCompatWarningForTest() {
-	compatWarningOnce = sync.Once{}
-}

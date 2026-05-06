@@ -2,9 +2,20 @@ package agents
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"strings"
+	"sync"
 	"testing"
 )
+
+// resetCompatWarningForTest resets the per-process sync.Once so each
+// test exercising the warning sink starts clean. Test-only helper —
+// placement here (vs. compat_driver.go) keeps the production package
+// free of test scaffolding.
+func resetCompatWarningForTest() {
+	compatWarningOnce = sync.Once{}
+}
 
 func TestMergeCompatEnv_PrecedenceOrder(t *testing.T) {
 	t.Setenv("DEEPSEEK_API_KEY", "sk-deep")
@@ -115,4 +126,77 @@ func TestBuildDriver_CLICompat_SuccessPath(t *testing.T) {
 	if d.Name() != "deepseek-via-claude" {
 		t.Errorf("Name() = %q", d.Name())
 	}
+}
+
+// fakeBase records the InvokeOpts it receives so tests can assert
+// the cli-compat driver merged env correctly before delegating.
+type fakeBase struct {
+	gotOpts InvokeOpts
+}
+
+func (f *fakeBase) Name() string       { return "fake-base" }
+func (f *fakeBase) Driver() DriverKind { return DriverCLI }
+func (f *fakeBase) Invoke(_ context.Context, _ string, opts InvokeOpts) (Result, error) {
+	f.gotOpts = opts
+	return Result{Raw: "from-base", CostUSD: 0, Driver: DriverCLI, CacheStatus: CacheUnsupported}, nil
+}
+
+func TestCLICompatDriver_InvokePassesMergedEnvAndOverridesDriverTag(t *testing.T) {
+	resetCompatWarningForTest()
+	t.Setenv("DEEPSEEK_API_KEY", "sk-deep-test")
+
+	base := &fakeBase{}
+	p := &Provider{
+		Name:    "deepseek-via-claude",
+		Driver:  DriverCLICompat,
+		BaseCLI: "claude",
+		Env:     map[string]string{"ANTHROPIC_BASE_URL": "https://api.deepseek.com"},
+		EnvKey:  map[string]string{"ANTHROPIC_API_KEY": "DEEPSEEK_API_KEY"},
+	}
+	d := &cliCompatDriver{provider: p, base: base}
+
+	res, err := d.Invoke(context.Background(), "x", InvokeOpts{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Driver != DriverCLICompat {
+		t.Errorf("Result.Driver = %q, want %q (cli-compat must override base's DriverCLI tag)", res.Driver, DriverCLICompat)
+	}
+	if res.Raw != "from-base" {
+		t.Errorf("Raw = %q, want pass-through from base", res.Raw)
+	}
+	// Base saw the merged env.
+	if base.gotOpts.ExtraEnv["ANTHROPIC_BASE_URL"] != "https://api.deepseek.com" {
+		t.Errorf("base did not see ANTHROPIC_BASE_URL: %v", base.gotOpts.ExtraEnv)
+	}
+	if base.gotOpts.ExtraEnv["ANTHROPIC_API_KEY"] != "sk-deep-test" {
+		t.Errorf("base did not see resolved ANTHROPIC_API_KEY (env-key indirection): %v", base.gotOpts.ExtraEnv)
+	}
+	if base.gotOpts.ExtraEnv["DISABLE_TELEMETRY"] != "1" {
+		t.Errorf("base did not see telemetry-kill DISABLE_TELEMETRY: %v", base.gotOpts.ExtraEnv)
+	}
+}
+
+func TestCLICompatDriver_PreservesBaseError(t *testing.T) {
+	resetCompatWarningForTest()
+	base := &fakeErrBase{}
+	d := &cliCompatDriver{
+		provider: &Provider{Name: "x", Driver: DriverCLICompat, BaseCLI: "claude"},
+		base:     base,
+	}
+	res, err := d.Invoke(context.Background(), "x", InvokeOpts{})
+	if err == nil {
+		t.Fatal("expected error pass-through; got nil")
+	}
+	if res.Driver != DriverCLICompat {
+		t.Errorf("Driver tag must be cli-compat even on error path; got %q", res.Driver)
+	}
+}
+
+type fakeErrBase struct{}
+
+func (fakeErrBase) Name() string       { return "boom" }
+func (fakeErrBase) Driver() DriverKind { return DriverCLI }
+func (fakeErrBase) Invoke(_ context.Context, _ string, _ InvokeOpts) (Result, error) {
+	return Result{Driver: DriverCLI, CacheStatus: CacheUnsupported, Err: "boom"}, errors.New("boom")
 }

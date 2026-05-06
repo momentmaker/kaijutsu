@@ -56,6 +56,12 @@ type CostProjection struct {
 // Char-count tokenizer is used unconditionally for v0.6 Stage 4;
 // Stage 5+ may swap in provider-native tokenizers behind the same
 // signature.
+//
+// Cost shown is a CONSERVATIVE upper bound — the projection assumes
+// every input token is uncached and billed at full InputPerMtok rate.
+// Real runs that hit provider prompt cache (Anthropic ephemeral, OpenAI
+// 1024-token threshold) bill cached input at 10-50% of normal rate.
+// `--estimate` shows the worst case so users budget against the ceiling.
 func ProjectCost(personaName string, provider *Provider, prompt string) CostProjection {
 	in := CountTokensCharFallback(prompt)
 	cp := CostProjection{
