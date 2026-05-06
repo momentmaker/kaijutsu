@@ -3,6 +3,7 @@ package agents
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
 	"time"
@@ -25,7 +26,7 @@ func (claudeDriver) Invoke(ctx context.Context, prompt string, opts InvokeOpts) 
 	if opts.MaxBudgetUSD > 0 {
 		args = append(args, "--max-budget-usd", fmt.Sprintf("%.2f", opts.MaxBudgetUSD))
 	}
-	return runCLI(ctx, "claude", args, prompt)
+	return runCLI(ctx, opts, "claude", args, prompt)
 }
 
 // codexDriver invokes `codex -p` with stdin-piped prompt.
@@ -35,7 +36,7 @@ func (codexDriver) Name() string       { return "codex" }
 func (codexDriver) Driver() DriverKind { return DriverCLI }
 
 func (codexDriver) Invoke(ctx context.Context, prompt string, opts InvokeOpts) (Result, error) {
-	return runCLI(ctx, "codex", []string{"-p"}, prompt)
+	return runCLI(ctx, opts, "codex", []string{"-p"}, prompt)
 }
 
 // geminiDriver invokes `gemini --approval-mode plan -p`. For prompts
@@ -56,22 +57,28 @@ func (geminiDriver) Driver() DriverKind { return DriverCLI }
 func (geminiDriver) Invoke(ctx context.Context, prompt string, opts InvokeOpts) (Result, error) {
 	base := []string{"--approval-mode", "plan", "-p"}
 	if len(prompt) < argSafe {
-		return runCLI(ctx, "gemini", append(base, prompt), "")
+		return runCLI(ctx, opts, "gemini", append(base, prompt), "")
 	}
 	stub := "Read the full prompt + DIFF on stdin. Follow the instructions in it exactly. Return ONLY the JSON array described."
-	return runCLI(ctx, "gemini", append(base, stub), prompt)
+	return runCLI(ctx, opts, "gemini", append(base, stub), prompt)
 }
 
 // runCLI executes name with args and prompt piped to stdin. Returns
 // captured stdout. stderr is captured into the error on non-zero exit.
-// Respects ctx cancellation/timeout.
+// Respects ctx cancellation/timeout AND opts.Timeout (the smaller of
+// the two wins).
 //
 // WaitDelay (Go 1.20+) ensures that if the agent's main process exits
 // after ctx-cancellation but child processes (e.g., update-checkers)
 // keep stdout/stderr pipes open, the goroutine doesn't hang waiting
 // for those pipes to drain. After 5 seconds beyond cancellation, Go
 // SIGKILLs the process group and returns from Wait().
-func runCLI(ctx context.Context, name string, args []string, stdin string) (Result, error) {
+func runCLI(ctx context.Context, opts InvokeOpts, name string, args []string, stdin string) (Result, error) {
+	if opts.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, opts.Timeout)
+		defer cancel()
+	}
 	c := exec.CommandContext(ctx, name, args...)
 	c.WaitDelay = 5 * time.Second
 	if stdin != "" {
@@ -91,7 +98,7 @@ func runCLI(ctx context.Context, name string, args []string, stdin string) (Resu
 	if err != nil {
 		errMsg := fmt.Sprintf("%s exited %v after %s: %s", name, err, res.Duration.Round(time.Millisecond), trimErr(stderr.String()))
 		res.Err = errMsg
-		return res, fmt.Errorf("%s", errMsg)
+		return res, errors.New(errMsg)
 	}
 	return res, nil
 }

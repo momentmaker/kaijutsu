@@ -1,5 +1,13 @@
 package agents
 
+// Stateless cli driver singletons — zero-field structs, safe to share
+// across goroutines. Avoids per-dispatch allocation.
+var (
+	defaultClaude = &claudeDriver{}
+	defaultCodex  = &codexDriver{}
+	defaultGemini = &geminiDriver{}
+)
+
 // For returns the AgentDriver for a known provider name. Returns nil
 // if the name doesn't match a registered driver.
 //
@@ -9,11 +17,11 @@ package agents
 func For(name string) AgentDriver {
 	switch name {
 	case "claude":
-		return &claudeDriver{}
+		return defaultClaude
 	case "codex":
-		return &codexDriver{}
+		return defaultCodex
 	case "gemini":
-		return &geminiDriver{}
+		return defaultGemini
 	}
 	return nil
 }
