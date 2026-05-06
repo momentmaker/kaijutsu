@@ -126,3 +126,42 @@ func validateVersion(v int, path string) error {
 	}
 	return fmt.Errorf("%s: unsupported schema version %d (this build supports %d). Run `jutsu agent migrate` or upgrade jutsu", path, v, SchemaVersion)
 }
+
+// SaveGlobalConfig writes a GlobalConfig back to ~/.kaijutsu/agents.yaml.
+// Creates parent dir 0755 + file 0644 if missing. Sets Version to
+// SchemaVersion when zero so re-reads validate.
+func SaveGlobalConfig(c *GlobalConfig) error {
+	if c == nil {
+		return fmt.Errorf("SaveGlobalConfig: nil config")
+	}
+	if c.Version == 0 {
+		c.Version = SchemaVersion
+	}
+	path, err := GlobalConfigPath()
+	if err != nil {
+		return err
+	}
+	return saveYAML(path, c)
+}
+
+// SaveProjectConfig writes a ProjectConfig to <root>/.kaijutsu/agents.yaml.
+func SaveProjectConfig(projectRoot string, c *ProjectConfig) error {
+	if c == nil {
+		return fmt.Errorf("SaveProjectConfig: nil config")
+	}
+	if c.Version == 0 {
+		c.Version = SchemaVersion
+	}
+	return saveYAML(ProjectConfigPath(projectRoot), c)
+}
+
+func saveYAML(path string, v any) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return fmt.Errorf("mkdir %s: %w", filepath.Dir(path), err)
+	}
+	data, err := yaml.Marshal(v)
+	if err != nil {
+		return fmt.Errorf("marshal %s: %w", path, err)
+	}
+	return os.WriteFile(path, data, 0644)
+}

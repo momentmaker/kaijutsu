@@ -21,11 +21,16 @@ func newAgentCmd() *cobra.Command {
 		Short: "Inspect and configure swarm provider/persona setup",
 		Long: `Manage the .kaijutsu/agents.yaml provider catalog and persona declarations.
 
-In v0.6 Stage 2 only 'list' and 'doctor' subcommands are available.
-Stages 5+ add add/enable/disable/remove/test/migrate.`,
+Subcommands cover the full v0.6 surface: list, doctor, add, enable,
+disable, test, migrate. (remove + cross-repo scan land in Stage 5b.)`,
 	}
 	cmd.AddCommand(newAgentListCmd())
 	cmd.AddCommand(newAgentDoctorCmd())
+	cmd.AddCommand(newAgentAddCmd())
+	cmd.AddCommand(newAgentEnableCmd())
+	cmd.AddCommand(newAgentDisableCmd())
+	cmd.AddCommand(newAgentTestCmd())
+	cmd.AddCommand(newAgentMigrateCmd())
 	return cmd
 }
 
