@@ -1,6 +1,7 @@
 package swarm
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -41,6 +42,31 @@ func TestBuildReversePrompt_BakesSpecAndLeavesDiffSlot(t *testing.T) {
 	// Exactly ONE %s slot remains — for the diff.
 	if c := strings.Count(got, "%s"); c != 1 {
 		t.Errorf("rendered prompt has %d %%s slots, want 1 (the diff)", c)
+	}
+}
+
+// TestBuildReversePrompt_EscapesPercentInSpec is the v0.9
+// adversarial-pr-review-found regression guard. Spec content with
+// literal `%` chars (e.g. "10% improvement") would leak through
+// strings.Replace and then break the downstream fmt.Sprintf when
+// the diff slot gets substituted. Escape `%` → `%%` before bake.
+func TestBuildReversePrompt_EscapesPercentInSpec(t *testing.T) {
+	spec := "## In scope\n- 10% throughput improvement\n- 50% memory reduction\n"
+	got := BuildReversePrompt(spec)
+	// After bake, the spec section must contain `%%` (escaped form);
+	// fmt.Sprintf later un-escapes back to single `%`.
+	if !strings.Contains(got, "10%% throughput") {
+		t.Errorf("spec %% should be escaped to %%%%; got prompt without escaping. Snippet:\n%s", got)
+	}
+	// Final dispatch step: fmt.Sprintf with the diff. After this
+	// step the rendered prompt should contain "10% throughput" (the
+	// %% un-escaped) and NOT contain `%!` error markers.
+	rendered := fmt.Sprintf(got, "DIFF_PLACEHOLDER")
+	if !strings.Contains(rendered, "10% throughput") {
+		t.Errorf("post-fmt.Sprintf should restore single %%; got:\n%s", rendered)
+	}
+	if strings.Contains(rendered, "%!") {
+		t.Errorf("rendered prompt contains %%! error marker (broken format); got:\n%s", rendered)
 	}
 }
 

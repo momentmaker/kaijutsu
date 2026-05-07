@@ -21,6 +21,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -94,7 +95,13 @@ v0.9.x follow-up — needs the --post-review render mode plumbed.`,
 // v0.9.x with --post-review will use line-anchored review comments
 // (those DO carry in_reply_to_id) and re-introduce priority-1.
 func collectSyncPRActions(ctx context.Context, pr int) ([]swarm.SyncPRAction, error) {
-	out, err := exec.CommandContext(ctx, "gh", "pr", "view", strconv.Itoa(pr), "--json", "comments").Output()
+	// Bound the gh subprocess at 30s so a hung gh call can't block
+	// CI/gate pipelines indefinitely. Cobra's base context is
+	// uncanceled by default — without this, network-stalled gh
+	// blocks forever.
+	ghCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ghCtx, "gh", "pr", "view", strconv.Itoa(pr), "--json", "comments").Output()
 	if err != nil {
 		return nil, fmt.Errorf("gh pr view %d: %w", pr, err)
 	}

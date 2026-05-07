@@ -23,23 +23,37 @@ ALTER TABLE findings ADD COLUMN position INTEGER;
 -- side-step bracket-counting fragility; SQLite default LIKE treats
 -- '[' and ']' as literals (no character-class semantics).
 --
+-- preset='dream' filter: lens is a dream-only column by spec
+-- invariant. Without the filter, historical non-dream rows whose
+-- summary happens to start with `[lens:...]` (e.g. a manually-
+-- inserted test row) would get tagged. The recorder enforces this
+-- at write time; we mirror the invariant here at backfill time.
+--
 -- The 8-lens vocabulary below MUST stay in sync with
 -- swarm.DreamLensesAll() in cli/internal/swarm/preset.go. v0.9 freezes
 -- the set; any future lens addition in v1.0+ requires a new migration
 -- (e.g. 0003_lens_<name>.sql) that backfills new rows AND updates the
 -- recorder validator's whitelist. Do NOT add lens names by editing
 -- 0002 in place — migrations are forward-only.
-UPDATE findings SET lens = 'honest'     WHERE lens IS NULL AND summary LIKE '[lens:honest]%';
-UPDATE findings SET lens = 'fit'        WHERE lens IS NULL AND summary LIKE '[lens:fit]%';
-UPDATE findings SET lens = 'gaps'       WHERE lens IS NULL AND summary LIKE '[lens:gaps]%';
-UPDATE findings SET lens = 'wild'       WHERE lens IS NULL AND summary LIKE '[lens:wild]%';
-UPDATE findings SET lens = 'adversary'  WHERE lens IS NULL AND summary LIKE '[lens:adversary]%';
-UPDATE findings SET lens = 'inverse'    WHERE lens IS NULL AND summary LIKE '[lens:inverse]%';
-UPDATE findings SET lens = 'status-quo' WHERE lens IS NULL AND summary LIKE '[lens:status-quo]%';
-UPDATE findings SET lens = 'time'       WHERE lens IS NULL AND summary LIKE '[lens:time]%';
+UPDATE findings SET lens = 'honest'     WHERE lens IS NULL AND preset = 'dream' AND summary LIKE '[lens:honest]%';
+UPDATE findings SET lens = 'fit'        WHERE lens IS NULL AND preset = 'dream' AND summary LIKE '[lens:fit]%';
+UPDATE findings SET lens = 'gaps'       WHERE lens IS NULL AND preset = 'dream' AND summary LIKE '[lens:gaps]%';
+UPDATE findings SET lens = 'wild'       WHERE lens IS NULL AND preset = 'dream' AND summary LIKE '[lens:wild]%';
+UPDATE findings SET lens = 'adversary'  WHERE lens IS NULL AND preset = 'dream' AND summary LIKE '[lens:adversary]%';
+UPDATE findings SET lens = 'inverse'    WHERE lens IS NULL AND preset = 'dream' AND summary LIKE '[lens:inverse]%';
+UPDATE findings SET lens = 'status-quo' WHERE lens IS NULL AND preset = 'dream' AND summary LIKE '[lens:status-quo]%';
+UPDATE findings SET lens = 'time'       WHERE lens IS NULL AND preset = 'dream' AND summary LIKE '[lens:time]%';
 
 -- Lens-aware weight lookup index. Composite layout matches the
 -- weighter's lens-aware query: WHERE codebase_fp=? AND preset=?
 -- AND provider=? AND persona=? AND lens=?
 CREATE INDEX IF NOT EXISTS idx_findings_lens_lookup
     ON findings(codebase_fp, preset, provider, persona, lens, action_at DESC);
+
+-- (run_id, position) lookup index. v0.9 sync-pr's hot path:
+-- FindByRunPosition does WHERE run_id=? AND position=? LIMIT 1,
+-- once per finding being marked. Without this index the query
+-- full-scans, which becomes O(n) per sync-pr action against tables
+-- that grow unbounded.
+CREATE INDEX IF NOT EXISTS idx_findings_run_position
+    ON findings(run_id, position);

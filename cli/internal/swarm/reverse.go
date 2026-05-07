@@ -90,9 +90,18 @@ DIFF:
 // BuildReversePrompt assembles the per-agent reverse prompt with the
 // supplied spec content baked in. The result has exactly ONE %s slot
 // remaining — for the diff, which ResolveInput substitutes at
-// dispatch time. We use a literal placeholder + string replace so
-// fmt.Sprintf isn't asked to leave a %s unfilled (which would render
-// as %!s(MISSING) and dispatch broken prompts to the agents).
+// dispatch time via fmt.Sprintf.
+//
+// Two safety steps protect downstream fmt.Sprintf:
+//  1. We use {{SPEC_CONTENT}} placeholder + strings.Replace for the
+//     spec (NOT fmt.Sprintf with two %s) so fmt isn't asked to leave
+//     a %s unfilled.
+//  2. We escape literal `%` chars in spec content to `%%` BEFORE
+//     replacement. Without this, a spec line like "10% improvement"
+//     leaks into the prompt as `10%`, then the diff substitution's
+//     fmt.Sprintf interprets `% i` (or whatever follows) as a format
+//     directive — surfaces as %!d(MISSING) at runtime. The v0.8
+//     dreamLensWild incident in another guise.
 //
 // Spec content can include kaijutsu's spec-doc convention sections
 // (## In scope, ## Out of scope, ## Open questions) — we pass it
@@ -102,8 +111,10 @@ func BuildReversePrompt(specContent string) string {
 	if strings.TrimSpace(specContent) == "" {
 		return reverseDefaultPrompt
 	}
-	// Replace the SPEC placeholder, leave the DIFF %s slot intact.
-	return strings.Replace(reversePromptTemplate, "{{SPEC_CONTENT}}", specContent, 1)
+	// Escape literal `%` so the diff-slot fmt.Sprintf downstream
+	// doesn't interpret spec content as format directives.
+	escaped := strings.ReplaceAll(specContent, "%", "%%")
+	return strings.Replace(reversePromptTemplate, "{{SPEC_CONTENT}}", escaped, 1)
 }
 
 // reversePromptTemplate uses a literal {{SPEC_CONTENT}} placeholder
