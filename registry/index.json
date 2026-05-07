@@ -81,10 +81,6 @@
       "source": "github.com/obra/superpowers",
       "path": "skills/using-git-worktrees"
     },
-    "verification-before-completion": {
-      "source": "github.com/obra/superpowers",
-      "path": "skills/verification-before-completion"
-    },
     "systematic-debugging": {
       "source": "github.com/obra/superpowers",
       "path": "skills/systematic-debugging"

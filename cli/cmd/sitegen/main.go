@@ -133,8 +133,17 @@ func buildCatalog(repoRoot string) (*catalog, error) {
 		}
 	}
 
-	sort.Slice(cat.Skills, func(i, j int) bool {
-		return cat.Skills[i].Name < cat.Skills[j].Name
+	// Stable sort with tie-break on Source so duplicate-name entries
+	// (e.g. a kaijutsu-core skill that shares a name with a third-
+	// party registry pointer) produce deterministic output across
+	// runs. Without this, Go map iteration order leaks into the
+	// catalog and CI lint diff-checks flap. Per AGENTS.md design
+	// principle: deterministic file outputs.
+	sort.SliceStable(cat.Skills, func(i, j int) bool {
+		if cat.Skills[i].Name != cat.Skills[j].Name {
+			return cat.Skills[i].Name < cat.Skills[j].Name
+		}
+		return cat.Skills[i].Source < cat.Skills[j].Source
 	})
 	cat.Total = len(cat.Skills)
 	return cat, nil
