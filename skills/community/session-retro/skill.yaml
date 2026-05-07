@@ -10,7 +10,6 @@ agents: [claude, codex, gemini]
 deps:
   skills:
     - convergence-detect@^0.2
-    - project-memory@^0.2
 permissions:
   bash: true
   network: false

@@ -5,7 +5,7 @@ description: Author a PRD-style spec before writing implementation. Use when the
 
 # Spec-Driven Development
 
-> Adapted from [`addyosmani/agent-skills`](https://github.com/addyosmani/agent-skills/blob/main/skills/spec-driven-development) under the MIT License. Copyright (c) Addy Osmani. Modifications by kaijutsu maintainers — wrapped in the kaijutsu schema, composed with `decide` for ADR capture, and the final review pass migrated to `jutsu swarm doc-review` (the Phase-2 universal QA gate).
+> Adapted from [`addyosmani/agent-skills`](https://github.com/addyosmani/agent-skills/blob/main/skills/spec-driven-development) under the MIT License. Copyright (c) Addy Osmani. Modifications by kaijutsu maintainers — wrapped in the kaijutsu schema, with the final review pass migrated to `jutsu swarm doc-review` (the universal QA gate).
 
 A spec is a workflow artifact, not an essay. The deliverable is a markdown file that the user (and future agent sessions) can read in 5 minutes and act on.
 
@@ -101,7 +101,7 @@ If `jutsu swarm doc-review` fails with "unknown preset", the doc-review skill is
 
 ### Step 7: ADR capture (if architectural)
 
-If the spec touched architectural decisions, also invoke `decide` to record them as ADRs (decision journal entries). Decisions made during spec authoring deserve the same record-keeping as decisions made during implementation.
+If the spec touched architectural decisions, write them to `docs/decisions/<date>-<slug>.md` as ADRs. Decisions made during spec authoring deserve the same record-keeping as decisions made during implementation.
 
 ## Anti-rationalization table
 
@@ -136,7 +136,6 @@ If the spec touched architectural decisions, also invoke `decide` to record them
 ## Composes
 
 - `doc-review` — universal multi-agent QA gate; ships the prose-tuned lenses (completeness / implementability / consistency) the final review uses.
-- `decide` — record any architectural decisions surfaced during spec authoring as ADRs.
 
 ## When NOT to use
 

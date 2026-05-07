@@ -1,33 +1,7 @@
 {
   "schema_version": 1,
-  "total": 51,
+  "total": 46,
   "skills": [
-    {
-      "name": "agent-doctor",
-      "version": "0.2.0",
-      "license": "MIT",
-      "description": "Diagnostic + cleanup tool for AI agent state directories. Audits ~/.claude, ~/.codex, ~/.gemini, ~/.agents; surfaces stale sessions, orphaned cache, broken hook refs; reclaims space safely (trash-not-delete, 30-day recovery). Ships scripts/{lib,doctor,cleanup}.sh, references/{directory-map,cleanup-tiers,protected-paths}.md, runbooks/recover-from-trash.md.",
-      "agents": [
-        "claude",
-        "codex",
-        "gemini"
-      ],
-      "tags": [
-        "maintenance",
-        "cleanup",
-        "disk-space"
-      ],
-      "source": "core",
-      "repo": "momentmaker/kaijutsu",
-      "path": "skills/core/agent-doctor",
-      "homepage": "https://kaijutsu.dev/skills/agent-doctor",
-      "has_hooks": false,
-      "permissions": {
-        "bash": true,
-        "network": false,
-        "fs_write": "scoped"
-      }
-    },
     {
       "name": "api-and-interface-design",
       "description": "Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install api-and-interface-design`.",
@@ -170,9 +144,9 @@
         "chesterton",
         "addyosmani"
       ],
-      "source": "core",
+      "source": "community",
       "repo": "momentmaker/kaijutsu",
-      "path": "skills/core/code-simplification",
+      "path": "skills/community/code-simplification",
       "homepage": "https://kaijutsu.dev/skills/code-simplification",
       "upstream": "https://github.com/addyosmani/agent-skills/blob/main/skills/code-simplification",
       "author": "Addy Osmani (originally) — adapted by kaijutsu maintainers",
@@ -244,9 +218,9 @@
         "destructive-commands",
         "dcg"
       ],
-      "source": "core",
+      "source": "community",
       "repo": "momentmaker/kaijutsu",
-      "path": "skills/core/dcg",
+      "path": "skills/community/dcg",
       "homepage": "https://kaijutsu.dev/skills/dcg",
       "author": "kaijutsu-core \u003cgh@fz.ax\u003e",
       "has_hooks": true,
@@ -272,32 +246,6 @@
         "bash": false,
         "network": false,
         "fs_write": null
-      }
-    },
-    {
-      "name": "decide",
-      "version": "0.3.0",
-      "license": "MIT",
-      "description": "Decision journal — record architectural decisions with reasoning + tripwires; high-stakes decisions get a multi-agent review pass via `jutsu swarm doc-review` before commit; auto-tag from content; surface recorded decisions when about to contradict one. Writes to project-memory.",
-      "agents": [
-        "claude",
-        "codex",
-        "gemini"
-      ],
-      "tags": [
-        "decisions",
-        "architecture",
-        "journal"
-      ],
-      "source": "core",
-      "repo": "momentmaker/kaijutsu",
-      "path": "skills/core/decide",
-      "homepage": "https://kaijutsu.dev/skills/decide",
-      "has_hooks": false,
-      "permissions": {
-        "bash": true,
-        "network": true,
-        "fs_write": "scoped"
       }
     },
     {
@@ -374,7 +322,7 @@
       "name": "doc-review",
       "version": "0.1.0",
       "license": "MIT",
-      "description": "Universal QA gate for markdown artifacts. Runs claude / codex / gemini in parallel via `jutsu swarm doc-review \u003cpath\u003e`, each with a tailored lens (claude=completeness, codex=implementability, gemini=consistency), then synthesizes into a single review with a disagreement table. Designed to be invoked at the end of any artifact-producing skill (spec-driven-development, planning-and-task-breakdown, decide). Use when the user says \"review this spec\", \"review this plan\", \"check this RFC\", or invokes /doc-review.",
+      "description": "Universal QA gate for markdown artifacts. Runs claude / codex / gemini in parallel via `jutsu swarm doc-review \u003cpath\u003e`, each with a tailored lens (claude=completeness, codex=implementability, gemini=consistency), then synthesizes into a single review with a disagreement table. Designed to be invoked at the end of any artifact-producing skill (spec-driven-development, planning-and-task-breakdown). Use when the user says \"review this spec\", \"review this plan\", \"check this RFC\", or invokes /doc-review.",
       "agents": [
         "claude",
         "codex",
@@ -578,41 +526,15 @@
         "retrospective",
         "reporting"
       ],
-      "source": "core",
+      "source": "community",
       "repo": "momentmaker/kaijutsu",
-      "path": "skills/core/journal",
+      "path": "skills/community/journal",
       "homepage": "https://kaijutsu.dev/skills/journal",
       "has_hooks": false,
       "permissions": {
         "bash": true,
         "network": true,
         "fs_write": "scoped"
-      }
-    },
-    {
-      "name": "lie-to-them",
-      "version": "0.2.0",
-      "license": "MIT",
-      "description": "Prompt primitive — assert N issues exist to force exhaustive enumeration. Includes a transparency footer recommendation: every output that used lie-to-them should disclose the claimed-N and actual-found counts.",
-      "agents": [
-        "claude",
-        "codex",
-        "gemini"
-      ],
-      "tags": [
-        "primitive",
-        "prompt-engineering",
-        "review"
-      ],
-      "source": "core",
-      "repo": "momentmaker/kaijutsu",
-      "path": "skills/core/lie-to-them",
-      "homepage": "https://kaijutsu.dev/skills/lie-to-them",
-      "has_hooks": false,
-      "permissions": {
-        "bash": false,
-        "network": false,
-        "fs_write": false
       }
     },
     {
@@ -631,33 +553,6 @@
         "bash": false,
         "network": false,
         "fs_write": null
-      }
-    },
-    {
-      "name": "multi-model-synth",
-      "version": "0.2.0",
-      "license": "MIT",
-      "description": "Fan out the same task to multiple models (Claude, Codex, Gemini), compare responses, synthesize a 'best of all worlds' answer that artfully blends each model's strengths.",
-      "agents": [
-        "claude",
-        "codex",
-        "gemini"
-      ],
-      "tags": [
-        "primitive",
-        "multi-model",
-        "synthesis",
-        "planning"
-      ],
-      "source": "core",
-      "repo": "momentmaker/kaijutsu",
-      "path": "skills/core/multi-model-synth",
-      "homepage": "https://kaijutsu.dev/skills/multi-model-synth",
-      "has_hooks": false,
-      "permissions": {
-        "bash": false,
-        "network": true,
-        "fs_write": false
       }
     },
     {
@@ -763,32 +658,6 @@
       }
     },
     {
-      "name": "project-memory",
-      "version": "0.2.0",
-      "license": "MIT",
-      "description": "Cross-skill project-memory contract. Defines the schema and conventions for the per-project memory directory that decide, session-retro, unstuck, and other skills read and write.",
-      "agents": [
-        "claude",
-        "codex",
-        "gemini"
-      ],
-      "tags": [
-        "primitive",
-        "memory",
-        "schema"
-      ],
-      "source": "core",
-      "repo": "momentmaker/kaijutsu",
-      "path": "skills/core/project-memory",
-      "homepage": "https://kaijutsu.dev/skills/project-memory",
-      "has_hooks": false,
-      "permissions": {
-        "bash": false,
-        "network": false,
-        "fs_write": "scoped"
-      }
-    },
-    {
       "name": "readme-update",
       "version": "0.2.0",
       "license": "MIT",
@@ -803,9 +672,9 @@
         "readme",
         "maintenance"
       ],
-      "source": "core",
+      "source": "community",
       "repo": "momentmaker/kaijutsu",
-      "path": "skills/core/readme-update",
+      "path": "skills/community/readme-update",
       "homepage": "https://kaijutsu.dev/skills/readme-update",
       "has_hooks": false,
       "permissions": {
@@ -884,9 +753,9 @@
         "review",
         "addyosmani"
       ],
-      "source": "core",
+      "source": "community",
       "repo": "momentmaker/kaijutsu",
-      "path": "skills/core/security-and-hardening",
+      "path": "skills/community/security-and-hardening",
       "homepage": "https://kaijutsu.dev/skills/security-and-hardening",
       "upstream": "https://github.com/addyosmani/agent-skills/blob/main/skills/security-and-hardening",
       "author": "Addy Osmani (originally) — adapted by kaijutsu maintainers",
@@ -940,9 +809,9 @@
         "memory",
         "learning"
       ],
-      "source": "core",
+      "source": "community",
       "repo": "momentmaker/kaijutsu",
-      "path": "skills/core/session-retro",
+      "path": "skills/community/session-retro",
       "homepage": "https://kaijutsu.dev/skills/session-retro",
       "has_hooks": false,
       "permissions": {
@@ -1135,24 +1004,6 @@
     },
     {
       "name": "verification-before-completion",
-      "description": "Third-party skill from github.com/obra/superpowers; install via `jutsu install verification-before-completion`.",
-      "agents": [
-        "claude",
-        "codex",
-        "gemini"
-      ],
-      "source": "third-party",
-      "repo": "github.com/obra/superpowers",
-      "path": "skills/verification-before-completion",
-      "has_hooks": false,
-      "permissions": {
-        "bash": false,
-        "network": false,
-        "fs_write": null
-      }
-    },
-    {
-      "name": "verification-before-completion",
       "version": "0.1.0",
       "license": "MIT",
       "description": "Hard gate before claiming work is complete: run the verification command fresh, capture output, only then claim done. Composed by polish, incremental-implementation, and pr-review to prevent silent-fail tail (convergence ≠ correctness). Adapted from obra/superpowers under MIT.",
@@ -1175,6 +1026,24 @@
         "bash": true,
         "network": false,
         "fs_write": "scoped"
+      }
+    },
+    {
+      "name": "verification-before-completion",
+      "description": "Third-party skill from github.com/obra/superpowers; install via `jutsu install verification-before-completion`.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "source": "third-party",
+      "repo": "github.com/obra/superpowers",
+      "path": "skills/verification-before-completion",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": null
       }
     }
   ]

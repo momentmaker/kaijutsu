@@ -220,28 +220,15 @@
   <div class="controls">
     <input type="search" id="search" placeholder="Search skills by name, description, tag…" autocomplete="off">
     <div class="filter-group" id="filters">
-      <button class="filter active" data-filter="all">All (51)</button>
+      <button class="filter active" data-filter="all">All (46)</button>
       <button class="filter" data-filter="core">Core</button>
       <button class="filter" data-filter="third-party">Third-party</button>
       <button class="filter" data-filter="hooks">Hooks</button>
     </div>
   </div>
-  <p class="stats" id="stats">Showing all 51 skills.</p>
+  <p class="stats" id="stats">Showing all 46 skills.</p>
 
   <div class="grid" id="grid">
-    
-    <article class="card" data-source="core" data-hooks="false" data-search="agent-doctor Diagnostic &#43; cleanup tool for AI agent state directories. Audits ~/.claude, ~/.codex, ~/.gemini, ~/.agents; surfaces stale sessions, orphaned cache, broken hook refs; reclaims space safely (trash-not-delete, 30-day recovery). Ships scripts/{lib,doctor,cleanup}.sh, references/{directory-map,cleanup-tiers,protected-paths}.md, runbooks/recover-from-trash.md. maintenance cleanup disk-space claude codex gemini">
-      <div class="row">
-        <h3>agent-doctor<span style="color:var(--muted);font-weight:normal"> 0.2.0</span></h3>
-        <span class="badge badge-core">CORE</span>
-      </div>
-      <p class="desc">Diagnostic &#43; cleanup tool for AI agent state directories. Audits ~/.claude, ~/.codex, ~/.gemini, ~/.agents; surfaces stale sessions, orphaned cache, broken hook refs; reclaims space safely (trash-not-delete, 30-day recovery). Ships scripts/{lib,doctor,cleanup}.sh, references/{directory-map,cleanup-tiers,protected-paths}.md, runbooks/recover-from-trash.md.</p>
-      <div class="row">
-        <span class="agents">claude · codex · gemini</span>
-        
-      </div>
-      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install agent-doctor')" title="Click to copy">jutsu install agent-doctor</div>
-    </article>
     
     <article class="card" data-source="third-party" data-hooks="false" data-search="api-and-interface-design Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install api-and-interface-design`.  claude codex gemini">
       <div class="row">
@@ -321,10 +308,10 @@
       <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install code-review-and-quality')" title="Click to copy">jutsu install code-review-and-quality</div>
     </article>
     
-    <article class="card" data-source="core" data-hooks="false" data-search="code-simplification Reduce code without changing behavior. Apply Chesterton&#39;s Fence &#43; Rule of 500. Find dead code, duplicate logic, unused abstractions, leaky helpers, premature factoring. Composes polish (review-fix loop) and blunder-hunt (regression risk). simplification refactor dead-code chesterton addyosmani claude codex gemini">
+    <article class="card" data-source="community" data-hooks="false" data-search="code-simplification Reduce code without changing behavior. Apply Chesterton&#39;s Fence &#43; Rule of 500. Find dead code, duplicate logic, unused abstractions, leaky helpers, premature factoring. Composes polish (review-fix loop) and blunder-hunt (regression risk). simplification refactor dead-code chesterton addyosmani claude codex gemini">
       <div class="row">
         <h3>code-simplification<span style="color:var(--muted);font-weight:normal"> 0.1.0</span></h3>
-        <span class="badge badge-core">CORE</span>
+        <span class="badge badge-third">COMMUNITY</span>
       </div>
       <p class="desc">Reduce code without changing behavior. Apply Chesterton&#39;s Fence &#43; Rule of 500. Find dead code, duplicate logic, unused abstractions, leaky helpers, premature factoring. Composes polish (review-fix loop) and blunder-hunt (regression risk).</p>
       <div class="row">
@@ -360,10 +347,10 @@
       <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install convergence-detect')" title="Click to copy">jutsu install convergence-detect</div>
     </article>
     
-    <article class="card" data-source="core" data-hooks="true" data-search="dcg Destructive command guard. Pre-tool-use hook that blocks rm -rf /, git reset --hard, git clean -fd, rm of .env / credentials, and other unrecoverable shell commands before the agent executes them. safety hooks pre-tool-use destructive-commands dcg claude codex gemini">
+    <article class="card" data-source="community" data-hooks="true" data-search="dcg Destructive command guard. Pre-tool-use hook that blocks rm -rf /, git reset --hard, git clean -fd, rm of .env / credentials, and other unrecoverable shell commands before the agent executes them. safety hooks pre-tool-use destructive-commands dcg claude codex gemini">
       <div class="row">
         <h3>dcg<span style="color:var(--muted);font-weight:normal"> 0.1.0</span></h3>
-        <span class="badge badge-core">CORE</span>
+        <span class="badge badge-third">COMMUNITY</span>
       </div>
       <p class="desc">Destructive command guard. Pre-tool-use hook that blocks rm -rf /, git reset --hard, git clean -fd, rm of .env / credentials, and other unrecoverable shell commands before the agent executes them.</p>
       <div class="row">
@@ -384,19 +371,6 @@
         
       </div>
       <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install debugging-and-error-recovery')" title="Click to copy">jutsu install debugging-and-error-recovery</div>
-    </article>
-    
-    <article class="card" data-source="core" data-hooks="false" data-search="decide Decision journal — record architectural decisions with reasoning &#43; tripwires; high-stakes decisions get a multi-agent review pass via `jutsu swarm doc-review` before commit; auto-tag from content; surface recorded decisions when about to contradict one. Writes to project-memory. decisions architecture journal claude codex gemini">
-      <div class="row">
-        <h3>decide<span style="color:var(--muted);font-weight:normal"> 0.3.0</span></h3>
-        <span class="badge badge-core">CORE</span>
-      </div>
-      <p class="desc">Decision journal — record architectural decisions with reasoning &#43; tripwires; high-stakes decisions get a multi-agent review pass via `jutsu swarm doc-review` before commit; auto-tag from content; surface recorded decisions when about to contradict one. Writes to project-memory.</p>
-      <div class="row">
-        <span class="agents">claude · codex · gemini</span>
-        
-      </div>
-      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install decide')" title="Click to copy">jutsu install decide</div>
     </article>
     
     <article class="card" data-source="third-party" data-hooks="false" data-search="deprecation-and-migration Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install deprecation-and-migration`.  claude codex gemini">
@@ -438,12 +412,12 @@
       <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install dispatch-parallel')" title="Click to copy">jutsu install dispatch-parallel</div>
     </article>
     
-    <article class="card" data-source="core" data-hooks="false" data-search="doc-review Universal QA gate for markdown artifacts. Runs claude / codex / gemini in parallel via `jutsu swarm doc-review &lt;path&gt;`, each with a tailored lens (claude=completeness, codex=implementability, gemini=consistency), then synthesizes into a single review with a disagreement table. Designed to be invoked at the end of any artifact-producing skill (spec-driven-development, planning-and-task-breakdown, decide). Use when the user says &#34;review this spec&#34;, &#34;review this plan&#34;, &#34;check this RFC&#34;, or invokes /doc-review. review spec plan multi-agent quality-gate claude codex gemini">
+    <article class="card" data-source="core" data-hooks="false" data-search="doc-review Universal QA gate for markdown artifacts. Runs claude / codex / gemini in parallel via `jutsu swarm doc-review &lt;path&gt;`, each with a tailored lens (claude=completeness, codex=implementability, gemini=consistency), then synthesizes into a single review with a disagreement table. Designed to be invoked at the end of any artifact-producing skill (spec-driven-development, planning-and-task-breakdown). Use when the user says &#34;review this spec&#34;, &#34;review this plan&#34;, &#34;check this RFC&#34;, or invokes /doc-review. review spec plan multi-agent quality-gate claude codex gemini">
       <div class="row">
         <h3>doc-review<span style="color:var(--muted);font-weight:normal"> 0.1.0</span></h3>
         <span class="badge badge-core">CORE</span>
       </div>
-      <p class="desc">Universal QA gate for markdown artifacts. Runs claude / codex / gemini in parallel via `jutsu swarm doc-review &lt;path&gt;`, each with a tailored lens (claude=completeness, codex=implementability, gemini=consistency), then synthesizes into a single review with a disagreement table. Designed to be invoked at the end of any artifact-producing skill (spec-driven-development, planning-and-task-breakdown, decide). Use when the user says &#34;review this spec&#34;, &#34;review this plan&#34;, &#34;check this RFC&#34;, or invokes /doc-review.</p>
+      <p class="desc">Universal QA gate for markdown artifacts. Runs claude / codex / gemini in parallel via `jutsu swarm doc-review &lt;path&gt;`, each with a tailored lens (claude=completeness, codex=implementability, gemini=consistency), then synthesizes into a single review with a disagreement table. Designed to be invoked at the end of any artifact-producing skill (spec-driven-development, planning-and-task-breakdown). Use when the user says &#34;review this spec&#34;, &#34;review this plan&#34;, &#34;check this RFC&#34;, or invokes /doc-review.</p>
       <div class="row">
         <span class="agents">claude · codex · gemini</span>
         
@@ -555,10 +529,10 @@
       <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install incremental-implementation')" title="Click to copy">jutsu install incremental-implementation</div>
     </article>
     
-    <article class="card" data-source="core" data-hooks="false" data-search="journal Periodic development journal — read git/PRs/decisions/memory; produce a structured narrative; optional multi-model synthesis for the narrative voice. Themed cadences (weekly/sprint/release/monthly) and sentiment&#43;velocity tracking. journal retrospective reporting claude codex gemini">
+    <article class="card" data-source="community" data-hooks="false" data-search="journal Periodic development journal — read git/PRs/decisions/memory; produce a structured narrative; optional multi-model synthesis for the narrative voice. Themed cadences (weekly/sprint/release/monthly) and sentiment&#43;velocity tracking. journal retrospective reporting claude codex gemini">
       <div class="row">
         <h3>journal<span style="color:var(--muted);font-weight:normal"> 0.2.0</span></h3>
-        <span class="badge badge-core">CORE</span>
+        <span class="badge badge-third">COMMUNITY</span>
       </div>
       <p class="desc">Periodic development journal — read git/PRs/decisions/memory; produce a structured narrative; optional multi-model synthesis for the narrative voice. Themed cadences (weekly/sprint/release/monthly) and sentiment&#43;velocity tracking.</p>
       <div class="row">
@@ -566,19 +540,6 @@
         
       </div>
       <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install journal')" title="Click to copy">jutsu install journal</div>
-    </article>
-    
-    <article class="card" data-source="core" data-hooks="false" data-search="lie-to-them Prompt primitive — assert N issues exist to force exhaustive enumeration. Includes a transparency footer recommendation: every output that used lie-to-them should disclose the claimed-N and actual-found counts. primitive prompt-engineering review claude codex gemini">
-      <div class="row">
-        <h3>lie-to-them<span style="color:var(--muted);font-weight:normal"> 0.2.0</span></h3>
-        <span class="badge badge-core">CORE</span>
-      </div>
-      <p class="desc">Prompt primitive — assert N issues exist to force exhaustive enumeration. Includes a transparency footer recommendation: every output that used lie-to-them should disclose the claimed-N and actual-found counts.</p>
-      <div class="row">
-        <span class="agents">claude · codex · gemini</span>
-        
-      </div>
-      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install lie-to-them')" title="Click to copy">jutsu install lie-to-them</div>
     </article>
     
     <article class="card" data-source="third-party" data-hooks="false" data-search="mcp-builder Third-party skill from github.com/anthropics/skills; install via `jutsu install mcp-builder`.  claude codex gemini">
@@ -592,19 +553,6 @@
         
       </div>
       <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install mcp-builder')" title="Click to copy">jutsu install mcp-builder</div>
-    </article>
-    
-    <article class="card" data-source="core" data-hooks="false" data-search="multi-model-synth Fan out the same task to multiple models (Claude, Codex, Gemini), compare responses, synthesize a &#39;best of all worlds&#39; answer that artfully blends each model&#39;s strengths. primitive multi-model synthesis planning claude codex gemini">
-      <div class="row">
-        <h3>multi-model-synth<span style="color:var(--muted);font-weight:normal"> 0.2.0</span></h3>
-        <span class="badge badge-core">CORE</span>
-      </div>
-      <p class="desc">Fan out the same task to multiple models (Claude, Codex, Gemini), compare responses, synthesize a &#39;best of all worlds&#39; answer that artfully blends each model&#39;s strengths.</p>
-      <div class="row">
-        <span class="agents">claude · codex · gemini</span>
-        
-      </div>
-      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install multi-model-synth')" title="Click to copy">jutsu install multi-model-synth</div>
     </article>
     
     <article class="card" data-source="third-party" data-hooks="false" data-search="performance-optimization Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install performance-optimization`.  claude codex gemini">
@@ -659,23 +607,10 @@
       <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install pr-review')" title="Click to copy">jutsu install pr-review</div>
     </article>
     
-    <article class="card" data-source="core" data-hooks="false" data-search="project-memory Cross-skill project-memory contract. Defines the schema and conventions for the per-project memory directory that decide, session-retro, unstuck, and other skills read and write. primitive memory schema claude codex gemini">
-      <div class="row">
-        <h3>project-memory<span style="color:var(--muted);font-weight:normal"> 0.2.0</span></h3>
-        <span class="badge badge-core">CORE</span>
-      </div>
-      <p class="desc">Cross-skill project-memory contract. Defines the schema and conventions for the per-project memory directory that decide, session-retro, unstuck, and other skills read and write.</p>
-      <div class="row">
-        <span class="agents">claude · codex · gemini</span>
-        
-      </div>
-      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install project-memory')" title="Click to copy">jutsu install project-memory</div>
-    </article>
-    
-    <article class="card" data-source="core" data-hooks="false" data-search="readme-update Detect README staleness, identify out-of-date sections, propose targeted diffs. Semantic section matching (Quickstart ≈ Get Started); works on any markdown doc (CONTRIBUTING, ARCHITECTURE, CHANGELOG); auto-generates usage examples from new CLI commands; checks badge staleness. docs readme maintenance claude codex gemini">
+    <article class="card" data-source="community" data-hooks="false" data-search="readme-update Detect README staleness, identify out-of-date sections, propose targeted diffs. Semantic section matching (Quickstart ≈ Get Started); works on any markdown doc (CONTRIBUTING, ARCHITECTURE, CHANGELOG); auto-generates usage examples from new CLI commands; checks badge staleness. docs readme maintenance claude codex gemini">
       <div class="row">
         <h3>readme-update<span style="color:var(--muted);font-weight:normal"> 0.2.0</span></h3>
-        <span class="badge badge-core">CORE</span>
+        <span class="badge badge-third">COMMUNITY</span>
       </div>
       <p class="desc">Detect README staleness, identify out-of-date sections, propose targeted diffs. Semantic section matching (Quickstart ≈ Get Started); works on any markdown doc (CONTRIBUTING, ARCHITECTURE, CHANGELOG); auto-generates usage examples from new CLI commands; checks badge staleness.</p>
       <div class="row">
@@ -711,10 +646,10 @@
       <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install scope-check')" title="Click to copy">jutsu install scope-check</div>
     </article>
     
-    <article class="card" data-source="core" data-hooks="false" data-search="security-and-hardening OWASP-Top-10-aware security review. Sweep the diff (or a target file set) for injection, auth gaps, deserialization risks, broken access control, sensitive data exposure, security misconfig, and supply-chain trust. Composes blunder-hunt&#39;s hostile-input lens. security owasp hardening review addyosmani claude codex gemini">
+    <article class="card" data-source="community" data-hooks="false" data-search="security-and-hardening OWASP-Top-10-aware security review. Sweep the diff (or a target file set) for injection, auth gaps, deserialization risks, broken access control, sensitive data exposure, security misconfig, and supply-chain trust. Composes blunder-hunt&#39;s hostile-input lens. security owasp hardening review addyosmani claude codex gemini">
       <div class="row">
         <h3>security-and-hardening<span style="color:var(--muted);font-weight:normal"> 0.1.0</span></h3>
-        <span class="badge badge-core">CORE</span>
+        <span class="badge badge-third">COMMUNITY</span>
       </div>
       <p class="desc">OWASP-Top-10-aware security review. Sweep the diff (or a target file set) for injection, auth gaps, deserialization risks, broken access control, sensitive data exposure, security misconfig, and supply-chain trust. Composes blunder-hunt&#39;s hostile-input lens.</p>
       <div class="row">
@@ -737,10 +672,10 @@
       <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install security-audit')" title="Click to copy">jutsu install security-audit</div>
     </article>
     
-    <article class="card" data-source="core" data-hooks="false" data-search="session-retro End-of-session retrospective. Mines the current conversation for learnings; cross-session pattern detection across recent retros; writes to project-memory; optional auto-apply mode. retrospective memory learning claude codex gemini">
+    <article class="card" data-source="community" data-hooks="false" data-search="session-retro End-of-session retrospective. Mines the current conversation for learnings; cross-session pattern detection across recent retros; writes to project-memory; optional auto-apply mode. retrospective memory learning claude codex gemini">
       <div class="row">
         <h3>session-retro<span style="color:var(--muted);font-weight:normal"> 0.3.0</span></h3>
-        <span class="badge badge-core">CORE</span>
+        <span class="badge badge-third">COMMUNITY</span>
       </div>
       <p class="desc">End-of-session retrospective. Mines the current conversation for learnings; cross-session pattern detection across recent retros; writes to project-memory; optional auto-apply mode.</p>
       <div class="row">
@@ -867,12 +802,12 @@
       <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install using-git-worktrees')" title="Click to copy">jutsu install using-git-worktrees</div>
     </article>
     
-    <article class="card" data-source="third-party" data-hooks="false" data-search="verification-before-completion Third-party skill from github.com/obra/superpowers; install via `jutsu install verification-before-completion`.  claude codex gemini">
+    <article class="card" data-source="core" data-hooks="false" data-search="verification-before-completion Hard gate before claiming work is complete: run the verification command fresh, capture output, only then claim done. Composed by polish, incremental-implementation, and pr-review to prevent silent-fail tail (convergence ≠ correctness). Adapted from obra/superpowers under MIT. primitive discipline gate claude codex gemini">
       <div class="row">
-        <h3>verification-before-completion</h3>
-        <span class="badge badge-third">THIRD-PARTY</span>
+        <h3>verification-before-completion<span style="color:var(--muted);font-weight:normal"> 0.1.0</span></h3>
+        <span class="badge badge-core">CORE</span>
       </div>
-      <p class="desc">Third-party skill from github.com/obra/superpowers; install via `jutsu install verification-before-completion`.</p>
+      <p class="desc">Hard gate before claiming work is complete: run the verification command fresh, capture output, only then claim done. Composed by polish, incremental-implementation, and pr-review to prevent silent-fail tail (convergence ≠ correctness). Adapted from obra/superpowers under MIT.</p>
       <div class="row">
         <span class="agents">claude · codex · gemini</span>
         
@@ -880,12 +815,12 @@
       <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install verification-before-completion')" title="Click to copy">jutsu install verification-before-completion</div>
     </article>
     
-    <article class="card" data-source="core" data-hooks="false" data-search="verification-before-completion Hard gate before claiming work is complete: run the verification command fresh, capture output, only then claim done. Composed by polish, incremental-implementation, and pr-review to prevent silent-fail tail (convergence ≠ correctness). Adapted from obra/superpowers under MIT. primitive discipline gate claude codex gemini">
+    <article class="card" data-source="third-party" data-hooks="false" data-search="verification-before-completion Third-party skill from github.com/obra/superpowers; install via `jutsu install verification-before-completion`.  claude codex gemini">
       <div class="row">
-        <h3>verification-before-completion<span style="color:var(--muted);font-weight:normal"> 0.1.0</span></h3>
-        <span class="badge badge-core">CORE</span>
+        <h3>verification-before-completion</h3>
+        <span class="badge badge-third">THIRD-PARTY</span>
       </div>
-      <p class="desc">Hard gate before claiming work is complete: run the verification command fresh, capture output, only then claim done. Composed by polish, incremental-implementation, and pr-review to prevent silent-fail tail (convergence ≠ correctness). Adapted from obra/superpowers under MIT.</p>
+      <p class="desc">Third-party skill from github.com/obra/superpowers; install via `jutsu install verification-before-completion`.</p>
       <div class="row">
         <span class="agents">claude · codex · gemini</span>
         

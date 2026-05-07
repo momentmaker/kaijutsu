@@ -1,6 +1,6 @@
 ---
 name: doc-review
-description: Universal multi-agent QA gate for markdown artifacts (specs, plans, decision records, RFCs, design docs). Wraps `jutsu swarm doc-review <path>` to run claude / codex / gemini in parallel with tailored lenses (claude=completeness, codex=implementability, gemini=consistency), synthesizes into a single review with a disagreement table. Designed to be the final-review pass for any artifact-producing skill (spec-driven-development, planning-and-task-breakdown, decide). Use when the user says "review this spec", "review this plan", "check this RFC", or invokes /doc-review. Prints to stdout; cache + replay supported.
+description: Universal multi-agent QA gate for markdown artifacts (specs, plans, decision records, RFCs, design docs). Wraps `jutsu swarm doc-review <path>` to run claude / codex / gemini in parallel with tailored lenses (claude=completeness, codex=implementability, gemini=consistency), synthesizes into a single review with a disagreement table. Designed to be the final-review pass for any artifact-producing skill (spec-driven-development, planning-and-task-breakdown). Use when the user says "review this spec", "review this plan", "check this RFC", or invokes /doc-review. Prints to stdout; cache + replay supported.
 ---
 
 # doc-review
@@ -11,7 +11,7 @@ This skill wraps `jutsu swarm doc-review`. Three agents read the same artifact t
 
 ## Why this exists
 
-Before `doc-review`, kaijutsu's artifact-producing skills (`spec-driven-development`, `planning-and-task-breakdown`, `decide`) each invented their own "fresh-eyes pass" mechanism. Each was different, none were systematic. This skill is the universal QA gate they all delegate to.
+Before `doc-review`, kaijutsu's artifact-producing skills (`spec-driven-development`, `planning-and-task-breakdown`) each invented their own "fresh-eyes pass" mechanism. Each was different, none were systematic. This skill is the universal QA gate they all delegate to.
 
 ## Layout (rich)
 
@@ -123,8 +123,6 @@ jutsu swarm doc-review --replay abc123def456
 `spec-driven-development` ends with: "Run `jutsu swarm doc-review <spec.md>`. Iterate findings until the disagreement table is mostly 2/N consensus or 0 findings."
 
 `planning-and-task-breakdown` ends with: "Run `jutsu swarm doc-review <plan.md>`."
-
-`decide` ends with: "Run `jutsu swarm doc-review <decision-record.md>` for high-stakes decisions."
 
 The artifact-producing skill is responsible for surfacing the findings to the user and iterating. doc-review just runs the swarm.
 

@@ -91,7 +91,7 @@ If the user invokes with `--yes` (or pastes "apply all"), skip per-item confirma
 
 For each selected item:
 
-- **Memory entries** → Write per the `project-memory` contract: frontmatter with `name`/`description`/`type` and `source: session-retro`, body in the type-specific template, dedupe against existing entries, update `MEMORY.md` index. See `project-memory` SKILL.md for details.
+- **Memory entries** → Write per the [project-memory schema](../../../docs/project-memory.md): frontmatter with `name`/`description`/`type` and `source: session-retro`, body in the type-specific template, dedupe against existing entries, update `MEMORY.md` index.
 - **Skill opportunities** → Draft a new SKILL.md following the [Anthropic Agent Skills](https://agentskills.io) format. Keep it lean — the user can iterate later.
 - **Skill improvements** → Read the existing skill, apply the suggested change, show a diff.
 - **Hooks / automation** → Create the hook script and add the entry to the agent's settings file, following the agent-specific schema.

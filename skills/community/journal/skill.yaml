@@ -7,10 +7,6 @@ homepage: https://kaijutsu.dev/skills/journal
 repository: https://github.com/momentmaker/kaijutsu
 tags: [journal, retrospective, reporting]
 agents: [claude, codex, gemini]
-deps:
-  skills:
-    - multi-model-synth@^0.2
-    - project-memory@^0.2
 permissions:
   bash: true
   network: true

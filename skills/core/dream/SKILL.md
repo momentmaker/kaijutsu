@@ -10,7 +10,7 @@ Pre-implementation interrogation. The user has an idea. Before they spec it, pla
 This is the EARLIEST stage in the kaijutsu pipeline:
 
 ```
-dream → decide / spec → plan → implement → polish → ship
+dream → spec → plan → implement → polish → ship
 ```
 
 Nothing else covers this slot today. `brainstorm` preset gives you 5 OPTIONS to solve a problem; `dream` interrogates whether the problem is the right shape in the first place.
@@ -37,7 +37,7 @@ Nothing else covers this slot today. `brainstorm` preset gives you 5 OPTIONS to 
 | Output | options to pick | perspectives to weigh |
 | Stage | after commitment to solve X | before commitment |
 | Lens count | 1 prompt per agent | 4-8 lenses per agent |
-| Compose with | implementation skills downstream | decide / spec-driven-development downstream |
+| Compose with | implementation skills downstream | spec-driven-development downstream |
 
 Both can be useful in sequence: `dream` first to validate the problem shape, then `brainstorm` to enumerate solutions. Don't substitute one for the other.
 
@@ -131,7 +131,7 @@ If a match exists:
 3. Example: prior dream ran `[honest, fit, gaps, wild]`. New lens order: `[fit, gaps, wild, honest]`.
 4. v0.8.0 ships this rotation rule hardcoded; v0.8.x may make it configurable.
 
-Composes `project-memory` for the recall mechanism.
+Recall logic is local to the dream skill — reads `~/.kaijutsu/dreams/` directly, no shared schema.
 
 ### Step 1: Run lenses
 
@@ -209,7 +209,6 @@ Counter (user-side): if a session's findings are ALL `load_bearing: false` AND A
 
 ## Composes
 
-- `project-memory` — graveyard recall mechanism
 - `swarm dream` preset (Stage 2) — multi-agent matrix mode, records lens outputs to v0.7 findings DB via `[lens:<name>]` summary prefix
 - (deferred) `convergence-detect` — optional stop signal for multi-round dreams; v0.8.x candidate when usage data justifies it
 

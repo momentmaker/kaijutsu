@@ -8,9 +8,6 @@ repository: https://github.com/momentmaker/kaijutsu
 tags: [primitive, exploration, ideation, pre-implementation]
 agents: [claude, codex, gemini]
 shared: [prompts]
-deps:
-  skills:
-    - project-memory@^0.2
 permissions:
   bash: true
   network: false

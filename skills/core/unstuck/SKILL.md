@@ -21,7 +21,7 @@ If the user confirms it's the same problem, jump straight to Step 5 (Solution Ca
 
 If no match or user says it's different, proceed to Step 0.5.
 
-Composes `project-memory`.
+Memory format follows the [project-memory schema](../../../docs/project-memory.md) — kebab-case slug + YAML frontmatter (`name` / `description` / `type`).
 
 ## Step 0.5: Gather evidence
 
@@ -151,7 +151,7 @@ After the problem is resolved (at any step), ask:
 
 "What was the actual root cause?"
 
-Then write a project-memory entry (per `project-memory` SKILL.md):
+Then write a project-memory entry (per [docs/project-memory.md](../../../docs/project-memory.md)):
 
 ```yaml
 ---
