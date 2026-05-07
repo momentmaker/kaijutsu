@@ -74,6 +74,16 @@ Spec: `docs/specs/2026-05-05-v0.6.0-multi-provider-agents.md`. ADR: `docs/decisi
 
 - [x] **Quality fingerprinting + confidence-weighted synthesizer**: local SQLite at `~/.kaijutsu/findings.db` records user accept/dismiss per (provider, persona, preset, codebase-fingerprint) tuple. Synthesizer weights agent votes by observed precision via 3-state algo (cold=1.0 / bootstrap=0.7 / mature=clamped precision) over a sliding 200-action window. `jutsu finding {list,accept,dismiss,stats,clear,export}` CLI surface. `--show-weights` opt-in for synthesizer column annotations. No-network privacy boundary enforced by import-list test.
 
+## v0.7.x — incremental followups
+
+- [ ] **`--db` flag** for `jutsu finding *` (env override `KAIJUTSU_FINDINGS_DB` ships in v0.7 for tests; user-facing flag deferred).
+- [ ] **Configurable bootstrap weight + window size** — `~/.kaijutsu/findings.toml` once we have real-world tuning data.
+- [ ] **Auto-prune policy** — `prune.toml` with default-365d eviction; v0.7 ships manual `clear --older-than` only.
+- [ ] **`jutsu finding repair`** — vacuum + integrity check + best-effort recovery from corrupt DB.
+- [ ] **Rule-based skip + skill-author skip-policy schema**: deterministic heuristic gate (lockfile/comment-only/whitespace auto-skip), `skip_rules:` in agents.yaml.
+- [ ] **MCP http transport** (deferred from v0.6 Stage 6).
+- [ ] **`--estimate` provider-native tokenizers** (tiktoken-go fallback already tight at ±5% for openai-compat).
+
 ## v0.8 — pre-implementation interrogation primitive ✅
 
 - [x] **`dream` skill + `swarm dream` preset** — pre-implementation interrogation through 4-8 cognitive lenses (4 base: honest/fit/gaps/wild + 4 opt-in extras: adversary/inverse/status-quo/time). Anti-sycophancy gates baked into every prompt. Standalone `/dream` walks lenses sequentially; `jutsu swarm dream` dispatches the N×lenses matrix and synthesizes into 4 sections (load-bearing / cross-lens consensus / lens-unique / lens-blind-spots warning). Records to v0.7 findings DB via `[lens:<name>]` summary prefix; no schema migration. `--lenses` flag controls the lens set; default `--max-cost` raised to 3.00 (5.00 with `--lenses=all`). `--mode full` rejected until v0.8.x defines a dream-debate template.
@@ -95,16 +105,6 @@ Spec: `docs/specs/2026-05-05-v0.6.0-multi-provider-agents.md`. ADR: `docs/decisi
 - [ ] **Dream graveyard auto-write** — `~/.kaijutsu/dreams/` write helpers wired into the standalone /dream invocation; cross-codebase recall scoping; lens-rotation rule on repeat-dreams within 7 days.
 - [ ] **`jutsu dream clear --older-than 365d`** — auto-prune for the dream graveyard.
 - [ ] **dream-as-eval-corpus** — closes the prediction loop: "did wild's predictions come true 6 months later?"
-
-## v0.7.x — incremental followups
-
-- [ ] **`--db` flag** for `jutsu finding *` (env override `KAIJUTSU_FINDINGS_DB` ships in v0.7 for tests; user-facing flag deferred).
-- [ ] **Configurable bootstrap weight + window size** — `~/.kaijutsu/findings.toml` once we have real-world tuning data.
-- [ ] **Auto-prune policy** — `prune.toml` with default-365d eviction; v0.7 ships manual `clear --older-than` only.
-- [ ] **`jutsu finding repair`** — vacuum + integrity check + best-effort recovery from corrupt DB.
-- [ ] **Rule-based skip + skill-author skip-policy schema**: deterministic heuristic gate (lockfile/comment-only/whitespace auto-skip), `skip_rules:` in agents.yaml.
-- [ ] **MCP http transport** (deferred from v0.6 Stage 6).
-- [ ] **`--estimate` provider-native tokenizers** (tiktoken-go fallback already tight at ±5% for openai-compat).
 
 ## v1 — maturity
 
