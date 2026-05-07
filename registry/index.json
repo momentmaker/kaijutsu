@@ -72,6 +72,26 @@
     "mcp-builder": {
       "source": "github.com/anthropics/skills",
       "path": "skills/mcp-builder"
+    },
+    "subagent-driven-development": {
+      "source": "github.com/obra/superpowers",
+      "path": "skills/subagent-driven-development"
+    },
+    "using-git-worktrees": {
+      "source": "github.com/obra/superpowers",
+      "path": "skills/using-git-worktrees"
+    },
+    "verification-before-completion": {
+      "source": "github.com/obra/superpowers",
+      "path": "skills/verification-before-completion"
+    },
+    "systematic-debugging": {
+      "source": "github.com/obra/superpowers",
+      "path": "skills/systematic-debugging"
+    },
+    "executing-plans": {
+      "source": "github.com/obra/superpowers",
+      "path": "skills/executing-plans"
     }
   }
 }
