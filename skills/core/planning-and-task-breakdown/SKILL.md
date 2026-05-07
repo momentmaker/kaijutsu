@@ -5,7 +5,7 @@ description: Decompose a spec into a verifiable task list — vertical slices, e
 
 # Planning + Task Breakdown
 
-> Adapted from [`addyosmani/agent-skills`](https://github.com/addyosmani/agent-skills/blob/main/skills/planning-and-task-breakdown) under the MIT License. Copyright (c) Addy Osmani. Modifications by kaijutsu maintainers — composed with `scope-check` for cost-tier classification, and the final review pass migrated to `jutsu swarm doc-review` (the Phase-2 universal QA gate).
+> Adapted from [`addyosmani/agent-skills`](https://github.com/addyosmani/agent-skills/blob/main/skills/planning-and-task-breakdown) under the MIT License. Copyright (c) Addy Osmani. Plan-doc header template + bite-sized step granularity + file-structure-up-front section adapted from [`obra/superpowers/skills/writing-plans`](https://github.com/obra/superpowers/blob/main/skills/writing-plans/SKILL.md) under MIT. Final review pass migrated to `jutsu swarm doc-review` (the Phase-2 universal QA gate).
 
 A plan is the bridge between a spec and an implementation. The deliverable is a markdown file with vertical-slice tasks, each individually shippable.
 
@@ -15,13 +15,51 @@ A plan is the bridge between a spec and an implementation. The deliverable is a 
 - The user says "what are the steps" / "how do we approach this" / "task list"
 - A change spans >5 files or >500 LOC
 
+## Plan document header (every plan must start with this)
+
+```markdown
+# <Feature Name> Implementation Plan
+
+**Spec:** `docs/specs/<spec-file>.md`
+**Goal:** <one sentence — what this builds>
+**Architecture:** <2-3 sentences — approach + key invariants>
+**Tech Stack:** <key libs / frameworks / files>
+
+> **For implementers (human or agent):** execute this plan task-by-task with `subagent-driven-development` (recommended) or `executing-plans` (separate-session mode). Steps use checkbox (`- [ ]`) syntax for tracking.
+
+---
+```
+
+The implementer needs to know WHY before HOW. The header is non-negotiable.
+
 ## Process
 
 ### Step 1: Read the spec
 
 Locate the spec file (usually `docs/specs/<latest>.md`). If no spec exists, refuse — invoke `spec-driven-development` first.
 
-### Step 2: Decompose into vertical slices
+### Step 2: Map the file structure UPFRONT
+
+Before defining slices, list every file the implementation will create or modify and the responsibility of each. Decomposition decisions get locked in here.
+
+```markdown
+## File structure
+
+- `cli/internal/findings/store.go` — SQLite handle + migration loader (NEW)
+- `cli/internal/findings/migrations/0001_init.sql` — v1 schema (NEW)
+- `cli/internal/findings/store_test.go` — Open / Close / migration idempotency (NEW)
+- `cli/internal/cli/swarm.go` — post-FanOut hook (MODIFY ~line 484)
+```
+
+Rules:
+- Each file = one clear responsibility
+- Files that change together live together (split by responsibility, not by tech layer)
+- In existing codebases, follow established patterns — don't unilaterally restructure
+- If a file you'd modify has grown unwieldy, including a split in the plan is reasonable
+
+The implementer reads this and knows the surface area before reading any task.
+
+### Step 3: Decompose into vertical slices
 
 Each slice:
 - Touches every layer it needs (UI / API / DB / tests / docs)
@@ -31,7 +69,7 @@ Each slice:
 
 3-7 slices is the sweet spot. Fewer = you're not slicing enough; more = the spec is too big.
 
-### Step 3: Map dependencies
+### Step 4: Map dependencies
 
 Make the DAG explicit:
 
@@ -44,21 +82,41 @@ Slice 3: <describe> — depends on: nothing  (parallel with 1+2)
 
 Identify the critical path (longest chain). Any slices off the critical path can be assigned in parallel.
 
-### Step 4: Per-task acceptance criteria
+### Step 5: Bite-sized steps inside each slice
 
-For each slice:
-```
-Slice N: <title>
-- [ ] <observable behavior>
-- [ ] <test that passes>
-- [ ] <CI green>
+Per-slice acceptance is necessary but not sufficient. Each slice ALSO carries a checklist of 2-5-minute steps the implementer (or a subagent in `subagent-driven-development` mode) executes in order. The implementer should never need to invent the next step.
+
+```markdown
+### Slice N: <title>
+
+**Files:**
+- Create: `cli/internal/findings/store.go`
+- Modify: `cli/internal/cli/swarm.go:484-492`
+- Test:   `cli/internal/findings/store_test.go`
+
+**Acceptance:**
+- [ ] Open() creates DB at $HOME/.kaijutsu/findings.db with mode 0600
+- [ ] Schema migration applies once; re-Open is a no-op
+- [ ] Tests pass
+
+**Steps:**
+- [ ] Write the failing test for Open() / Close()
+- [ ] Run: `go test ./internal/findings/` — confirm RED
+- [ ] Implement minimal Store{} + Open() + Close()
+- [ ] Run tests; confirm GREEN
+- [ ] Add migration loader + 0001_init.sql
+- [ ] Add re-open idempotency test
+- [ ] Run tests; confirm GREEN
+- [ ] Commit with message `feat(findings): Stage N — SQLite store`
 ```
 
-### Step 5: Write to disk
+Each step = one action (2-5 min). DRY / YAGNI / TDD / frequent commits are the bias. The implementer reads the steps top-to-bottom and never has to ask "what's next?"
+
+### Step 6: Write to disk
 
 Save to `docs/plans/YYYY-MM-DD-<short-slug>.md` (or wherever the project's plan convention dictates).
 
-### Step 6: Multi-agent review (DO NOT skip)
+### Step 7: Multi-agent review (DO NOT skip)
 
 Run the plan through `doc-review` — kaijutsu's universal QA gate that orchestrates claude / codex / gemini in parallel with prose-tuned lenses:
 
@@ -79,7 +137,7 @@ Iterate findings:
 3. Re-save the plan. Re-run `jutsu swarm doc-review` if substantive (or `--replay <key>` for free synthesis re-render after prompt-tuning).
 4. Stop when the table shows zero issue-level findings or only contested-minor / info rows.
 
-### Step 7: Cost-tier classification
+### Step 8: Cost-tier classification
 
 After doc-review converges, compose `scope-check` to classify each slice by reasoning space (plan / bead / code) per the cost-tier model. This is per-slice metadata for the implementer, not a review pass.
 

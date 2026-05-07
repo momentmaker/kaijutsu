@@ -5,7 +5,7 @@ description: Implement features as thin vertical slices behind feature flags, ea
 
 # Incremental Implementation
 
-> Adapted from [`addyosmani/agent-skills`](https://github.com/addyosmani/agent-skills/blob/main/skills/incremental-implementation) under the MIT License. Copyright (c) Addy Osmani. Modifications by kaijutsu maintainers — composed with `scope-check` and `polish`.
+> Adapted from [`addyosmani/agent-skills`](https://github.com/addyosmani/agent-skills/blob/main/skills/incremental-implementation) under the MIT License. Copyright (c) Addy Osmani. Per-slice two-stage review pattern + continuous-execution rule adapted from [`obra/superpowers/skills/subagent-driven-development`](https://github.com/obra/superpowers/blob/main/skills/subagent-driven-development/SKILL.md) under MIT.
 
 The principle: every PR is mergeable on its own. No "wait for the next one" merges. No multi-week branches. Vertical = touches every layer (UI / API / DB / tests) for one narrow capability rather than completing one layer fully before moving to the next.
 
@@ -37,9 +37,24 @@ The flag defaults OFF in main. Old behavior is preserved. New behavior ships whe
 
 Every slice ends with: passing unit tests for the new code, no regression in existing tests, lint clean, type-check clean. If CI is red, the slice isn't done.
 
-### Step 5: Per-slice review (compose polish)
+### Step 5: Per-slice two-stage review chain
 
-Invoke `polish` on the slice's diff before merging. Per-slice polish prevents end-of-feature debt accumulation.
+A slice is NOT complete after the implementer says "done". Run two reviews in order; only after BOTH pass does the slice get marked shippable.
+
+**Stage A — Spec compliance review.**
+Dispatch a fresh subagent (clean context, no implementation history) with:
+- The slice's declared acceptance criteria from the plan
+- The slice's diff (`git diff <base>..<head>`)
+- One question: "Does this diff satisfy every acceptance criterion? Pass / fail per criterion + reasons."
+
+If FAIL on any criterion → implementer fixes the gap. Re-dispatch the spec-reviewer (fresh subagent, fresh context) on the new diff. Repeat until PASS.
+
+**Stage B — Code quality review.**
+ONLY after Stage A passes, run `polish` on the slice's diff. Polish handles the multi-pass critique + verification-before-completion gate (tests, lint, build all green via fresh runs). Polish surfaces quality issues; implementer fixes; re-run polish until clean.
+
+**Why two stages, not one:** spec-compliance and code-quality are different failure modes. A high-quality slice that misses a criterion is a regression hidden behind nice code; a spec-correct slice with broken tests is a half-shipped feature. Single-stage review conflates them and lets one slip behind the other.
+
+Each stage uses a FRESH subagent with isolated context — no inheritance of the implementer's session history. The reviewer evaluates work product, not narrative.
 
 ### Step 6: Scope-check between slices (compose scope-check)
 
@@ -68,8 +83,10 @@ Last slice merged. Run integration tests with the flag ON. Roll forward in stage
 - **No slice ships without a feature flag** unless the change is a pure no-op refactor with green tests.
 - **No slice ships without per-slice tests.**
 - **No slice ships on red CI.** Period.
+- **No slice ships without BOTH spec-compliance + code-quality review.** (Step 5.)
 - **Scope-check between slices.** Not after — between.
 - **Each slice fits in <500 LOC.** If you're over, split.
+- **Continuous execution between independent slices.** Once the user has approved the slice plan, do NOT pause to ask "should I continue?" between independent slices. Slices were declared independent on purpose; mid-loop check-ins waste their time. Stop only on: a slice fails review and the failure mode genuinely requires user input, an ambiguity blocks progress, or all slices complete.
 
 ## Composes
 

@@ -1,8 +1,8 @@
 name: incremental-implementation
-version: 0.1.0
+version: 0.2.0
 license: MIT
 layout: flat
-description: "Implement features as thin vertical slices, each shippable behind a feature flag. Each slice ends in green CI. No big-bang refactors. Composes scope-check (cost-tier) and polish (per-slice review)."
+description: "Implement features as thin vertical slices behind feature flags, each shippable on green CI. Per-slice two-stage review chain: fresh-context spec-compliance subagent, then code-quality via polish (with verification-before-completion gate). Continuous execution between independent slices — no pause-to-check-in. Composes scope-check + polish."
 author: "Addy Osmani (originally) — adapted by kaijutsu maintainers"
 homepage: https://kaijutsu.dev/skills/incremental-implementation
 repository: https://github.com/momentmaker/kaijutsu
