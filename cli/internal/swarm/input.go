@@ -12,9 +12,15 @@ import (
 // kind's cap before reaching the agents — over-cap aborts with a
 // clear error so the user can narrow scope rather than silently
 // truncating + getting bad findings.
+//
+// v0.9 bumped diff + files caps from 200KB → 500KB after observing
+// the v0.9 PR itself (252KB) hit the original cap. 500KB ≈ 125K
+// input tokens, still well under claude's 1M context window. Cap
+// remains the safety net against accidental "50-commit merge"
+// dispatches that would blast remote APIs unintentionally.
 const (
-	maxBytesDiff   = 200 * 1024
-	maxBytesFiles  = 200 * 1024
+	maxBytesDiff   = 500 * 1024
+	maxBytesFiles  = 500 * 1024
 	maxBytesPrompt = 8 * 1024
 )
 

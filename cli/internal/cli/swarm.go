@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mattn/go-isatty"
 	"github.com/momentmaker/kaijutsu/cli/internal/agents"
 	"github.com/momentmaker/kaijutsu/cli/internal/findings"
 	"github.com/momentmaker/kaijutsu/cli/internal/swarm"
@@ -39,6 +41,7 @@ before the synthesizer.`,
 	cmd.AddCommand(newSwarmDreamCmd())
 	cmd.AddCommand(newSwarmRefactorPlanCmd())
 	cmd.AddCommand(newSwarmSecurityAuditCmd())
+	cmd.AddCommand(newSwarmReverseCmd())
 	return cmd
 }
 
@@ -59,9 +62,11 @@ type commonSwarmFlags struct {
 	replayKey      string
 	grantConsent   bool
 	personas       []string // v0.6 Stage 3b — opt into persona-driven dispatch
-	estimate       bool    // v0.6 Stage 4 — dry-run, print cost projection, exit 0
-	noTelemWarn    bool    // v0.6 Stage 4 — suppress the cli-compat one-shot warning
-	showWeights    bool    // v0.7 — append (weight) annotation to disagreement-table column headers
+	estimate       bool     // v0.6 Stage 4 — dry-run, print cost projection, exit 0
+	noTelemWarn    bool     // v0.6 Stage 4 — suppress the cli-compat one-shot warning
+	showWeights    bool     // v0.7 — append (weight) annotation to disagreement-table column headers
+	dreamLenses     []string // v0.9 — selected dream lens list, populated by dream cmd; threaded to graveyard write + rotation. nil for non-dream presets.
+	confidenceFloor float64  // v0.9 — drops findings below this confidence before clustering. Zero = no filter. Reverse preset's --confidence-threshold flag sets this; other presets inherit zero.
 }
 
 func bindCommonFlags(cmd *cobra.Command, f *commonSwarmFlags, supportsPostComment bool) {
@@ -70,7 +75,7 @@ func bindCommonFlags(cmd *cobra.Command, f *commonSwarmFlags, supportsPostCommen
 	cmd.Flags().Float64Var(&f.maxCostUSD, "max-cost", 1.00, "skip optional --full/--strict spend if Pass-1 estimate already exceeds this many USD; warn at end if total exceeds")
 	cmd.Flags().Float64Var(&f.perAgentBudget, "per-agent-budget", 0.50, "passed to each agent's --max-budget-usd if supported")
 	cmd.Flags().StringVar(&f.synthesizer, "synthesizer", "claude", "which agent runs the synthesis pass")
-	cmd.Flags().DurationVar(&f.timeout, "timeout", 180*time.Second, "per-agent invocation timeout")
+	cmd.Flags().DurationVar(&f.timeout, "timeout", 600*time.Second, "per-agent invocation timeout (v0.9 default 10min — bumped from 3min after big-PR runs hit the lower cap)")
 	cmd.Flags().StringVar(&f.format, "format", "markdown", "markdown (default — synthesized review) | json (raw multi-agent dump, no synthesis)")
 	cmd.Flags().BoolVar(&f.allowSecrets, "allow-secrets", false, "bypass the pre-flight secrets scan (DANGEROUS — input will be sent to remote model providers)")
 	cmd.Flags().BoolVarP(&f.yes, "yes", "y", false, "non-interactive: skip the consent prompt; require .kaijutsu/<preset>.yaml has allow-multi-model: true")
@@ -248,20 +253,44 @@ build X?". Use brainstorm for the latter.`,
 			ctx := cmd.Context()
 			projectRoot, _ := os.Getwd()
 
-			// --mode full triggers Pass-2 swarm.Debate, which expects
-			// preset.Debate to be a non-empty fmt template. dream
-			// ships no debate template in v0.8.0 — Pass-2 critique of
-			// lens-cell findings is interesting but undefined. Reject
-			// here rather than dispatch an empty-prompt round to the
-			// agents. v0.8.x candidate.
-			if flags.mode == "full" {
-				return errors.New("swarm dream does not support --mode full in v0.8.0 (Pass-2 debate over lens cells is undefined). Use the default --mode quick; --lenses=all already expands the lens matrix without a debate round")
-			}
-
 			lenses, err := resolveDreamLenses(lensesArg)
 			if err != nil {
 				return err
 			}
+
+			// v0.9 lifts the v0.8 reject on --mode full for dream. The
+			// real Pass-2 debate template (preset.Debate) instructs
+			// each agent to critique peer lens cells and emit
+			// [new]/[disputes]/[revised]/[agreed] revision tags that
+			// MergePasses + the recorder validator already accept.
+			//
+			// Cost guard: --mode full doubles dispatch cost (Pass-1
+			// + Pass-2). Confirm interactively before dispatching;
+			// non-TTY (CI) without --yes hard-fails so a piped
+			// invocation can't silently spend money. Runs AFTER lens
+			// resolution so the estimate reflects --lenses=all (8) vs
+			// base (4).
+			if flags.mode == "full" {
+				if err := confirmDreamFullModeCost(cmd, &flags, lenses); err != nil {
+					return err
+				}
+			}
+
+			// v0.9 lens-rotation rule: when --mode full AND a recent
+			// dream session for (topic, fp) exists in the graveyard
+			// AND the user didn't explicitly set --lenses, rotate the
+			// LEAD lens through the canonical 8-lens cycle. Surfaces
+			// a different framing on repeat-dreams. Stage 2 ships the
+			// wiring; Stage 3 lifts the cobra reject on --mode full
+			// for dream so the path becomes reachable. Until Stage 3,
+			// the --mode full reject above fires first and rotation
+			// stays dormant.
+			if flags.mode == "full" && !cmd.Flags().Changed("lenses") {
+				if rotated, ok := tryRotateDreamLenses(args, projectRoot, lenses, cmd.ErrOrStderr()); ok {
+					lenses = rotated
+				}
+			}
+			flags.dreamLenses = lenses
 
 			preset, err := swarm.LoadPresetWithSkillOverrides(projectRoot, "dream")
 			if err != nil {
@@ -714,8 +743,10 @@ func runSwarmPipeline(ctx context.Context, cmd *cobra.Command, projectRoot strin
 	// absent, weights collapses to nil and Synthesize behaves
 	// byte-identical to v0.6.2 (cold-start contract).
 	synthOpts := swarm.SynthOpts{
-		Weights:     resolveSynthWeights(stderr, projectRoot, preset.Name, results, personaAdapters),
-		ShowWeights: f.showWeights,
+		Weights:         resolveSynthWeights(stderr, projectRoot, preset.Name, results, personaAdapters),
+		ShowWeights:     f.showWeights,
+		LensWeights:     resolveDreamLensWeights(stderr, projectRoot, preset.Name, results, personaAdapters),
+		ConfidenceFloor: f.confidenceFloor,
 	}
 
 	var (
@@ -790,7 +821,14 @@ func runSwarmPipeline(ctx context.Context, cmd *cobra.Command, projectRoot strin
 		// order since v0.8.3 doesn't yet thread the --lenses flag
 		// through here). v0.8.x can plumb the actual selected list
 		// for the lens-rotation rule to work fully.
-		path, gerr := WriteDreamSession(ictx.Body, fp, md, swarm.DreamLensesBase(), "swarm", f.mode == "full")
+		// Use the actual selected lens list when populated (v0.9+
+		// dream cmd threads it through commonSwarmFlags). Falls back
+		// to base-4 for non-dream-cmd code paths (defensive).
+		lensOrder := f.dreamLenses
+		if len(lensOrder) == 0 {
+			lensOrder = swarm.DreamLensesBase()
+		}
+		path, gerr := WriteDreamSession(ictx.Body, fp, md, lensOrder, "swarm", f.mode == "full")
 		if gerr != nil {
 			fmt.Fprintf(stderr, "warning: dream graveyard write failed: %v\n", gerr)
 		} else {
@@ -810,6 +848,84 @@ func runSwarmPipeline(ctx context.Context, cmd *cobra.Command, projectRoot strin
 	}
 	reportSwarmStderr(stderr, results, finished.Sub(start), run.TotalCost)
 	return nil
+}
+
+// confirmDreamFullModeCost is the v0.9 cost guard for `swarm dream
+// --mode full`. Pass-2 doubles dispatch cost; the dream matrix
+// (lenses × personas) is already wider than other presets. We
+// confirm interactively before dispatch.
+//
+// Behavior:
+//   - --yes flag set: no-op, returns nil (explicit user opt-in).
+//   - TTY stdin without --yes: print estimate, prompt y/N, parse
+//     stdin response. Anything other than "y" / "yes" returns an
+//     abort error.
+//   - Non-TTY stdin without --yes: hard-fail with the spec's
+//     non-interactive-CI error so a piped invocation can't
+//     silently spend money.
+//
+// Estimate is a rough-but-honest ballpark — exact cost depends on
+// persona count + token budget per call. We compute it here from
+// preset defaults; the actual run reports the final number after
+// dispatch via reportSwarmStderr.
+func confirmDreamFullModeCost(cmd *cobra.Command, f *commonSwarmFlags, lenses []string) error {
+	if f.yes {
+		return nil
+	}
+	stderr := cmd.ErrOrStderr()
+	estimate := estimateDreamFullCost(lenses)
+
+	stdin, ok := cmd.InOrStdin().(fdHolder)
+	tty := ok && (isatty.IsTerminal(stdin.Fd()) || isatty.IsCygwinTerminal(stdin.Fd()))
+	if !tty {
+		return fmt.Errorf(
+			"dream --mode full requires interactive confirmation or --yes; refusing to dispatch a non-trivial cost run silently (estimated cost ~$%.2f, prices as-of build date)",
+			estimate,
+		)
+	}
+
+	fmt.Fprintf(stderr,
+		"swarm dream --mode full will dispatch Pass-1 cells across %d lens(es) × available agents + Pass-2 critique round.\n"+
+			"Estimated cost: ~$%.2f (prices as-of build date).\n"+
+			"Continue? [y/N] ",
+		len(lenses),
+		estimate,
+	)
+	reader := bufio.NewReader(cmd.InOrStdin())
+	resp, err := reader.ReadString('\n')
+	if err != nil && err != io.EOF {
+		return fmt.Errorf("read confirmation: %w", err)
+	}
+	resp = strings.ToLower(strings.TrimSpace(resp))
+	if resp != "y" && resp != "yes" {
+		return errors.New("dream --mode full aborted by user")
+	}
+	return nil
+}
+
+// estimateDreamFullCost is a rough Pass-1 + Pass-2 budget ballpark
+// for the cost prompt. Heuristic only — the actual cost depends on
+// runtime persona resolution, model pricing, and per-call token
+// counts. Used to produce a "this is the order of magnitude" number
+// so the user's y/N decision is informed.
+//
+// Formula: per-call ≈ (1500 prompt tokens + 1500 output tokens) at
+// claude rate ($0.005/1k blended). lens_count × 3 agents + 3 Pass-2
+// calls = total calls. Empty lens list defaults to base 4.
+func estimateDreamFullCost(lenses []string) float64 {
+	n := len(lenses)
+	if n == 0 {
+		n = 4
+	}
+	const (
+		assumedAgents       = 3
+		promptTokensPerCall = 1500
+		outputTokensPerCall = 1500
+	)
+	pass1Calls := n * assumedAgents
+	pass2Calls := assumedAgents
+	perCall := swarm.EstimateCostUSD(swarm.AgentClaude, promptTokensPerCall, outputTokensPerCall)
+	return float64(pass1Calls+pass2Calls) * perCall
 }
 
 // appendMarker tacks the kaijutsu-pr-review HTML comment marker

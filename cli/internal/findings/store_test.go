@@ -86,12 +86,16 @@ func TestOpen_ReopenIdempotent(t *testing.T) {
 		t.Fatalf("count=%d after reopen, want 1 (data persisted)", n)
 	}
 
+	// After v0.9, two migrations apply (0001_init + 0002_lens). The
+	// idempotent invariant is that REOPEN produces no NEW rows — the
+	// row count after second.Open equals the row count after first
+	// open. Any future migration bumps this expected count by 1.
 	var versionRows int
 	if err := second.DB().QueryRow(`SELECT COUNT(*) FROM schema_version`).Scan(&versionRows); err != nil {
 		t.Fatalf("count schema_version: %v", err)
 	}
-	if versionRows != 1 {
-		t.Fatalf("schema_version rows=%d, want 1 (idempotent)", versionRows)
+	if versionRows != 2 {
+		t.Fatalf("schema_version rows=%d, want 2 (one per applied migration; idempotent)", versionRows)
 	}
 }
 

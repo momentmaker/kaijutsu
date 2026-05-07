@@ -140,22 +140,25 @@ func TestSwarmDream_RejectsOversizedTopic(t *testing.T) {
 	}
 }
 
-// TestSwarmDream_RejectsModeFull verifies the cobra layer hard-fails
-// `jutsu swarm dream --mode full` instead of dispatching agents with
-// an empty Debate template (preset.Debate is unset for dream in
-// v0.8.0). The reject points users at --lenses=all as the matrix-
-// expansion path.
-func TestSwarmDream_RejectsModeFull(t *testing.T) {
+// TestSwarmDream_ModeFullLifted verifies v0.9 lifts the v0.8 cobra
+// reject on --mode full. With --yes set, the command no longer
+// returns the "does not support --mode full" error; it instead
+// proceeds past the confirmation guard. (Full end-to-end dispatch
+// requires real or fake agents; here we only verify the cobra-layer
+// gate is gone.)
+//
+// The command may still error downstream (no agents available, no
+// project root, etc.). What it MUST NOT do is reject at the cobra
+// layer with the v0.8 wording.
+func TestSwarmDream_ModeFullLifted(t *testing.T) {
 	root := NewRootCmd()
 	root.SetArgs([]string{"swarm", "dream", "test topic", "--mode", "full", "--yes"})
 	err := root.Execute()
-	if err == nil {
-		t.Fatal("expected --mode full to be rejected for dream")
-	}
-	if !strings.Contains(err.Error(), "does not support --mode full") {
-		t.Errorf("error should mention unsupported --mode full; got: %v", err)
-	}
-	if !strings.Contains(err.Error(), "--lenses=all") {
-		t.Errorf("error should redirect users to --lenses=all; got: %v", err)
+	if err != nil {
+		// Some error is expected (no agents in test env), but it
+		// MUST NOT be the v0.8 cobra-layer reject.
+		if strings.Contains(err.Error(), "does not support --mode full") {
+			t.Errorf("v0.9 should lift the cobra reject on --mode full; got: %v", err)
+		}
 	}
 }

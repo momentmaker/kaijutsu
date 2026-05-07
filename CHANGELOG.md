@@ -4,6 +4,49 @@ All notable changes to kaijutsu (the registry + skills) and `jutsu` (the CLI). T
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-05-07
+
+Feedback-loop hardening — five-item bundle closing v0.7+v0.8 gaps. Spec: `docs/specs/2026-05-07-v0.9.0-feedback-loops.md`. Plan: `IMPLEMENTATION_PLAN.md` (stages 1-5).
+
+### Added
+
+- **Lens schema migration** (`0002_lens.sql`) — `lens TEXT` + `position INTEGER` columns on findings table. LIKE-based backfill for pre-v0.9 dream rows; `idx_findings_lens_lookup` and `idx_findings_run_position` indexes added. Backfill restricted to `preset='dream'` so non-dream rows with literal `[lens:...]` summary prefixes don't get false-tagged.
+- **Per-lens precision tracking** (`Weighter.WeightForLens`) — 3-tier fallback: lens-specific → tuple-without-lens → cold default. Synthesizer reads per-lens weights via new `SynthOpts.LensWeights` field; canonical 8-lens cycle order in the `lens_weights:` prompt block.
+- **`KAIJUTSU_DREAM_ADAPTIVE_LENS=off`** killswitch suppresses the lens-weights block entirely (synth output byte-identical to v0.8.3).
+- **Dream Pass-2 debate** — real critique template emits `[new]/[disputes]/[revised]/[agreed]` revision tags; preserves `[lens:<name>]` prefix + `load_bearing:` reasoning prefix; `[agreed]` documented as requiring peer count >= 2. Cobra reject on `--mode full` for dream lifted.
+- **Cost prompt + non-TTY hard-fail** — `swarm dream --mode full` confirms estimated cost interactively; non-TTY without `--yes` hard-fails (refuses to dispatch silently in CI).
+- **Lens rotation rule** — `--mode full` repeat-dreams within 7d shift the LEAD lens through the canonical 8-lens cycle. `RotateLensOrder` + `ReadDreamLensOrder` + `tryRotateDreamLenses` helpers; threaded via `commonSwarmFlags.dreamLenses`.
+- **`jutsu swarm reverse`** — new spec-vs-impl drift detector. `--spec <path>` + `--diff <range>` (default `origin/main...HEAD`); ADDED/OMITTED/CHANGED/AMBIGUOUS categories; `BuildReversePrompt` bakes spec via `{{SPEC_CONTENT}}` placeholder + escapes `%` → `%%` to protect downstream `fmt.Sprintf`. `ReverseTruncate` enforces `MaxGitHubCommentBytes = 60_000` cap deterministically (severity, file, line_range_start ordering). `MarkerReverse` distinct from `kaijutsu-pr-review`. `--confidence-threshold` defaults to 0.30 (vs pr-review's 0.55) — drift detection benefits from admitting more findings. `--lie-to-them=on|off` override (off by default).
+- **`SynthOpts.ConfidenceFloor`** — drops findings below threshold before clustering. Zero floor = byte-identical v0.7 behavior. Reverse preset's lower default ships through this; other presets opt in via the same field.
+- **Per-skill provider routing** — `skill.yaml` `routing:` field declares per-persona + default preferred-provider lists. JSON schema + `Routing` struct in `cli/internal/skill/`. `ResolvePersonaProvider` 3-phase resolution (declarative → runtime availability → minimum-dispatch invariant).
+- **`KAIJUTSU_DISABLE_AGENTS=<comma-list>`** env-var honored at `Available()` — escape hatch for forcing a provider subset without uninstalling CLIs.
+- **`jutsu finding sync-pr <pr>`** — ingests human accept/dismiss decisions from PR comment replies into the findings DB. Reply-keyword grammar: `^[\s>]*(accept|dismiss)\s*:\s*<run_id>:<pos>\s*$` (case-insensitive verb, `>`-quoting tolerated). Dry-run by default; `--apply` writes. Idempotent on re-run. 30s timeout on `gh` subprocess prevents CI stalls. `FindByRunPosition` resolves `(run_id, position)` → finding row.
+- **`jutsu finding seed`** dev-only subcommand — gated by `--dev` flag (uses `cmd.InheritedFlags()` for robust ancestor lookup) OR `KAIJUTSU_FINDING_SEED=1`. `SilenceUsage:true` so the gate error doesn't leak the Hidden subcommand's existence. Per-row monotonic `action_at` increment for deterministic weighter window selection.
+- **`LensFromSummary`** helper owns the `[lens:<name>]` regex (recorder + validator share).
+
+### Changed
+
+- **Diff cap 200KB → 500KB**, **files cap 200KB → 500KB**, **per-agent timeout 180s → 600s** — surfaced when running adversarial swarm pr-review on the v0.9 PR itself (252KB diff). 500KB ≈ 125K input tokens, still well under claude's 1M context. Cap remains as safety net against accidental "merge of 50 commits" → unintended remote-API blast.
+- **`init_agents_fragment` marker version** `0.8.2` → `0.9.0`. Older versions still detected via the version-agnostic prefix and replaced cleanly.
+
+### Notes
+
+- **Adversarial swarm pr-review** caught 6 real bugs squashed before tag — 1 BLOCKER from gemini (spec content with `%` chars broke downstream `fmt.Sprintf` despite the `strings.Replace` indirection — escape `%` → `%%` before bake), 5 ISSUEs from claude + deepseek (missing `(run_id, position)` index on sync-pr hot path, gh subprocess no timeout, shared action_at across seeds, `seedDevGate` parent-walk vs `InheritedFlags`, Hidden seed cmd help dump on gate error). Different agents caught different bugs — claude on design/correctness, gemini on format-string traps + dry-run drift, deepseek (v4-flash) on perf + I/O bounds.
+- **In-session pr-review** (claude lens applied directly without subprocess) caught 1 ISSUE the swarm crashed on: bot-marker skip filter case-sensitive vs case-insensitive regex mismatch.
+
+### Deferred to v0.9.x
+
+- `--post-review` render mode (per-finding line-anchored review comments + reactions)
+- `--auto-sync` flag on pr-review
+- `--reverse-spec` combined trigger on pr-review
+- Draft-PR softer-header detection in reverse
+- Per-finding marker emission in pr-review renderer
+- `routing.disabled` escape hatch in `~/.kaijutsu/agents.yaml`
+- `applySyncPRActions` per-batch transaction wrapping (re-run is idempotent so partial failure recovers)
+- `(run_id, position)` UNIQUE constraint at schema (in-memory counter handles correctly in practice)
+- Confidence-threshold full plumbing for non-reverse presets
+- Warning when diff > 100KB AND timeout < 300s (observe usage first)
+
 ## [0.8.3] — 2026-05-07
 
 Quick-wins bundle from the v0.7.x + v0.8.x followup backlog. Seven small-but-high-value items shipped in one release rather than dribbled across micro-tags.

@@ -979,19 +979,18 @@ TOPIC:
 %s
 `
 
+// (legacy const removed — v0.8 placeholder rejected --mode full;
+// v0.9 dreamDebate above replaces it for real Pass-2 critique.)
+
 // dreamPreset embeds the base 4-lens template by default. The cobra
 // command in cli/swarm.go can override DefaultPrompt at runtime when
 // --lenses selects a different set (all 8 or a comma-list).
 //
-// Debate is set to a defensive placeholder rather than left empty.
-// The cobra layer rejects --mode full for dream, but a library
-// caller using the preset directly (bypassing the cobra reject)
-// could still invoke swarm.Debate. With an empty Debate template,
-// fmt.Sprintf would dispatch agents an empty prompt → API charge
-// for garbage. The placeholder template instructs agents to return
-// an empty array, which mergePasses then folds back into Pass-1
-// results unchanged. v0.8.x candidate: replace with a real dream-
-// flavored debate template.
+// v0.9 wires the real Pass-2 debate template (dreamDebate above).
+// The cobra layer's --mode full reject is lifted in this release;
+// runtime dispatch of Pass-2 reaches the prompt below and produces
+// the [new] / [disputes] / [revised] / [agreed] revision tags that
+// MergePasses + the recorder validator already accept.
 var dreamPreset = Preset{
 	Name:          "dream",
 	Description:   "Pre-implementation interrogation. Walks any topic through 4-8 cognitive lenses; --lenses controls which.",
@@ -999,18 +998,73 @@ var dreamPreset = Preset{
 	SeverityVocab: []Severity{SeverityBlocker, SeverityIssue, SeverityMinor, SeverityInfo},
 	DefaultPrompt: BuildDreamPrompt(DreamLensesBase()),
 	Synthesizer:   dreamSynthesizer,
-	Debate:        dreamDebatePlaceholder,
+	Debate:        dreamDebate,
 }
 
-// dreamDebatePlaceholder returns an empty findings array regardless
-// of input. v0.8.0 ships dream WITHOUT a real Pass-2 debate template;
-// this placeholder makes library-call paths safe (returns []) while
-// the cobra layer rejects --mode full upfront for the typical CLI
-// path. v0.8.x will define a real dream-flavored debate template
-// and lift the cobra reject.
-const dreamDebatePlaceholder = `The dream preset does not support Pass-2 debate in v0.8.0.
-Return ONLY this JSON literal: []
-Do NOT analyze the inputs. Do NOT critique. Return [] and stop.
+// dreamDebate is the v0.9 Pass-2 critique prompt for the dream
+// preset. Each agent receives its own Pass-1 dream cells (YOUR
+// ORIGINAL) plus the cells emitted by every other agent (PEERS).
+// The agent labels each peer thought as agree / disagree / redundant
+// AND revises its own thoughts when peers reveal a flaw.
+//
+// Output is a JSON array using the same dream finding schema as
+// Pass-1 (lens identity in the [lens:<name>] summary prefix,
+// load_bearing flag in the reasoning prefix). Revision tags
+// ([new], [disputes], [revised], [agreed]) live AFTER the lens
+// prefix in the summary so MergePasses + the recorder validator
+// continue to accept the rows.
+//
+// [agreed] requires peer count >= 2 (cross-agent corroboration is
+// only meaningful with at least two distinct peers). With single-
+// peer fixtures (per-skill routing collapses a lens to one
+// provider in Stage 5), [agreed] is unreachable; the prompt
+// instructs the model to emit [revised] / [new] / nothing instead.
+const dreamDebate = `You are critiquing a peer's dream-lens output. You ALREADY emitted
+your own thoughts on this topic (shown below as YOUR ORIGINAL).
+You now have your peers' thoughts (shown below as PEERS).
+
+For each PEER thought, decide ONE of:
+
+- agree: peer's thought is load-bearing AND your original missed it
+  → emit a [new] entry adopting the peer's framing, attributed
+- disagree: peer's thought is wrong / soft / sycophantic / misframed
+  → emit a [disputes] entry stating WHY (specific, no hedging)
+- redundant: peer's thought is essentially what you already said,
+  perhaps differently worded
+  → omit; do NOT emit anything for this thought
+
+For each of YOUR ORIGINAL thoughts:
+
+- if peers' inputs revealed a load-bearing flaw, emit a [revised]
+  entry with the corrected version
+- if peers' inputs reinforced your original (independent agreement
+  on the same thought across agents), emit a [agreed] entry
+  marking it as cross-agent corroborated. NOTE: [agreed] is only
+  meaningful with peer count >= 2. With a single peer (e.g. when
+  per-skill routing collapses a lens to one provider), [agreed] is
+  unreachable; emit [revised] / [new] / nothing instead.
+
+Output is a JSON array. Each element MUST start the summary field
+with one of:
+- [lens:<name>] [new] <thought>
+- [lens:<name>] [disputes] <peer's claim> — <your counter>
+- [lens:<name>] [revised] <updated thought>
+- [lens:<name>] [agreed] <thought>
+
+The [lens:<name>] prefix carries forward from Pass-1 — preserve
+which lens this thought lives in. The square-bracket revision tag
+goes AFTER the lens prefix.
+
+Reasoning field MUST start with "load_bearing: true" or
+"load_bearing: false" (same contract as Pass-1) — the recorder
+rejects rows that violate this.
+
+Do NOT:
+- Pile on with "great point" / "I agree" without a [agreed] tag
+  pointing to a specific cross-agent match.
+- Emit empty arrays just to be polite. Empty IS a valid output if
+  peers added nothing load-bearing AND your originals stand
+  unchanged.
 
 YOUR ORIGINAL OPTIONS:
 %s

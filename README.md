@@ -76,13 +76,15 @@ Run `jutsu search <query>` to find skills by name / description / tag, or `jutsu
 
 ## Multi-agent flywheel (`jutsu swarm`)
 
-Five swarm presets (`pr-review`, `doc-review`, `brainstorm`, `refactor-plan`, `security-audit`) orchestrate multiple agents in parallel through `jutsu swarm <preset>`. Each agent reviews the same input through a different lens, then a synthesizer produces a single markdown report with a disagreement table. Used as the universal QA gate for kaijutsu artifacts:
+Seven swarm presets (`pr-review`, `doc-review`, `brainstorm`, `refactor-plan`, `security-audit`, `dream`, `reverse`) orchestrate multiple agents in parallel through `jutsu swarm <preset>`. Each agent reviews the same input through a different lens, then a synthesizer produces a single markdown report with a disagreement table. Used as the universal QA gate for kaijutsu artifacts:
 
 - `jutsu swarm pr-review --pr 42` — adversarial multi-agent code review on a PR
 - `jutsu swarm doc-review SPEC.md` — multi-agent review on a spec / plan / decision record / design doc
 - `jutsu swarm brainstorm "<prompt>"` — orthogonal-angle ideation
 - `jutsu swarm refactor-plan <files>... --goal "<goal>"` — ordered refactor steps with risk per step
 - `jutsu swarm security-audit --pr 42` — CVSS-aligned threat model
+- `jutsu swarm dream "<topic>"` — pre-implementation interrogation across 4-8 cognitive lenses (v0.8)
+- `jutsu swarm reverse --spec <path> --diff <range>` — spec-vs-impl drift detector (v0.9)
 
 Three artifact-producing skills (`spec-driven-development`, `planning-and-task-breakdown`, `decide`) call `jutsu swarm doc-review` as their final review pass instead of inventing their own — a single shared QA gate replaces three ad-hoc mechanisms. See [`IMPLEMENTATION_PLAN_PHASE2.md`](./IMPLEMENTATION_PLAN_PHASE2.md) for the design.
 
@@ -133,6 +135,28 @@ Three-state weight algorithm: cold-start (1.0) → bootstrap (0.7 after first ac
 **Privacy**: no network calls. `cli/internal/cli/finding.go` is forbidden from importing any networking package — enforced by an import-list test. The DB lives in `$HOME` at mode `0600`, never in any repo. Telemetry / multi-machine sync deferred to v0.8 with separate spec + ADR.
 
 See [`docs/multi-agent.md`](./docs/multi-agent.md#v07--quality-fingerprinting--confidence-weighted-synthesizer) for the full algorithm + CLI reference.
+
+### v0.9 — Feedback-loop hardening
+
+Five-item bundle closing v0.7+v0.8 gaps. Spec: [`docs/specs/2026-05-07-v0.9.0-feedback-loops.md`](./docs/specs/2026-05-07-v0.9.0-feedback-loops.md).
+
+```bash
+jutsu swarm reverse --spec docs/specs/foo.md --diff origin/main...HEAD   # spec-vs-impl drift detector
+jutsu swarm dream "Should we ship X?" --mode full --yes                  # Pass-2 lens debate (v0.9 lifts cobra reject)
+jutsu finding sync-pr 42 --apply                                         # ingest accept/dismiss replies into findings DB
+KAIJUTSU_DISABLE_AGENTS=gemini jutsu swarm pr-review                      # force a provider subset for testing
+KAIJUTSU_DREAM_ADAPTIVE_LENS=off jutsu swarm dream "..."                 # disable per-lens precision weighting (v0.8.3-byte-identical)
+```
+
+- **`jutsu swarm reverse`** — spec-vs-impl drift detector. Categorizes findings as ADDED / OMITTED / CHANGED / AMBIGUOUS. Distinct marker prefix coexists with pr-review on the same PR.
+- **Dream Pass-2** — `--mode full` runs a critique round; agents emit `[new] / [disputes] / [revised] / [agreed]` revision tags. Cost prompt + non-TTY hard-fail prevents silent CI dispatch.
+- **Lens-rotation rule** — repeat dreams within 7d shift the LEAD lens through the canonical 8-lens cycle (`honest → fit → gaps → wild → adversary → inverse → status-quo → time → honest`).
+- **Adaptive lens-weighting** — synthesizer reads per-lens precision from the findings DB to tier load-bearing dream insights (≥0.7 → high-confidence badge, <0.4 → demoted to "consider" section).
+- **`jutsu finding sync-pr <pr>`** — ingest human accept/dismiss decisions from PR reply comments. Grammar: `accept: <run_id>:<pos>` / `dismiss: <run_id>:<pos>`. Dry-run by default; `--apply` writes.
+- **Per-skill provider routing** — `skill.yaml` `routing:` block declares per-persona preferred providers. 3-phase resolver picks first available.
+- **Defaults bumped** for big-PR ergonomics: per-agent timeout 3min → 10min, diff/files cap 200KB → 500KB.
+
+See [CHANGELOG.md](./CHANGELOG.md#090--2026-05-07) for the full feature list and the v0.9.x deferral list.
 
 ## Trust model
 

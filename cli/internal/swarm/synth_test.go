@@ -206,11 +206,11 @@ func TestRenderDisagreementTable_ShowWeightsAnnotates(t *testing.T) {
 // TestBuildSynthPrompt_ColdStartByteIdentical confirms the prompt
 // has zero weights-section bytes when every weight is cold (1.0).
 func TestBuildSynthPrompt_ColdStartByteIdentical(t *testing.T) {
-	template := "review the following:\n%s"
+	preset := &Preset{Name: "pr-review", Synthesizer: "review the following:\n%s"}
 	body := []byte(`{"agents":[]}`)
 
-	bare := buildSynthPrompt(template, body, nil)
-	allCold := buildSynthPrompt(template, body, map[string]float64{"claude": 1.0})
+	bare := buildSynthPrompt(preset, body, SynthOpts{})
+	allCold := buildSynthPrompt(preset, body, SynthOpts{Weights: map[string]float64{"claude": 1.0}})
 
 	if bare != allCold {
 		t.Errorf("nil vs all-cold weights produced different prompts:\nnil:\n%s\nall-cold:\n%s",
@@ -224,9 +224,9 @@ func TestBuildSynthPrompt_ColdStartByteIdentical(t *testing.T) {
 // TestBuildSynthPrompt_NonColdEmitsWeightsSection covers the warm
 // path: any non-cold weight triggers the weights: header.
 func TestBuildSynthPrompt_NonColdEmitsWeightsSection(t *testing.T) {
-	template := "core:\n%s"
+	preset := &Preset{Name: "pr-review", Synthesizer: "core:\n%s"}
 	body := []byte(`x`)
-	prompt := buildSynthPrompt(template, body, map[string]float64{"claude": 0.85})
+	prompt := buildSynthPrompt(preset, body, SynthOpts{Weights: map[string]float64{"claude": 0.85}})
 	if !strings.Contains(prompt, "weights ") {
 		t.Errorf("warm path should emit weights section; got:\n%s", prompt)
 	}
