@@ -4,23 +4,26 @@ This file is read by OpenAI Codex CLI and is the canonical contributor guidance 
 
 ## Project at a glance
 
-kaijutsu is an MIT-licensed, agent-agnostic registry and CLI for AI coding agent skills. The CLI is named `jutsu`. The registry is this repo. Everything is pre-alpha.
+kaijutsu is an MIT-licensed, agent-agnostic registry and CLI for AI coding agent skills. The CLI is named `jutsu`. The registry is this repo. Pre-alpha — public API may shift; pin versions if you depend on it.
 
 - **Local checkout**: `~/GitHub/momentmaker/kaijutsu/`
 - **Remote**: `git@github.com:momentmaker/kaijutsu.git`
-- **Public site**: https://kaijutsu.dev (placeholder during v0)
+- **Public site**: https://kaijutsu.dev (live; sitegen-driven catalog)
 - **Authoritative spec**: see [`SCHEMA.md`](./SCHEMA.md) and [`docs/multi-agent.md`](./docs/multi-agent.md)
-- **Live plan**: `~/.claude/plans/so-i-have-this-staged-treehouse.md` (local to maintainer machine)
+- **Roadmap**: [`ROADMAP.md`](./ROADMAP.md) (current state, deferrals, what's next)
+- **Recent specs / decisions**: [`docs/specs/`](./docs/specs/) + [`docs/decisions/`](./docs/decisions/)
 
-## Build sequence
+## Current state (as of v0.8.1)
 
-The plan is staged 1 → 5. See `ROADMAP.md` for the public version.
+- 17 core skills + 6 community + 8 third-party registry pointers (~46 catalog entries on kaijutsu.dev).
+- 6 swarm presets shipping: pr-review, doc-review, brainstorm, refactor-plan, security-audit, dream.
+- v0.6 multi-provider swarm (driver abstraction + agents.yaml + personas) — claude/codex/gemini cli + http (deepseek/glm/kimi/ollama-local) + cli-compat + mcp.
+- v0.7 quality fingerprinting (local SQLite store at `~/.kaijutsu/findings.db`) + confidence-weighted synthesizer.
+- v0.8 dream skill + swarm dream preset (pre-implementation interrogation through 4-8 cognitive lenses).
+- v0.8.1 patch ships dream Wild lens %!s(MISSING) fix + 28→17 core curation.
+- v0.8.2 in flight: agent-first lens (this section) + jutsu describe + jutsu suggest + jutsu init AGENTS.md fragment + AutoFormat helper.
 
-1. Repo scaffolding + schemas + multi-agent research **(in progress / current stage)**
-2. Go CLI MVP: `init`, `install`, `list`, `remove`
-3. Lockfile + `upgrade` + remote sources via GitHub tarball API
-4. Author 9 seed skills under `skills/core/`
-5. `publish`, `lint`, `search`, `info` + Sigstore signing for core + Homebrew tap + `install.sh`
+See `ROADMAP.md` for v0.8.x followups + v0.9 candidates.
 
 ## Design principle: agent-first, human-friendly
 
@@ -60,25 +63,33 @@ If a new command / output / behavior fails the lens, push back. The Why-line in 
 
 ## Working in this repo
 
-- Always read `SCHEMA.md` and `docs/multi-agent.md` before changing skill schema or install behavior.
-- Match existing patterns; don't introduce new conventions without strong justification.
-- Don't add features, fallbacks, or abstractions beyond what the current stage requires.
+- Always read `SCHEMA.md` + `docs/multi-agent.md` before changing skill schema or install behavior. Read `docs/project-memory.md` before changing how skills write persistent memory.
+- Match existing patterns; don't introduce new conventions without strong justification + a written reason in the commit body.
+- Don't add features, fallbacks, or abstractions beyond what the current ship cycle requires (see `ROADMAP.md`).
 - No emojis in code or commits unless the maintainer asks.
-- Commits should be small, focused, and explain *why* in the body. Use [Conventional Commits](https://www.conventionalcommits.org/) prefixes.
+- Commits should be small, focused, and explain *why* in the body. Use [Conventional Commits](https://www.conventionalcommits.org/) prefixes (`feat:`, `fix:`, `docs:`, `refactor:`, `spec:`, etc.).
 - Never bypass commit hooks (`--no-verify`).
 - The maintainer reviews every PR personally; CI must be green first. There is no review SLA.
-
-## What's currently empty / stubbed
-
-- `cli/` is empty until Stage 2.
-- `skills/core/` is empty until Stage 4.
-- `skills/community/` opens after v0.1.
-- `.github/workflows/lint-skills.yml` is a no-op skeleton until the CLI lands.
-- The static site at `kaijutsu.dev` is a placeholder; v0 has no real registry UI.
+- Skill / spec / ADR work follows the dogfood loop: spec → `jutsu swarm doc-review` → fix → ship → polish loop → adversarial `jutsu swarm pr-review` → tag.
 
 ## Don't do
 
-- Don't write code that calls or depends on the real `jutsu` CLI before Stage 2 lands; it doesn't exist yet.
-- Don't author seed skills in `skills/core/` before Stage 4. The schema may still shift.
-- Don't sign anything yet; Sigstore arrives in Stage 5.
-- Don't accept third-party PRs to `skills/community/` until v0.1.
+- **Don't break the agent-first lens** (see Design principle above). New commands consumed by agents must support JSON output via AutoFormat. Auto-flip on TTY/pipe. Stable schema (`schema_version` field) on JSON outputs.
+- **Don't ship interactive TUIs** for primary UX. Charm/bubbletea/lipgloss is rejected on principle — see the dream session on the gum-UX question (2026-05-07). Optional opt-in fancy mode may land in v0.9+ behind a flag, never default.
+- **Don't add Go dependencies casually.** Each new dep gets a justification in the commit body. Prefer stdlib / existing deps / shell-out to canonical tools (`cosign`, `gh`, `goreleaser`).
+- **Don't extend the kaijutsu.json schema without a SCHEMA.md update + migration doc.** The lockfile + manifest are the contract; agents read them directly.
+- **Don't sign skills outside CI.** Sigstore signing happens via `.github/workflows/sign-core.yml` on tag push. Manual signing breaks the trust chain.
+- **Don't accept third-party PRs to `skills/community/` without lint + maintainer review.** Lint is necessary, not sufficient — the maintainer eyeballs each.
+- **Don't add `kind: hook` artifacts to the install path.** Hooks are agent-specific (Claude Code's PreToolUse, Codex's etc.). Users wire them themselves; jutsu doesn't auto-install hook configs. dcg ships in `skills/community/` as documentation + script the user manually wires.
+- **Don't reach for MCP server work yet.** v0.8 dream session on the MCP idea (2026-05-07) found the premise ("self-discovery via MCP") was partially false (users still hand-configure MCP per client). Status quo (CLI + AGENTS.md fragment + JSON outputs) reaches more clients with less risk. Revisit in 6-12 months when MCP protocol stabilizes.
+- **Don't conflate `kaijutsu.json` with `.kaijutsu/agents.yaml`.** Different files, different scopes:
+  - `kaijutsu.json` (root, JSON) = which agent platforms (claude/codex/gemini) the project ships skills for + skill dependencies + lockfile.
+  - `.kaijutsu/agents.yaml` (subdir, YAML) = swarm provider catalog (deepseek/glm/kimi/etc.) + persona declarations. Loaded by `jutsu swarm`.
+
+## Recent design decisions worth knowing
+
+- **agent-first, human-friendly** (this AGENTS.md, 2026-05-07): every output format auto-flips JSON-on-pipe / pretty-on-TTY. `jutsu describe` exists for fresh-agent self-discovery. `jutsu init` writes the AGENTS.md fragment.
+- **dream skill + swarm dream preset** (v0.8.0, see `docs/specs/2026-05-07-v0.8.0-dream-skill-and-preset.md`): pre-implementation interrogation through 8 lenses. First dream-of-self caught a real bug in the dream prompt template (recursive correctness check works).
+- **Quality fingerprinting** (v0.7.0, see `docs/specs/2026-05-06-v0.7.0-quality-fingerprinting.md`): per-(provider, persona, preset, codebase) precision tracking via local SQLite. Synthesizer downweights noisy tuples on next swarm.
+- **Multi-provider swarm** (v0.6.0, see `docs/specs/2026-05-05-v0.6.0-multi-provider-agents.md`): driver abstraction + agents.yaml + personas. Not locked to claude/codex/gemini anymore.
+- **Core skill curation** (v0.8.1, 2026-05-07): 28 → 17 core. Moved code-simplification / security-and-hardening / journal / session-retro / readme-update / dcg to `skills/community/`. Deleted decide / agent-doctor / multi-model-synth / lie-to-them / project-memory (the schema doc lives at `docs/project-memory.md`).
