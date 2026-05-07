@@ -4,6 +4,34 @@ All notable changes to kaijutsu (the registry + skills) and `jutsu` (the CLI). T
 
 ## [Unreleased]
 
+## [0.8.2] — 2026-05-07
+
+Agent-first design lens + four agent-discoverability features. Sets the foundation for fresh AI agents to use jutsu without reading project docs.
+
+### Added
+
+- **Design principle codified in `AGENTS.md`**: "agent-first, human-friendly". Default lens for every command / output / behavior. Machine-parseable + well-formed FIRST. Aesthetically pleasing for humans SECOND. They compose ~90% of the time.
+- **`output.AutoFormat()` helper** + `BindFormatFlags()` (`cli/internal/cli/output.go`): TTY detection picks markdown / table / colored when stdout is a TTY, JSON when stdout is a pipe / redirect / agent capture. `--format json` / `--json` / `--format markdown` overrides. Pattern matches `gh` / `jq -C` / `kubectl`. Lands as helper in v0.8.2 — applied to NEW commands (suggest, describe); existing commands gain auto-format as v0.8.x followups.
+- **`jutsu describe`** (`cli/internal/cli/describe.go`): JSON catalog of every command + flag + description. Always JSON regardless of TTY (this command exists FOR agents, not humans). Hidden from `--help` listing — agents discover via convention. Schema versioned at 1; agents can detect format changes without breaking on unknown fields.
+- **`jutsu suggest <task>`** (`cli/internal/cli/suggest.go`): keyword-rank installed skills against a free-form task description. Walks `skills/core/` + `skills/community/`, scores each by token overlap (name 3x weight, tags 2x, description 1x per token). Returns top-N ranked. Auto-formats output. Stable JSON shape (`schema_version` + `task` + `count` + `suggestions[]`) for agent consumption.
+- **`jutsu init` writes AGENTS.md fragment**: kaijutsu-managed delimited block (`<!-- kaijutsu:start name=jutsu-cli version=0.8.2 -->` / `<!-- kaijutsu:end -->`) teaching fresh agents the jutsu CLI surface — describe / suggest / install / swarm / finding quick reference. Idempotent re-init replaces content between markers; user content outside markers preserved verbatim. `--skip-agents-md` flag for users managing AGENTS.md separately.
+- **`docs/project-memory.md`**: schema convention doc (not installable skill). Restored from the `project-memory` skill deleted in v0.8.1's curation pass. Cross-skill memory contract: directory layout + entry schema + read/write/dedupe rules. Consumers (`unstuck`, community/`session-retro`, community/`journal`) reference this doc.
+- **`AGENTS.md` refresh**: stripped stale v0-stage references ("currently empty / stubbed" — every claim was false). Added "Current state (as of v0.8.1)" summary + "Recent design decisions" pointers. Rewrote "Don't do" with v0.8 era rules (don't break agent-first lens, don't ship TUIs, don't conflate kaijutsu.json with `.kaijutsu/agents.yaml`, etc.).
+
+### Notes
+
+- **No new commands consume `output.AutoFormat()` yet beyond suggest + describe.** Existing commands (list, search, info, finding-list, finding-stats, swarm) gain auto-format as v0.8.x followups — applying across all of them was scoped out of v0.8.2 to keep ship size tractable.
+- **MCP server explicitly NOT shipping in v0.8.x.** Dream session on the MCP idea (2026-05-07) found the "self-discovery via MCP" premise was partially false (users still hand-configure MCP per client). Status quo (CLI + AGENTS.md fragment + JSON outputs) reaches more clients with less risk. Revisit when MCP protocol stabilizes.
+- **`jutsu suggest` v0.8.2 ships keyword ranking.** v0.9.x may swap for embedding similarity or LLM-based ranking once usage signal informs the right shape. Outside the kaijutsu monorepo `jutsu suggest` returns no matches — registry-remote scan is v0.9 work.
+- **No interactive TUIs / charm-ecosystem deps added.** Per design principle: TUIs break pipes, contradict project philosophy. Auto-format gives humans pretty output without sacrificing agent pipeline-friendliness.
+
+## [0.8.1] — 2026-05-07
+
+Patch release. Two changes:
+
+- **Fix**: dream Wild lens `'10% better'` literal corrupted topic substitution via `fmt.Sprintf` — agents received `%!s(MISSING)` instead of the user's topic. Single-character escape (`'10%'` → `'10%%'`). Regression test added (parses every dream prompt for fmt-error markers across base + extras lens sets).
+- **Curation**: core skills tier 28 → 17. Moved to `skills/community/`: code-simplification, security-and-hardening, journal, session-retro, readme-update, dcg. Deleted: decide, agent-doctor, multi-model-synth, lie-to-them, project-memory (schema doc moves to `docs/project-memory.md` in v0.8.2). Cleaner first-party canon for fresh users + agents discovering kaijutsu.
+
 ## [0.8.0] — 2026-05-07
 
 `dream` skill + `swarm dream` preset. Pre-implementation interrogation primitive — walks any topic through 4-8 cognitive lenses with anti-sycophancy gates baked into every prompt. Standalone `/dream` for single-agent walks; `jutsu swarm dream` for the multi-agent matrix.

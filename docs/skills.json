@@ -1004,6 +1004,24 @@
     },
     {
       "name": "verification-before-completion",
+      "description": "Third-party skill from github.com/obra/superpowers; install via `jutsu install verification-before-completion`.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "source": "third-party",
+      "repo": "github.com/obra/superpowers",
+      "path": "skills/verification-before-completion",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": null
+      }
+    },
+    {
+      "name": "verification-before-completion",
       "version": "0.1.0",
       "license": "MIT",
       "description": "Hard gate before claiming work is complete: run the verification command fresh, capture output, only then claim done. Composed by polish, incremental-implementation, and pr-review to prevent silent-fail tail (convergence ≠ correctness). Adapted from obra/superpowers under MIT.",
@@ -1026,24 +1044,6 @@
         "bash": true,
         "network": false,
         "fs_write": "scoped"
-      }
-    },
-    {
-      "name": "verification-before-completion",
-      "description": "Third-party skill from github.com/obra/superpowers; install via `jutsu install verification-before-completion`.",
-      "agents": [
-        "claude",
-        "codex",
-        "gemini"
-      ],
-      "source": "third-party",
-      "repo": "github.com/obra/superpowers",
-      "path": "skills/verification-before-completion",
-      "has_hooks": false,
-      "permissions": {
-        "bash": false,
-        "network": false,
-        "fs_write": null
       }
     }
   ]
