@@ -1,0 +1,18 @@
+name: dream
+version: 0.1.0
+license: MIT
+layout: rich
+description: "Pre-implementation interrogation primitive. Walks any topic through 8 cognitive lenses (4 base: honest/fit/gaps/wild + 4 opt-in extras: adversary/inverse/status-quo/time). Anti-sycophancy gates baked into prompts. Standalone /dream OR multi-agent jutsu swarm dream (matrix of agents × lenses)."
+homepage: https://kaijutsu.dev/skills/dream
+repository: https://github.com/momentmaker/kaijutsu
+tags: [primitive, exploration, ideation, pre-implementation]
+agents: [claude, codex, gemini]
+shared: [prompts, scripts]
+deps:
+  skills:
+    - project-memory@^0.2
+    - convergence-detect@^0.2
+permissions:
+  bash: true
+  network: false
+  fs-write: scoped

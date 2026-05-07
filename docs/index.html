@@ -220,13 +220,13 @@
   <div class="controls">
     <input type="search" id="search" placeholder="Search skills by name, description, tag…" autocomplete="off">
     <div class="filter-group" id="filters">
-      <button class="filter active" data-filter="all">All (50)</button>
+      <button class="filter active" data-filter="all">All (51)</button>
       <button class="filter" data-filter="core">Core</button>
       <button class="filter" data-filter="third-party">Third-party</button>
       <button class="filter" data-filter="hooks">Hooks</button>
     </div>
   </div>
-  <p class="stats" id="stats">Showing all 50 skills.</p>
+  <p class="stats" id="stats">Showing all 51 skills.</p>
 
   <div class="grid" id="grid">
     
@@ -462,6 +462,19 @@
         
       </div>
       <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install documentation-and-adrs')" title="Click to copy">jutsu install documentation-and-adrs</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="dream Pre-implementation interrogation primitive. Walks any topic through 8 cognitive lenses (4 base: honest/fit/gaps/wild &#43; 4 opt-in extras: adversary/inverse/status-quo/time). Anti-sycophancy gates baked into prompts. Standalone /dream OR multi-agent jutsu swarm dream (matrix of agents × lenses). primitive exploration ideation pre-implementation claude codex gemini">
+      <div class="row">
+        <h3>dream<span style="color:var(--muted);font-weight:normal"> 0.1.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Pre-implementation interrogation primitive. Walks any topic through 8 cognitive lenses (4 base: honest/fit/gaps/wild &#43; 4 opt-in extras: adversary/inverse/status-quo/time). Anti-sycophancy gates baked into prompts. Standalone /dream OR multi-agent jutsu swarm dream (matrix of agents × lenses).</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install dream')" title="Click to copy">jutsu install dream</div>
     </article>
     
     <article class="card" data-source="third-party" data-hooks="false" data-search="executing-plans Third-party skill from github.com/obra/superpowers; install via `jutsu install executing-plans`.  claude codex gemini">
