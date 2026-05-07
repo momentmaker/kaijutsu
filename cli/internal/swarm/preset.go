@@ -950,7 +950,7 @@ Surface the QUESTIONS we aren't asking. The HIDDEN ASSUMPTIONS riding along. The
 
 const dreamLensWild = `
 LENS: wild
-Generate ORTHOGONAL extensions and 10x interpretations. What's the 10x version (qualitatively bigger, not 10% better)? What if this idea is a SYMPTOM of a larger opportunity? What ADJACENT problem does this idea half-solve? Should we solve THAT instead? What does this make POSSIBLE that wasn't before? What's the version that would make a competitor copy us in 6 months? Wild ≠ random — push the idea's core in a direction it could plausibly evolve. 2-4 wild thoughts typical.
+Generate ORTHOGONAL extensions and 10x interpretations. What's the 10x version (qualitatively bigger, not 10%% better)? What if this idea is a SYMPTOM of a larger opportunity? What ADJACENT problem does this idea half-solve? Should we solve THAT instead? What does this make POSSIBLE that wasn't before? What's the version that would make a competitor copy us in 6 months? Wild ≠ random — push the idea's core in a direction it could plausibly evolve. 2-4 wild thoughts typical.
 `
 
 const dreamLensAdversary = `

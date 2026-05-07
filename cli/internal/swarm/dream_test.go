@@ -1,6 +1,7 @@
 package swarm
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -165,6 +166,44 @@ func TestDreamSynthesizer_ContainsHardStop(t *testing.T) {
 	if !strings.Contains(dreamSynthesizer, "End the output at the last section") {
 		t.Error("dream synthesizer missing the end-at-last-section directive")
 	}
+}
+
+// TestBuildDreamPrompt_FmtSafe is a regression test for the
+// %!s(MISSING) bug surfaced by the first real `swarm dream` session.
+// Literal `%` characters inside lens prompts must be doubled (`%%`)
+// so fmt.Sprintf doesn't interpret them as format directives. The
+// test renders the assembled prompt with a benign topic and asserts
+// no fmt error markers leak through.
+func TestBuildDreamPrompt_FmtSafe(t *testing.T) {
+	for _, set := range [][]string{DreamLensesBase(), DreamLensesAll()} {
+		tmpl := BuildDreamPrompt(set)
+		// Single %s placeholder is the topic substitution slot. Pass
+		// a fixed topic; if any other %-directive remains in the body,
+		// fmt.Sprintf returns "%!<verb>(MISSING)" or similar markers.
+		out := fmt.Sprintf(tmpl, "test topic")
+		for _, marker := range []string{"%!", "(MISSING)", "(BADINDEX)"} {
+			if strings.Contains(out, marker) {
+				t.Errorf("BuildDreamPrompt(%v) → fmt.Sprintf produced marker %q (unescaped %% in a lens body?). Excerpt:\n%s",
+					set, marker, excerpt(out, marker))
+			}
+		}
+	}
+}
+
+func excerpt(s, marker string) string {
+	i := strings.Index(s, marker)
+	if i < 0 {
+		return ""
+	}
+	start := i - 80
+	if start < 0 {
+		start = 0
+	}
+	end := i + 80
+	if end > len(s) {
+		end = len(s)
+	}
+	return s[start:end]
 }
 
 // TestDreamPreset_DebatePlaceholderSafe verifies dreamPreset.Debate is
