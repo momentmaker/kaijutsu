@@ -7,6 +7,8 @@ description: Guided problem articulation when you're stuck. Use when the user sa
 
 Break out of unproductive loops. Articulate the problem, then either solve it through clarity or escalate systematically.
 
+> Step 0.5's iron-law framing + multi-component instrumentation pattern adapted from [`obra/superpowers/skills/systematic-debugging`](https://github.com/obra/superpowers/blob/main/skills/systematic-debugging/SKILL.md) under MIT.
+
 ## Step 0: Memory-first
 
 Before asking the user anything, check project memory for prior similar problems:
@@ -17,9 +19,45 @@ Before asking the user anything, check project memory for prior similar problems
 
 If the user confirms it's the same problem, jump straight to Step 5 (Solution Capture) — the entry confirms the user already had the answer.
 
-If no match or user says it's different, proceed to Step 1.
+If no match or user says it's different, proceed to Step 0.5.
 
 Composes `project-memory`.
+
+## Step 0.5: Gather evidence
+
+Iron law: **no fix proposals without root-cause investigation first.** Symptom-fixes mask underlying issues and create new bugs. This step is for the AGENT to do legwork BEFORE asking the human articulation questions — so Step 1's discussion is grounded in facts, not memory of facts.
+
+1. **Read the actual error message in full.**
+   - Don't paraphrase. Copy the literal stack trace, exit code, log line.
+   - Note line numbers, file paths, error codes — the message often contains the exact answer.
+   - If the error was N invocations ago and you don't have it, ask the user to re-run with the failure reproduced.
+
+2. **Check recent changes.**
+   - `git log --oneline -10` on suspect files
+   - `git diff` against last known good
+   - New dependencies, config edits, env-var changes
+   - The cause is usually in the most recent change, but the SYMPTOM may surface later.
+
+3. **Verify reproducibility.**
+   - Does the failure happen every time, or intermittently?
+   - Exact steps to reproduce. If intermittent → gather more data, do not guess.
+   - If "I keep going in circles" was the trigger, the problem may be that the symptom is non-deterministic.
+
+4. **Multi-component systems: instrument boundaries.**
+   - When the system has multiple components (CI → build → deploy, API → service → DB, swarm → cache → render):
+     - Log what data ENTERS each component
+     - Log what data EXITS each component
+   - The bug is at the boundary where input ≠ expected. Find the boundary BEFORE proposing a fix.
+
+5. **Surface the evidence to the user before Step 1.**
+   - Present what you found: "Error says X. Last change touched Y. Reproducer is Z."
+   - Then ask the Step 1 articulation questions — they're now augmenting your evidence, not replacing it.
+
+Skip this step ONLY when:
+- Step 0 found a memory match and the user confirmed it (jump straight to Step 5)
+- The user has already provided full evidence in their initial message
+
+If you find yourself wanting to skip because "I'm pretty sure I know what it is" → that's the rationalization the iron law exists to block. Run the evidence-gathering anyway.
 
 ## Walk-away timer
 

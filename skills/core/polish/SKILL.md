@@ -10,6 +10,7 @@ Loops until clean. Each pass: review the diff, fix everything found, re-run test
 This skill composes:
 - `blunder-hunt` for the review (multi-pass adversarial critique)
 - `convergence-detect` for the stop condition (smarter than "ran N rounds")
+- `verification-before-completion` for the hard test/build/lint gate AFTER convergence (convergence ≠ correctness)
 - `deslop` for any user-facing prose touched in the diff
 
 ## Step 0: Scope
@@ -65,6 +66,19 @@ Before declaring done, scan the diff for user-facing prose: README sections, com
 
 Skip code comments unless the diff specifically reworked them.
 
+## Step V: Verification gate (HARD STOP)
+
+After convergence + deslop, BEFORE emitting "polish complete", run `verification-before-completion`. The convergence-detect signal means "no new findings in the last pass". It does NOT mean "the code still compiles + tests still pass". Both can be true OR false independently.
+
+The primitive enforces:
+1. Identify the verification commands for this codebase (test runner, linter, type-checker, build).
+2. Run them ALL fresh, in this turn (not "I ran them earlier").
+3. Read full output + exit codes.
+4. If anything fails → state truth, fix, re-run from Step 1 (the convergence loop).
+5. If all pass → emit the polish-complete claim WITH the evidence (commands ran + N/N pass).
+
+Never declare polish-complete on vibes. The evidence template lives in `verification-before-completion`'s SKILL.md.
+
 ## Step Final: Summary
 
 ```
@@ -96,7 +110,7 @@ This trades commit-history noise for an auditable trail. Useful for high-stakes 
 - DO fix issues immediately — don't just report them
 - DO run tests after each fix pass
 - DO stop when convergence-detect says converged, even before the cap
-- DO refuse to declare done if tests are failing at any point in any pass — hard test gate
+- DO refuse to declare done if tests are failing at any point in any pass — hard test gate (enforced by `verification-before-completion`'s gate at Step V)
 - DO commit after polish (ask user first)
 - DON'T gold-plate. Real issues only, no style refactors
 - DON'T add features. Correctness only

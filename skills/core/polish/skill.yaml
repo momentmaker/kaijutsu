@@ -1,8 +1,8 @@
 name: polish
-version: 0.2.0
+version: 0.3.0
 license: MIT
 layout: flat
-description: "Automated post-implementation review-and-fix loop. Up to 4 passes; each pass alternates random-code-exploration and cross-agent-review lenses; convergence-detect declares the stop; deslop runs at the end on any user-facing prose."
+description: "Automated post-implementation review-and-fix loop. Up to 4 passes; each pass alternates random-code-exploration and cross-agent-review lenses; convergence-detect declares the stop; verification-before-completion runs a fresh test/build gate AFTER convergence; deslop runs at the end on any user-facing prose."
 homepage: https://kaijutsu.dev/skills/polish
 repository: https://github.com/momentmaker/kaijutsu
 tags: [review, refactor, workflow]
@@ -12,6 +12,7 @@ deps:
     - blunder-hunt@^0.2
     - convergence-detect@^0.2
     - deslop@^0.2
+    - verification-before-completion@^0.1
 permissions:
   bash: true
   network: true

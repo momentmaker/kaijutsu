@@ -1,8 +1,8 @@
 name: unstuck
-version: 0.2.0
+version: 0.3.0
 license: MIT
 layout: flat
-description: "Guided problem articulation when you're stuck — break unproductive loops by forcing clarity, then escalate via blunder-hunt + structured pivots."
+description: "Guided problem articulation when you're stuck — agent-side evidence gathering BEFORE the human-side articulation questions, then structured pivots, blunder-hunt escalation, and walk-away if needed."
 homepage: https://kaijutsu.dev/skills/unstuck
 repository: https://github.com/momentmaker/kaijutsu
 tags: [debugging, problem-solving, workflow]
