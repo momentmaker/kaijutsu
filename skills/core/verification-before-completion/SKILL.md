@@ -101,9 +101,9 @@ If verification fails, state truth + evidence:
 
 `polish` invokes this AFTER the convergence-detect "clean" signal, BEFORE emitting "polish complete". Catches the silent-fail tail where the loop converges but tests are actually broken.
 
-`incremental-implementation` invokes per slice, before marking the slice shippable.
+`incremental-implementation` invokes this transitively (via its `polish` dep) per slice, before marking the slice shippable.
 
-`pr-review` invokes on the user's local diff before running the swarm — "claim: my changes compile and tests pass". Saves swarm budget on broken builds.
+`pr-review` does NOT yet compose this primitive — listed as a v0.7.x candidate. The natural integration is a pre-swarm local-diff sanity check ("claim: my changes compile and tests pass") to save swarm budget on broken builds, but the pr-review skill hasn't been wired yet.
 
 ## The kaijutsu-specific edge
 

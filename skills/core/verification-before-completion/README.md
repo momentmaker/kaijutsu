@@ -24,7 +24,7 @@ deps:
     - verification-before-completion@^0.1
 ```
 
-`polish`, `incremental-implementation`, and `pr-review` all compose this primitive.
+`polish` composes this primitive directly. `incremental-implementation` composes it transitively via `polish`. `pr-review` integration is a v0.7.x candidate (not wired yet).
 
 ## What it does
 

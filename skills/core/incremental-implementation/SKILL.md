@@ -47,7 +47,9 @@ Dispatch a fresh subagent (clean context, no implementation history) with:
 - The slice's diff (`git diff <base>..<head>`)
 - One question: "Does this diff satisfy every acceptance criterion? Pass / fail per criterion + reasons."
 
-If FAIL on any criterion → implementer fixes the gap. Re-dispatch the spec-reviewer (fresh subagent, fresh context) on the new diff. Repeat until PASS.
+If FAIL on any criterion → implementer fixes the gap. Re-dispatch the spec-reviewer (fresh subagent, fresh context) on the new diff.
+
+**Cap: 3 spec-review rounds.** If still failing after round 3, the spec-reviewer and implementer have diverged on intent. STOP, surface the divergence to the user with the 3 spec-review reports, and let the user adjudicate (acceptance criteria wrong? implementer misreading the slice? slice was mis-scoped during planning?). Mirrors polish's 4-pass cap — bounded loops only.
 
 **Stage B — Code quality review.**
 ONLY after Stage A passes, run `polish` on the slice's diff. Polish handles the multi-pass critique + verification-before-completion gate (tests, lint, build all green via fresh runs). Polish surfaces quality issues; implementer fixes; re-run polish until clean.

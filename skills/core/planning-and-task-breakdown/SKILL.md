@@ -57,6 +57,8 @@ Rules:
 - In existing codebases, follow established patterns — don't unilaterally restructure
 - If a file you'd modify has grown unwieldy, including a split in the plan is reasonable
 
+**Revision protocol.** Files emerge during implementation. The structure section captures what's KNOWN at planning time, not a frozen contract. When a slice surfaces a new file, update this section in the same commit that introduces the file — the plan stays a current map, not a stale snapshot. The plan-doc is mutable through the implementation phase; only its acceptance criteria are immutable post-approval.
+
 The implementer reads this and knows the surface area before reading any task.
 
 ### Step 3: Decompose into vertical slices
@@ -110,7 +112,7 @@ Per-slice acceptance is necessary but not sufficient. Each slice ALSO carries a 
 - [ ] Commit with message `feat(findings): Stage N — SQLite store`
 ```
 
-Each step = one action (2-5 min). DRY / YAGNI / TDD / frequent commits are the bias. The implementer reads the steps top-to-bottom and never has to ask "what's next?"
+Each step = one action. Target 2-5 min per step where the work decomposes cleanly. Some steps are inherently longer (designing a DB schema, writing a non-trivial migration, a hand-written algorithm) — that's fine; aim for atomicity-of-intent over wall-clock budget. The signal that a step is too big: if you can't articulate "step done = <observable thing>", split it. DRY / YAGNI / TDD / frequent commits are the bias. The implementer reads the steps top-to-bottom and never has to ask "what's next?"
 
 ### Step 6: Write to disk
 
