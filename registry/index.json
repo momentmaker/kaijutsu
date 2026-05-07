@@ -60,6 +60,18 @@
     "shipping-and-launch": {
       "source": "github.com/addyosmani/agent-skills",
       "path": "skills/shipping-and-launch"
+    },
+    "skill-creator": {
+      "source": "github.com/anthropics/skills",
+      "path": "skills/skill-creator"
+    },
+    "frontend-design": {
+      "source": "github.com/anthropics/skills",
+      "path": "skills/frontend-design"
+    },
+    "mcp-builder": {
+      "source": "github.com/anthropics/skills",
+      "path": "skills/mcp-builder"
     }
   }
 }
