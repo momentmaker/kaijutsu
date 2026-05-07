@@ -101,3 +101,23 @@ func TestResolveDreamLenses_EmptyAfterParseErrors(t *testing.T) {
 		}
 	}
 }
+
+// TestSwarmDream_RejectsModeFull verifies the cobra layer hard-fails
+// `jutsu swarm dream --mode full` instead of dispatching agents with
+// an empty Debate template (preset.Debate is unset for dream in
+// v0.8.0). The reject points users at --lenses=all as the matrix-
+// expansion path.
+func TestSwarmDream_RejectsModeFull(t *testing.T) {
+	root := NewRootCmd()
+	root.SetArgs([]string{"swarm", "dream", "test topic", "--mode", "full", "--yes"})
+	err := root.Execute()
+	if err == nil {
+		t.Fatal("expected --mode full to be rejected for dream")
+	}
+	if !strings.Contains(err.Error(), "does not support --mode full") {
+		t.Errorf("error should mention unsupported --mode full; got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "--lenses=all") {
+		t.Errorf("error should redirect users to --lenses=all; got: %v", err)
+	}
+}

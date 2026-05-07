@@ -247,6 +247,16 @@ build X?". Use brainstorm for the latter.`,
 			ctx := cmd.Context()
 			projectRoot, _ := os.Getwd()
 
+			// --mode full triggers Pass-2 swarm.Debate, which expects
+			// preset.Debate to be a non-empty fmt template. dream
+			// ships no debate template in v0.8.0 — Pass-2 critique of
+			// lens-cell findings is interesting but undefined. Reject
+			// here rather than dispatch an empty-prompt round to the
+			// agents. v0.8.x candidate.
+			if flags.mode == "full" {
+				return errors.New("swarm dream does not support --mode full in v0.8.0 (Pass-2 debate over lens cells is undefined). Use the default --mode quick; --lenses=all already expands the lens matrix without a debate round")
+			}
+
 			lenses, err := resolveDreamLenses(lensesArg)
 			if err != nil {
 				return err
