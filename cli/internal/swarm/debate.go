@@ -68,9 +68,9 @@ func peerFindings(all []AgentResult, self string) []map[string]interface{} {
 // SynthesizeWithDebate is the --full counterpart to Synthesize. It
 // merges Pass-1 + Pass-2 findings before clustering so contested vs
 // durable findings can be distinguished in the table.
-func SynthesizeWithDebate(ctx context.Context, pass1, pass2 []AgentResult, synth Agent, preset *Preset, budget float64, perAgentTimeout time.Duration) (*Synthesis, error) {
+func SynthesizeWithDebate(ctx context.Context, pass1, pass2 []AgentResult, synth Agent, preset *Preset, budget float64, perAgentTimeout time.Duration, opts SynthOpts) (*Synthesis, error) {
 	combined := mergePasses(pass1, pass2)
-	return Synthesize(ctx, combined, synth, preset, budget, perAgentTimeout)
+	return Synthesize(ctx, combined, synth, preset, budget, perAgentTimeout, opts)
 }
 
 // mergePasses replaces each Pass-1 result with its Pass-2 revision

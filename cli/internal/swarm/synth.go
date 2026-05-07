@@ -30,6 +30,23 @@ type Synthesis struct {
 	Clusters    []FindingGroup // post-clustering view, exposed for debug/replay
 }
 
+// SynthOpts threads v0.7 quality-fingerprinting context into the
+// synthesizer. Zero value (empty Weights, ShowWeights=false) reproduces
+// v0.6.2 behavior byte-for-byte — clusterFindings sorts the same,
+// renderDisagreementTable omits weight annotations, the prompt body
+// has no `weights:` section. The cli layer fills this in via
+// findings.Weighter.WeightsForResults.
+type SynthOpts struct {
+	// Weights is keyed by AgentResult.Agent (i.e. persona name in
+	// v0.6+ persona mode, native CLI name in legacy v0.5 mode).
+	// Missing keys are treated as ColdWeight (1.0).
+	Weights map[string]float64
+	// ShowWeights controls renderDisagreementTable: when true, each
+	// agent column header gains "(<weight>)". Off by default in v0.7
+	// so users adopt weights via `jutsu finding stats` first.
+	ShowWeights bool
+}
+
 // FindingGroup represents one logical issue surfaced by 1+ agents.
 type FindingGroup struct {
 	Key            string                 // file:line — used for clustering
@@ -42,16 +59,16 @@ type FindingGroup struct {
 // Synthesize runs the synthesizer agent against the per-agent results
 // and returns a complete review markdown. Stage 2 wires this in after
 // FanOut. Stage 3 (--full) inserts a debate pass between FanOut and
-// Synthesize.
-func Synthesize(ctx context.Context, results []AgentResult, synth Agent, preset *Preset, budget float64, perAgentTimeout time.Duration) (*Synthesis, error) {
-	clusters := clusterFindings(results)
-	table := renderDisagreementTable(results, clusters)
+// Synthesize. v0.7 adds SynthOpts for quality-fingerprinting weights.
+func Synthesize(ctx context.Context, results []AgentResult, synth Agent, preset *Preset, budget float64, perAgentTimeout time.Duration, opts SynthOpts) (*Synthesis, error) {
+	clusters := clusterFindings(results, opts.Weights)
+	table := renderDisagreementTable(results, clusters, opts.Weights, opts.ShowWeights)
 
 	body, err := json.MarshalIndent(stripRawForPrompt(results), "", "  ")
 	if err != nil {
 		return nil, fmt.Errorf("marshal findings for synthesizer: %w", err)
 	}
-	prompt := fmt.Sprintf(preset.Synthesizer, string(body))
+	prompt := buildSynthPrompt(preset.Synthesizer, body, opts.Weights)
 
 	subCtx, cancel := context.WithTimeout(ctx, perAgentTimeout)
 	defer cancel()
@@ -96,10 +113,64 @@ func stripRawForPrompt(in []AgentResult) []map[string]interface{} {
 	return out
 }
 
+// buildSynthPrompt formats the preset's synthesizer template with the
+// per-agent findings JSON. When weights are non-cold (any value !=
+// 1.0), prepends a `weights:` section so the model can deprioritize
+// low-weight reporters in its synthesis prose. When all weights are
+// cold OR the map is empty, output is byte-identical to v0.6.2 — no
+// weights line, just the preset's prompt as-is.
+func buildSynthPrompt(template string, body []byte, weights map[string]float64) string {
+	core := fmt.Sprintf(template, string(body))
+	if !anyNonCold(weights) {
+		return core
+	}
+	var b strings.Builder
+	b.WriteString("weights (per-(provider,persona) precision in [0.05, 1.0], 1.0 = cold start):\n")
+	// Stable ordering: alphabetical by agent name so the prompt is
+	// deterministic across runs.
+	names := make([]string, 0, len(weights))
+	for n := range weights {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	for _, n := range names {
+		fmt.Fprintf(&b, "- %s: %.2f\n", n, weights[n])
+	}
+	b.WriteString("\nWhen synthesizing, deprioritize findings from low-weight reporters; treat 1.0 as cold-start (no signal).\n\n")
+	b.WriteString(core)
+	return b.String()
+}
+
+// anyNonCold mirrors findings.AnyNonCold without the import — synth
+// can't import findings (would create a cycle: cli depends on both;
+// findings depends on swarm.AgentResult). Cold weight is 1.0 by spec.
+func anyNonCold(weights map[string]float64) bool {
+	for _, w := range weights {
+		if w != 1.0 {
+			return true
+		}
+	}
+	return false
+}
+
+// weightFor returns the weight for an agent name, defaulting to 1.0
+// (cold) when missing or when the map is nil. Used by clusterFindings
+// for the weighted-consensus sort.
+func weightFor(weights map[string]float64, agent string) float64 {
+	if weights == nil {
+		return 1.0
+	}
+	if w, ok := weights[agent]; ok {
+		return w
+	}
+	return 1.0
+}
+
 // clusterFindings groups findings across agents that point at the
 // same (file, line_range). Stage 2 uses exact-match clustering;
-// Stage 5 may add fuzzy line-proximity matching.
-func clusterFindings(results []AgentResult) []FindingGroup {
+// Stage 5 may add fuzzy line-proximity matching. v0.7 adds optional
+// per-agent weights for the secondary sort.
+func clusterFindings(results []AgentResult, weights map[string]float64) []FindingGroup {
 	totalAgents := 0
 	for _, r := range results {
 		if r.Err == "" || len(r.Findings) > 0 {
@@ -140,17 +211,72 @@ func clusterFindings(results []AgentResult) []FindingGroup {
 		g.OutOfTotal = totalAgents
 		out = append(out, *g)
 	}
+	// v0.7 sort: weighted_consensus desc → ConsensusOf desc → severity
+	// desc → key asc. Spec acceptance "Tiebreaker order:
+	// weighted_consensus desc → ConsensusOf desc → severity desc → key
+	// asc". When weights is nil/empty/all-cold, fall back to v0.6
+	// ordering byte-for-byte (severity → ConsensusOf → key) — that's
+	// the cold-start backward-compat contract.
+	//
+	// Both the cold-start check AND the per-cluster weighted_consensus
+	// are hoisted out of the Less closure: sort.Slice calls Less
+	// O(N log N) times, and re-checking the weights map shape on each
+	// call is wasteful when neither input changes inside the sort.
+	useWeighted := anyNonCold(weights)
+	// Indexed by FindingGroup.Key (stable across the in-place sort,
+	// unlike a parallel slice which would point at the wrong cluster
+	// after a swap). Map lookup is O(1) — cheaper than re-iterating
+	// the cluster's Reporters map on every Less call.
+	var weightedSums map[string]float64
+	if useWeighted {
+		weightedSums = make(map[string]float64, len(out))
+		for _, g := range out {
+			weightedSums[g.Key] = weightedConsensus(g, weights)
+		}
+	}
 	sort.Slice(out, func(i, j int) bool {
-		ri, rj := severityRank(out[i].Severity), severityRank(out[j].Severity)
-		if ri != rj {
-			return ri > rj // higher severity first
+		if !useWeighted {
+			ri, rj := severityRank(out[i].Severity), severityRank(out[j].Severity)
+			if ri != rj {
+				return ri > rj
+			}
+			if out[i].ConsensusOf != out[j].ConsensusOf {
+				return out[i].ConsensusOf > out[j].ConsensusOf
+			}
+			return out[i].Key < out[j].Key
+		}
+		wi, wj := weightedSums[out[i].Key], weightedSums[out[j].Key]
+		// Float tolerance: weighted_consensus is a sum of weights in
+		// [0.05, 1.0]. Two equivalent reporter sets summing to the
+		// same theoretical value can differ in the last bit due to
+		// IEEE-754 ordering. Treat anything within 1e-9 as equal so
+		// we still hit the ConsensusOf / severity tiebreakers.
+		if diff := wi - wj; diff > 1e-9 || diff < -1e-9 {
+			return wi > wj
 		}
 		if out[i].ConsensusOf != out[j].ConsensusOf {
 			return out[i].ConsensusOf > out[j].ConsensusOf
 		}
+		ri, rj := severityRank(out[i].Severity), severityRank(out[j].Severity)
+		if ri != rj {
+			return ri > rj
+		}
 		return out[i].Key < out[j].Key
 	})
 	return out
+}
+
+// weightedConsensus sums each unique reporter's weight ONCE per
+// cluster — even if the same agent emitted multiple findings that
+// merged into the cluster (clusterFindings already dedupes via the
+// Reporters map[string]Finding, so we just iterate). The per-agent
+// "vote" carries weight, not count.
+func weightedConsensus(g FindingGroup, weights map[string]float64) float64 {
+	sum := 0.0
+	for agent := range g.Reporters {
+		sum += weightFor(weights, agent)
+	}
+	return sum
 }
 
 // severityRank assigns a numeric ordering to each known severity so
@@ -185,7 +311,12 @@ func severityRank(s Severity) int {
 // keyed by clustered findings × agent columns. The orchestrator
 // builds this locally rather than trusting the synthesizer to format
 // it — too easy for a model to drop columns or misalign rows.
-func renderDisagreementTable(results []AgentResult, clusters []FindingGroup) string {
+//
+// v0.7: weights + showWeights control optional column-header
+// annotations. When showWeights=false (the v0.7 default — see
+// spec acceptance "Default off in v0.7"), the table is byte-identical
+// to v0.6.2 regardless of the weights map content.
+func renderDisagreementTable(results []AgentResult, clusters []FindingGroup, weights map[string]float64, showWeights bool) string {
 	if len(clusters) == 0 {
 		return ""
 	}
@@ -221,6 +352,9 @@ func renderDisagreementTable(results []AgentResult, clusters []FindingGroup) str
 		label := c
 		if driverByAgent[c] == driverKindMCP {
 			label = c + " [deterministic]"
+		}
+		if showWeights {
+			label = fmt.Sprintf("%s (%.2f)", label, weightFor(weights, c))
 		}
 		fmt.Fprintf(&b, " %s |", label)
 	}
