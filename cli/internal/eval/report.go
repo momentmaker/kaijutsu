@@ -6,6 +6,7 @@ import (
 	"html"
 	"sort"
 	"strings"
+	"unicode/utf8"
 )
 
 // reportHTMLTemplate is the static HTML report. Single page, no
@@ -218,10 +219,16 @@ func renderDrillDown(bench Benchmark, baselineSide, challengerSide string) strin
 
 // truncateOutput caps embedded output snippets at maxBytes; longer
 // outputs surface a "[truncated, see eval-<id>/<side>/output.txt]"
-// marker.
+// marker. Cuts on a UTF-8 rune boundary — slicing at an arbitrary
+// byte offset can split a multi-byte rune and produce invalid UTF-8
+// in the HTML report.
 func truncateOutput(s string, maxBytes int) string {
 	if len(s) <= maxBytes {
 		return s
 	}
-	return s[:maxBytes] + "\n\n[truncated; see eval-<id>/<side>/output.txt for full text]"
+	cut := maxBytes
+	for cut > 0 && !utf8.RuneStart(s[cut]) {
+		cut--
+	}
+	return s[:cut] + "\n\n[truncated; see eval-<id>/<side>/output.txt for full text]"
 }

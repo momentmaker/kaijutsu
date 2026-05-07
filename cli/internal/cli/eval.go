@@ -70,6 +70,13 @@ func newEvalSkillCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			// Fail-fast flag validation: reject incompatible
+			// combinations BEFORE any model dispatch so users
+			// don't burn wallclock + budget waiting for a
+			// validation error at the end of the run.
+			if baselineFrom != "" && !strict {
+				return errors.New("--baseline-from requires --strict (the regression check is the strict gate)")
+			}
 			skillPath := args[0]
 			info, err := os.Stat(skillPath)
 			if err != nil {
@@ -200,15 +207,74 @@ func newEvalSkillCmd() *cobra.Command {
 				countPassing(res.Bench, eval.SideWithSkill), res.Bench.TotalEvals, paths.ReportHTML)
 			fmt.Fprintf(out, "actual cost: $%.4f (estimated $%.4f)\n", res.ActualCost, res.Estimate.Total)
 
-			// --strict regression check.
+			// --strict stateless regression check (within-run
+			// with_skill vs without_skill). Always runs when
+			// --strict is set.
 			if strict && res.HasRegression {
 				return errors.New("strict: with_skill regressed against without_skill on at least one eval")
 			}
-			// --baseline-from + --accept-baseline gate (Stage 3 wires
-			// the comparison; Stage 1 honors --accept-baseline as a
-			// no-op so callers can pass it eagerly).
-			_ = baselineFrom
-			_ = acceptBaseline
+			// --baseline-from stateful regression check (Stage 3).
+			// Gating against --strict happens at the top of RunE.
+			// Loads prior eval-baseline.json from a git ref via
+			// `git show`, compares against the current baseline.
+			// New runs without prior baseline get a soft warning +
+			// exit 0 unless --accept-baseline is set AND the
+			// current baseline contains failures (the broken-floor
+			// seeding gate).
+			if baselineFrom != "" {
+				root, rerr := projectRoot()
+				if rerr != nil {
+					return fmt.Errorf("--baseline-from: locate project root: %w", rerr)
+				}
+				// filepath.Rel requires both args be either both
+				// absolute or both relative. paths.BaselineJSON is
+				// derived from --workspace which can be relative;
+				// projectRoot() returns absolute. Normalize both
+				// to absolute before Rel.
+				absBaseline, err := filepath.Abs(paths.BaselineJSON)
+				if err != nil {
+					return fmt.Errorf("--baseline-from: absolutize baseline %s: %w", paths.BaselineJSON, err)
+				}
+				rel, err := filepath.Rel(root, absBaseline)
+				if err != nil {
+					return fmt.Errorf("--baseline-from: relativize %s under %s: %w", absBaseline, root, err)
+				}
+				// `git show <ref>:<path>` requires forward slashes
+				// regardless of host OS — Windows-native paths break
+				// the spec.
+				baselinePath := filepath.ToSlash(rel)
+				prior, found, err := eval.LoadBaselineFromGitRef(ctx, root, baselineFrom, baselinePath)
+				if err != nil {
+					return fmt.Errorf("--baseline-from: %w", err)
+				}
+				currentBL := eval.EvalBaseline{
+					SkillName: res.Bench.SkillName,
+					Iteration: res.Bench.Iteration,
+					Sides:     map[string]map[string]bool{},
+				}
+				for id, er := range res.Bench.Results {
+					sideMap := make(map[string]bool, len(er.Sides))
+					for side, sr := range er.Sides {
+						sideMap[side] = sr.Pass
+					}
+					currentBL.Sides[id] = sideMap
+				}
+				if !found {
+					// First-tag-with-coverage policy.
+					if eval.HasFailingEvals(currentBL) && !acceptBaseline {
+						return fmt.Errorf("--baseline-from %s: no prior baseline found AND current run has failing evals; pass --accept-baseline to seed a new baseline-of-record (broken-floor guard)", baselineFrom)
+					}
+					fmt.Fprintf(stderr, "first eval run at %s; --strict has no prior baseline to compare. Seeding %s as the baseline-of-record.\n", baselineFrom, paths.BaselineJSON)
+					return nil
+				}
+				regressions := eval.CompareAgainstBaseline(*prior, currentBL)
+				if len(regressions) > 0 {
+					for _, r := range regressions {
+						fmt.Fprintf(stderr, "regression: eval=%s side=%s passed at %s, fails now\n", r.EvalID, r.Side, baselineFrom)
+					}
+					return fmt.Errorf("strict: %d regression(s) vs baseline at %s", len(regressions), baselineFrom)
+				}
+			}
 			return nil
 		},
 	}

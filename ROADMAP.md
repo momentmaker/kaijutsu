@@ -35,7 +35,7 @@ Working consume-and-author loop. No bells, no eval gate, no static site.
 - [x] **Sigstore enforcement**: hard-fails `jutsu install` on signature mismatch when `expected-signer` is set. `dcg` skill opted in starting v0.3.1; `--no-verify` override for environments without cosign
 - [x] **Permission prompts**: install-time prompt when a skill declares sensitive `permissions` (`bash: true`, `network: true`, `fs-write: full`) instead of advisory-only. `--yes` bypass.
 - [x] **Hooks as first-class artifacts**: extend `skill.yaml` with a `hooks` block; install translates and registers hooks into `~/.<agent>/settings.json`; remove cleans them up. First user: a destructive-command-guard (DCG) hook bundle.
-- [ ] **`jutsu eval`**: per-skill eval runner that consumes `evals/cases.yaml`; CI integration via `lint-skills.yml`
+- [x] **`jutsu eval`**: shipped v0.10.0 (single-skill parity with agent-skills-eval upstream + 3 kaijutsu-native swarm-shape extensions: persona, preset, swarm-skill). Stateful `--strict` via `--baseline-from <git-ref>` against prior tag's `eval-baseline.json`. CI workflow `eval-skills.yml` runs on every `v*` tag. Stage 2 stub limitations + v0.10.x backlog tracked in CHANGELOG.
 - [x] **`agent-doctor` rich-layout port**: ships `scripts/{lib,doctor,cleanup}.sh`, `references/{directory-map,cleanup-tiers,protected-paths}.md`, `runbooks/recover-from-trash.md`. Generalized for ~/.claude, ~/.codex, ~/.gemini, ~/.agents.
 - [x] **Cascade-aware `jutsu remove`**: dynamically computes the dep graph by walking each installed skill's on-disk `skill.yaml`. Refuses to remove a skill another depends on; `--cascade` removes orphans transitively.
 - [x] **`jutsu publish` automation**: `--auto` shells out to `gh` for fork + clone + branch + push + PR. Default still prints manual steps.
@@ -52,7 +52,7 @@ Working consume-and-author loop. No bells, no eval gate, no static site.
 - [ ] CODEOWNERS by category for trusted maintainers
 - [ ] Anonymized opt-in telemetry: install counts, error rates, skill pairings → drives bundle recommendations
 - [ ] `jutsu translate` — convert a skill from one agent's format to another (best-effort)
-- [ ] `jutsu eval` (deferred from v0.3) — per-skill eval runner that consumes `evals/cases.yaml`; CI integration via `lint-skills.yml`
+- [x] `jutsu eval` (deferred from v0.3) — shipped v0.10.0; see v0.3 entry above for details.
 - [ ] `git-commit` and `reorient` skills (deferred from v0.1)
 
 ## v0.6 — multi-provider agents (driver abstraction) ✅

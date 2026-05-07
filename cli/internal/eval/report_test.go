@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 )
 
 // TestReport_RendersFromLocalJSON covers the end-to-end render
@@ -147,5 +148,27 @@ func TestReport_HTMLEscapesUserContent(t *testing.T) {
 		if !strings.Contains(html, must) {
 			t.Errorf("expected escaped form %q", must)
 		}
+	}
+}
+
+// TestTruncateOutput_PreservesUTF8Boundaries covers the v0.10
+// final-pr-review fix: byte-indexed slicing can split a multi-byte
+// rune and produce invalid UTF-8 in the rendered HTML. Cut must
+// rewind to the previous rune boundary.
+func TestTruncateOutput_PreservesUTF8Boundaries(t *testing.T) {
+	// "🚀" is 4 bytes (F0 9F 9A 80). Build a string where the
+	// truncation cap lands inside that rune.
+	s := strings.Repeat("a", 10) + "🚀" + strings.Repeat("b", 10)
+	// Cap at 12 bytes — this falls in the middle of the rocket
+	// rune (bytes 11-14 are the rocket; cap=12 = mid-rune).
+	out := truncateOutput(s, 12)
+	if !utf8.ValidString(out) {
+		t.Errorf("truncated output contains invalid UTF-8: %q", out)
+	}
+	if !strings.HasPrefix(out, strings.Repeat("a", 10)) {
+		t.Errorf("expected leading aaaaa... preserved; got %q", out[:20])
+	}
+	if strings.Contains(out, "\xf0\x9f\x9a") && !strings.Contains(out, "🚀") {
+		t.Error("kept partial rune bytes — should have rewound past it")
 	}
 }

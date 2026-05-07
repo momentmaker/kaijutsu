@@ -4,6 +4,53 @@ All notable changes to kaijutsu (the registry + skills) and `jutsu` (the CLI). T
 
 ## [Unreleased]
 
+## [0.10.0] — 2026-05-08
+
+`jutsu eval` runner — port of agentskills.io / agent-skills-eval upstream to Go + kaijutsu-native swarm-shape eval extensions. Spec: `docs/specs/2026-05-08-v0.10.0-eval-runner.md`. Plan: `IMPLEMENTATION_PLAN.md` (3 stages).
+
+### Added
+
+- **`jutsu eval skill <path>`** — single-skill eval (parity with agent-skills-eval upstream). Reads `<skill>/evals/evals.json` files unchanged (3 captured fixtures pinned under `cli/internal/eval/testdata/agent-skills-eval-fixtures/v1/`). Runs target × 2 (with_skill / without_skill), judge grades each output, writes iteration-N artifact tree, generates static HTML report.
+- **4-stage tolerant judge JSON parser**: raw json.Unmarshal → balanced-bracket extract (string + escape aware; handles nested objects) → retry with stricter prompt suffix → indeterminate. `--strict` treats indeterminate as failure (safe default).
+- **`jutsu eval persona`** — head-to-head two personas on the same prompt. Side dirs use persona names verbatim. Parallel dispatch (concurrent persona runs are cheap; each = single agent invocation).
+- **`jutsu eval preset`** — head-to-head two preset modes (e.g. dream quick vs full). Sequential dispatch (each side = full swarm pipeline; parallel would blow `--max-cost`). Stage 2 stub: dispatches claude regardless of preset:mode pair with one-shot stderr warning so users don't read green output as "preset modes meaningfully differ" — real swarm.runSwarmPipeline integration is v0.10.x.
+- **`jutsu eval swarm-skill`** — does loading a skill into a swarm preset's pipeline change outcomes. Same stub limitations as preset.
+- **`kaijutsu.{swarm,personas,presets}`** extension blocks under evals.json's top-level `kaijutsu:` key. Forward-compat: upstream parsers ignore the block per JSON-permissive parsing. `additionalProperties: false` is set at the top level but the upstream-parser SKIP test pinned in `cli/internal/eval/upstream_compat_test.go` will validate the contract once a stable agent-skills-eval `--validate` flag lands (v0.10.x candidate).
+- **`evals/judge.md`** per-skill judge override. Required placeholders: `{assertion}` and `{output}` — missing either hard-fails at LoadJudgeTemplate parse time. Judge prompt template carries INPUT-INTEGRITY rules (prompt-injection mitigation per the v0.4 pr-review pattern).
+- **Workspace lock** with TTL/PID stale-clear: PID-not-alive OR mtime>2h auto-clears with stderr warning. Boundary tests pin the 2h threshold (1h59m blocks, 2h01m clears). Windows portability via `pidalive_windows.go` build-tag split.
+- **Cost guard**: pre-flight `--max-cost` cap (default $20) aborts BEFORE any model dispatch when estimate exceeds cap. Mid-suite per-call ratio guard aborts pending evals when actual per-call cost > 2× estimate. Mirrors v0.9 dream cost prompt discipline. Parity across all 4 subcommands (skill + 3 swarm shapes).
+- **Static HTML report** with embedded JSON. No external CSS/JS, no infra to host. Renders pass/fail summary table + per-eval drill-down + cost rollup + line-level diff view (200-line cap per side, non-deterministic noise stripped via fixed regex set). HTML-escapes user content (skill names, eval names, assertions, reasons) to prevent XSS in hosted reports.
+- **Path-traversal sanitization** on eval IDs + side names. Defense-in-depth alongside parser-level validation; malicious or malformed inputs can't escape the iteration directory.
+- **`--baseline-from <git-ref>`** stateful `--strict` mode. Reads prior tag's `eval-baseline.json` artifact via `git show <ref>:<path>`, compares per-(eval-id, side) pass/fail. Regression = challenger fails what baseline passed. First-tag-with-coverage policy: missing prior baseline → exit 0 with warning; broken-floor seeding rejected unless `--accept-baseline` flag passed.
+- **CI workflow** `.github/workflows/eval-skills.yml` runs the eval-package test suite + cobra-wiring smoke + `evals.json` parse-check on every push to main, every PR touching the eval surface, every `v*` tag, and `workflow_dispatch`. Stage 3 ships the harness gate; live judge dispatch + stateful `--baseline-from <prior-tag>` regression check are scoped to v0.10.x once secrets-injected `ANTHROPIC_API_KEY` is wired.
+- **3 core skills now eval-covered**: `dream`, `pr-review`, `scope-check` ship with `evals/evals.json`. Coverage gate at `TestEvalCoverage_CoreSkillsHaveEvalsJson` fails CI if any allowlisted skill loses coverage.
+
+### Changed
+
+- **`init_agents_fragment` marker version**: `0.9.0` → `0.10.0`. Older versions still detected via the version-agnostic prefix; replace stays clean.
+
+### Notes
+
+- **Adversarial swarm pr-review** caught real bugs across all three Stage commits. Stage 3: 7 fixes — `LoadBaselineFromGitRef` switched from English-stderr substring matching to a locale-independent two-step probe (`git rev-parse --verify` then `git cat-file -e`); `filepath.ToSlash()` on the baseline path before `git show` (Windows `\` broke the spec); `projectRoot()` + `filepath.Rel()` errors now surface instead of silently falling back to absolute paths; `--baseline-from` now requires `--strict` (matches CHANGELOG framing); 5 new tests for `LoadBaselineFromGitRef` covering happy path, absent-at-tag, bad-ref, bad-JSON, empty-args; `eval-skills.yml` rewritten as honest harness gate (live dispatch deferred, would have failed CI on first tag); missing `fixtures/sample.diff` for the dream `kaijutsu.swarm` extension. Final cumulative pr-review across `main..HEAD`: 4 fixes — `filepath.Abs` on both args before `filepath.Rel` (mixed-abs/rel from relative `--workspace` would have errored on a real run); `--baseline-from` validation moved to top of `RunE` (was running after the full eval suite, wasting wallclock + budget); `LoadBaselineFromGitRef` now requires explicit `repoRoot` arg + sets `cmd.Dir` on every git invocation (would have walked up to wrong repo from a subdirectory); `truncateOutput` rewinds to a UTF-8 rune boundary (byte-indexed slicing produced invalid UTF-8 in the HTML report). Stage 1: 4 fixes (Windows portability via build-tag split, balanced-bracket JSON parser replacing the naive non-greedy regex, ctx-aware sem acquire, `matchesAny` pattern grammar documented). Stage 2: 7 fixes (`--max-cost` parity in swarm-shape runners, presetModeResolver stderr stub warning, B==C parse validation, shape-kind switch default branch, `MarkFlagRequired("evals")`, ctx-aware sem acquire on parallel persona path, `personaResolver` lookup discipline). Different agents caught different lenses — claude on design correctness, gemini on parity/consistency, deepseek (v4-flash, ~$0.01-0.02 per review) on perf/portability.
+- **Stage 2 stubs are loud, not silent**. preset/swarm-skill modes both dispatch claude regardless of preset:mode pair (real swarm.runSwarmPipeline integration is v0.10.x). The stub emits a one-shot stderr warning so users don't ship product decisions on green-but-meaningless output.
+
+### Deferred to v0.10.x
+
+- Real preset/swarm-skill dispatch via `swarm.runSwarmPipeline` (Stage 2 stub returns claude regardless of preset:mode).
+- Persona-registry resolution against `agents.yaml` (Stage 2 supports claude/codex/gemini drivers only).
+- Upstream-parser forward-compat test wiring (pending stable agent-skills-eval `--validate` flag).
+- `findings.db` integration (synthetic eval pass/fail vs user accept/dismiss precision math — needs an ADR; storing both signals could pollute the v0.7 weighter).
+- Concurrency parity: `RunPersonaSuite` is parallel; preset + swarm-skill stay sequential because each side = full swarm pipeline (parallel would blow `--max-cost`). Documented Stage 2 invariant.
+- Move `TestEvalCoverage_CoreSkillsHaveEvalsJson` allowlist from test source to `skills/core/.eval-coverage.yaml` manifest so the source-of-truth lives next to the skills.
+- Live judge dispatch in CI (Stage 3 ships the harness; secrets-injected `ANTHROPIC_API_KEY` for `gh actions` test runs is v0.10.x).
+- `jutsu eval bench` — cross-skill comparison ("which skill is best at X?").
+- HTML reasoning-diff (judge-side reasoning comparison; v0.10 ships pure-output diff only).
+- Cross-eval diffing ("v1.0.0 of skill X now fails 3 evals it passed in v0.9.5") — needs eval-result history storage, separate v0.11+ feature.
+- Eval marketplace / shared eval suites (`jutsu install eval:foo`).
+- Three nearly-identical regression-check functions in runner_swarm.go could collapse to one generic helper. Refactor-only; doesn't affect correctness.
+- `concurrency` flag accepted but ignored by preset/swarm-skill subcommands (parity gap with persona).
+- Judge cost estimate omits prompt-template overhead (perf-accuracy nit; cost shown is conservative underestimate).
+
 ## [0.9.1] — 2026-05-07
 
 Patch fixing 3 user-surfaced ergonomics issues. No new features.

@@ -1,0 +1,34 @@
+{
+  "skill_name": "pr-review",
+  "evals": [
+    {
+      "id": "auth-bug-detection",
+      "name": "Catches an auth bypass in a synthetic diff",
+      "prompt": "Review this diff for bugs.\n\nDIFF:\ndiff --git a/auth.go b/auth.go\n@@\n-func validateToken(t string) error {\n-    if t == \"\" {\n-        return errors.New(\"empty token\")\n-    }\n-    expiry := parseExpiry(t)\n-    if time.Now().After(expiry) {\n-        return errors.New(\"expired\")\n-    }\n-    return nil\n-}\n+func validateToken(t string) error {\n+    if t == \"\" {\n+        return nil\n+    }\n+    return nil\n+}\n",
+      "assertions": [
+        "Output identifies that token expiry validation was removed",
+        "Output identifies that empty-token rejection was changed to acceptance",
+        "Output flags at least one of these as severity blocker or issue"
+      ]
+    },
+    {
+      "id": "no-false-positive-on-clean-diff",
+      "name": "Does not flag a clean rename diff",
+      "prompt": "Review this diff for bugs.\n\nDIFF:\ndiff --git a/foo.go b/foo.go\n@@\n-func oldName(x int) int { return x + 1 }\n+func newName(x int) int { return x + 1 }\n",
+      "assertions": [
+        "Output does not flag this diff as having a bug, blocker, or issue",
+        "Output either returns an empty findings list OR a single info-severity rename observation"
+      ]
+    },
+    {
+      "id": "structured-output-shape",
+      "name": "Returns a JSON array of findings with the expected schema",
+      "prompt": "Review this diff for bugs.\n\nDIFF:\ndiff --git a/cache.go b/cache.go\n@@\n-cache.Set(key, val, 60*time.Second)\n+cache.Set(key, val, 0)\n",
+      "assertions": [
+        "Output is a JSON array",
+        "Each finding object has the keys: severity, file, line_range, summary",
+        "At least one finding mentions the TTL change"
+      ]
+    }
+  ]
+}

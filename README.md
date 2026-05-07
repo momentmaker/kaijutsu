@@ -158,6 +158,35 @@ KAIJUTSU_DREAM_ADAPTIVE_LENS=off jutsu swarm dream "..."                 # disab
 
 See [CHANGELOG.md](./CHANGELOG.md#090--2026-05-07) for the full feature list and the v0.9.x deferral list.
 
+### v0.10 — `jutsu eval` runner
+
+Test framework for skills. Port of [agent-skills-eval](https://github.com/darkrishabh/agent-skills-eval) (Anthropic's agentskills.io eval format) to Go + 3 kaijutsu-native swarm-shape extensions. Spec: [`docs/specs/2026-05-08-v0.10.0-eval-runner.md`](./docs/specs/2026-05-08-v0.10.0-eval-runner.md).
+
+```bash
+# Single-skill eval — agent-skills-eval upstream parity
+jutsu eval skill skills/core/dream
+
+# Per-persona head-to-head (kaijutsu-native)
+jutsu eval persona --evals skills/core/dream/evals/evals.json
+
+# Per-preset mode comparison (e.g. dream quick vs full)
+jutsu eval preset --evals skills/core/dream/evals/evals.json
+
+# Skill loaded into swarm pipeline vs not
+jutsu eval swarm-skill --evals skills/core/dream/evals/evals.json
+
+# CI gate: stateful --strict against prior tag's baseline
+jutsu eval skill skills/core/dream --strict --baseline-from v0.9.1
+```
+
+- **Compat**: reads agent-skills-eval upstream `evals.json` files unchanged. Skill authors targeting both ecosystems write one schema.
+- **4 eval shapes** beyond single-target eval — only kaijutsu measures multi-agent + per-persona + per-preset lift.
+- **Workspace lock + cost guard + path-traversal sanitization + XSS-safe HTML report** — production-shaped from day one.
+- **CI workflow** `.github/workflows/eval-skills.yml` validates the eval harness (Go tests + cobra wiring + `evals.json` parse-check) on PRs, pushes to main, and `v*` tags. Live judge dispatch deferred to v0.10.x once secrets-injected `ANTHROPIC_API_KEY` is wired.
+- **3 core skills eval-covered at v0.10**: `dream`, `pr-review`, `scope-check`. Coverage gate prevents drift.
+
+See [CHANGELOG.md](./CHANGELOG.md#0100--2026-05-08) for the full feature list, Stage 2 stub limitations, and the v0.10.x deferral list.
+
 ## Trust model
 
 - **Core skills** (this monorepo, `skills/core/`) are signed at release time using [Sigstore](https://www.sigstore.dev/) keyless signing. The CLI verifies the signature and the GitHub identity of the signer before installing.

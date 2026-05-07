@@ -1,0 +1,92 @@
+name: Eval skills
+
+# v0.10 jutsu eval CI gate.
+#
+# Stage 3 ships the harness (parser, runner, baseline diff,
+# coverage gate) without live judge dispatch — `jutsu eval` needs
+# a running agent CLI which isn't installed on ubuntu-latest, and
+# wiring secrets-injected ANTHROPIC_API_KEY for live dispatch is
+# scoped to v0.10.x. So this workflow validates what actually works
+# today:
+#
+#   1. The eval Go package compiles + its tests pass.
+#   2. The coverage allowlist gate (TestEvalCoverage_*) catches a
+#      core skill losing its evals.json.
+#   3. Every skills/core/<name>/evals/evals.json parses cleanly
+#      (catches schema-breaking edits at PR time).
+#   4. `jutsu eval --help` lists the expected subcommands (smoke
+#      test that the cobra wiring + binary build still match the
+#      docs).
+#
+# When live dispatch lands in v0.10.x, this workflow grows the
+# `jutsu eval skill` step + secrets-injected key + the
+# `--baseline-from <prior-tag>` regression gate. Spec:
+# docs/specs/2026-05-08-v0.10.0-eval-runner.md.
+
+on:
+  push:
+    tags:
+      - "v*"
+    branches:
+      - main
+    paths:
+      - "skills/core/**/evals/**"
+      - "cli/internal/eval/**"
+      - "cli/internal/cli/eval*.go"
+      - ".github/workflows/eval-skills.yml"
+  pull_request:
+    paths:
+      - "skills/core/**/evals/**"
+      - "cli/internal/eval/**"
+      - "cli/internal/cli/eval*.go"
+      - ".github/workflows/eval-skills.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  harness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: cli/go.mod
+          cache: true
+
+      - name: Run eval-package tests (harness + coverage gate)
+        working-directory: cli
+        run: go test ./internal/eval/... -count=1
+
+      - name: Build jutsu binary
+        working-directory: cli
+        run: go build -o ../jutsu ./cmd/jutsu
+
+      - name: Smoke-test cobra wiring
+        run: |
+          ./jutsu eval --help | tee /tmp/eval-help.txt
+          for sub in skill persona preset swarm-skill; do
+            if ! grep -qE "^\s*$sub\s" /tmp/eval-help.txt; then
+              echo "::error::jutsu eval --help missing '$sub' subcommand"
+              exit 1
+            fi
+          done
+
+      - name: Parse every core skill's evals.json
+        run: |
+          set -e
+          shopt -s nullglob
+          fail=0
+          for f in skills/core/*/evals/evals.json; do
+            echo "::group::parse $f"
+            if ! python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$f"; then
+              echo "::error::$f failed to parse"
+              fail=1
+            fi
+            echo "::endgroup::"
+          done
+          exit $fail
