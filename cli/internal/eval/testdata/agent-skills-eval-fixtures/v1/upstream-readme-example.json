@@ -1,0 +1,22 @@
+{
+  "skill_name": "pdf-processing",
+  "evals": [
+    {
+      "id": "extract-table",
+      "name": "Extract a table from a sample PDF",
+      "prompt": "Extract the financial summary table from sample.pdf and return it as Markdown.",
+      "files": ["fixtures/sample.pdf"],
+      "expected_output": "A markdown table with the columns: Quarter, Revenue, Profit."
+    },
+    {
+      "id": "fill-form",
+      "name": "Fill a PDF form with applicant data",
+      "prompt": "Fill the PDF form fields in form.pdf using the data in applicant.json.",
+      "files": ["fixtures/form.pdf", "fixtures/applicant.json"],
+      "assertions": [
+        "Every form field appears populated in the output PDF",
+        "Applicant name field matches applicant.json's `name` value verbatim"
+      ]
+    }
+  ]
+}

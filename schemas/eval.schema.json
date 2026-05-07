@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://kaijutsu.dev/schemas/eval.schema.json",
+  "title": "kaijutsu eval suite (evals.json)",
+  "description": "Schema for `<skill>/evals/evals.json`. Compatible with agentskills.io / darkrishabh/agent-skills-eval upstream; kaijutsu-specific extension blocks live under `kaijutsu.*` and are ignored by upstream parsers.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["skill_name", "evals"],
+  "properties": {
+    "skill_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Skill name; must match the parent skill directory's basename."
+    },
+    "evals": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/eval" }
+    },
+    "kaijutsu": { "$ref": "#/definitions/kaijutsuExtension" }
+  },
+  "definitions": {
+    "eval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "prompt"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique within evals[]; used as the artifact directory `eval-<id>/`."
+        },
+        "name": { "type": "string", "minLength": 1 },
+        "prompt": { "type": "string", "minLength": 1 },
+        "files": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "File paths attached to the prompt; relative to evals.json."
+        },
+        "expected_output": {
+          "type": "string",
+          "description": "Optional behavior description. Auto-promoted to a single assertion when `assertions` is empty: `\"Output should satisfy expected behavior: \" + expected_output`."
+        },
+        "assertions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Explicit grading criteria. Each assertion is graded by ONE judge call; eval passes only if all assertions pass."
+        }
+      }
+    },
+    "kaijutsuExtension": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Stage 2: kaijutsu-native eval shapes that upstream parsers ignore.",
+      "properties": {
+        "swarm":    { "type": "array", "items": { "$ref": "#/definitions/swarmCase" } },
+        "personas": { "type": "array", "items": { "$ref": "#/definitions/personaCase" } },
+        "presets":  { "type": "array", "items": { "$ref": "#/definitions/presetCase" } }
+      }
+    },
+    "swarmCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "preset", "baseline", "challenger", "assertions"],
+      "properties": {
+        "id":         { "type": "string", "minLength": 1 },
+        "preset":     { "type": "string", "minLength": 1 },
+        "diff":       { "type": "string" },
+        "files":      { "type": "array", "items": { "type": "string" } },
+        "prompt":     { "type": "string" },
+        "baseline":   { "type": "string", "description": "Side-name for the baseline (e.g. without_skill_in_swarm)." },
+        "challenger": { "type": "string", "description": "Side-name for the challenger (e.g. with_skill_in_swarm)." },
+        "assertions": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "personaCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "baseline", "challenger", "prompt", "assertions"],
+      "properties": {
+        "id":         { "type": "string" },
+        "baseline":   { "type": "string", "description": "Persona name treated as the baseline." },
+        "challenger": { "type": "string", "description": "Persona name treated as the challenger." },
+        "prompt":     { "type": "string" },
+        "files":      { "type": "array", "items": { "type": "string" } },
+        "assertions": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "presetCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "preset", "baseline", "challenger", "prompt", "assertions"],
+      "properties": {
+        "id":         { "type": "string" },
+        "preset":     { "type": "string", "description": "Preset name (e.g. dream)." },
+        "baseline":   { "type": "string", "description": "Mode name (e.g. quick)." },
+        "challenger": { "type": "string", "description": "Mode name (e.g. full)." },
+        "prompt":     { "type": "string" },
+        "files":      { "type": "array", "items": { "type": "string" } },
+        "assertions": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "skill_name": "multi-assertion-skill",
+  "evals": [
+    {
+      "id": "complex-task",
+      "name": "Multi-step task",
+      "prompt": "Refactor the function at line 42 of foo.go to remove the duplicated nil check, then add a unit test that exercises the new path.",
+      "assertions": [
+        "Output references foo.go line 42",
+        "Output includes both a refactor patch and a test patch",
+        "Test patch covers the nil-check removal path"
+      ]
+    }
+  ]
+}

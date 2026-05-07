@@ -1,0 +1,11 @@
+{
+  "skill_name": "minimal-skill",
+  "evals": [
+    {
+      "id": "smoke",
+      "name": "Smoke test",
+      "prompt": "Say hello.",
+      "expected_output": "Greeting containing the word hello"
+    }
+  ]
+}
