@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "total": 41,
+  "total": 50,
   "skills": [
     {
       "name": "agent-doctor",
@@ -417,6 +417,42 @@
       }
     },
     {
+      "name": "executing-plans",
+      "description": "Third-party skill from github.com/obra/superpowers; install via `jutsu install executing-plans`.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "source": "third-party",
+      "repo": "github.com/obra/superpowers",
+      "path": "skills/executing-plans",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": null
+      }
+    },
+    {
+      "name": "frontend-design",
+      "description": "Third-party skill from github.com/anthropics/skills; install via `jutsu install frontend-design`.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "source": "third-party",
+      "repo": "github.com/anthropics/skills",
+      "path": "skills/frontend-design",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": null
+      }
+    },
+    {
       "name": "frontend-ui-engineering",
       "description": "Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install frontend-ui-engineering`.",
       "agents": [
@@ -472,9 +508,9 @@
     },
     {
       "name": "incremental-implementation",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "license": "MIT",
-      "description": "Implement features as thin vertical slices, each shippable behind a feature flag. Each slice ends in green CI. No big-bang refactors. Composes scope-check (cost-tier) and polish (per-slice review).",
+      "description": "Implement features as thin vertical slices behind feature flags, each shippable on green CI. Per-slice two-stage review chain: fresh-context spec-compliance subagent, then code-quality via polish (with verification-before-completion gate). Continuous execution between independent slices — no pause-to-check-in. Composes scope-check + polish.",
       "agents": [
         "claude",
         "codex",
@@ -553,6 +589,24 @@
       }
     },
     {
+      "name": "mcp-builder",
+      "description": "Third-party skill from github.com/anthropics/skills; install via `jutsu install mcp-builder`.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "source": "third-party",
+      "repo": "github.com/anthropics/skills",
+      "path": "skills/mcp-builder",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": null
+      }
+    },
+    {
       "name": "multi-model-synth",
       "version": "0.2.0",
       "license": "MIT",
@@ -599,9 +653,9 @@
     },
     {
       "name": "planning-and-task-breakdown",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "license": "MIT",
-      "description": "Decompose a spec into a verifiable task list — vertical slices, explicit dependencies, acceptance criteria per task. Final review pass via `jutsu swarm doc-review`; cost-tier classification per slice via scope-check.",
+      "description": "Decompose a spec into a verifiable task list — header (goal + architecture + tech-stack), file-structure-up-front, vertical slices with explicit dependencies and acceptance criteria, AND bite-sized 2-5-minute checkbox steps inside each slice for direct subagent-driven execution. Final review via jutsu swarm doc-review; cost-tier classification via scope-check.",
       "agents": [
         "claude",
         "codex",
@@ -629,9 +683,9 @@
     },
     {
       "name": "polish",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "license": "MIT",
-      "description": "Automated post-implementation review-and-fix loop. Up to 4 passes; each pass alternates random-code-exploration and cross-agent-review lenses; convergence-detect declares the stop; deslop runs at the end on any user-facing prose.",
+      "description": "Automated post-implementation review-and-fix loop. Up to 4 passes; each pass alternates random-code-exploration and cross-agent-review lenses; convergence-detect declares the stop; verification-before-completion runs a fresh test/build gate AFTER convergence; deslop runs at the end on any user-facing prose.",
       "agents": [
         "claude",
         "codex",
@@ -889,6 +943,24 @@
       }
     },
     {
+      "name": "skill-creator",
+      "description": "Third-party skill from github.com/anthropics/skills; install via `jutsu install skill-creator`.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "source": "third-party",
+      "repo": "github.com/anthropics/skills",
+      "path": "skills/skill-creator",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": null
+      }
+    },
+    {
       "name": "source-driven-development",
       "description": "Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install source-driven-development`.",
       "agents": [
@@ -937,6 +1009,42 @@
       }
     },
     {
+      "name": "subagent-driven-development",
+      "description": "Third-party skill from github.com/obra/superpowers; install via `jutsu install subagent-driven-development`.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "source": "third-party",
+      "repo": "github.com/obra/superpowers",
+      "path": "skills/subagent-driven-development",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": null
+      }
+    },
+    {
+      "name": "systematic-debugging",
+      "description": "Third-party skill from github.com/obra/superpowers; install via `jutsu install systematic-debugging`.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "source": "third-party",
+      "repo": "github.com/obra/superpowers",
+      "path": "skills/systematic-debugging",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": null
+      }
+    },
+    {
       "name": "test-driven-development",
       "description": "Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install test-driven-development`.",
       "agents": [
@@ -956,9 +1064,9 @@
     },
     {
       "name": "unstuck",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "license": "MIT",
-      "description": "Guided problem articulation when you're stuck — break unproductive loops by forcing clarity, then escalate via blunder-hunt + structured pivots.",
+      "description": "Guided problem articulation when you're stuck — agent-side evidence gathering BEFORE the human-side articulation questions, then structured pivots, blunder-hunt escalation, and walk-away if needed.",
       "agents": [
         "claude",
         "codex",
@@ -977,6 +1085,68 @@
       "permissions": {
         "bash": true,
         "network": true,
+        "fs_write": "scoped"
+      }
+    },
+    {
+      "name": "using-git-worktrees",
+      "description": "Third-party skill from github.com/obra/superpowers; install via `jutsu install using-git-worktrees`.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "source": "third-party",
+      "repo": "github.com/obra/superpowers",
+      "path": "skills/using-git-worktrees",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": null
+      }
+    },
+    {
+      "name": "verification-before-completion",
+      "description": "Third-party skill from github.com/obra/superpowers; install via `jutsu install verification-before-completion`.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "source": "third-party",
+      "repo": "github.com/obra/superpowers",
+      "path": "skills/verification-before-completion",
+      "has_hooks": false,
+      "permissions": {
+        "bash": false,
+        "network": false,
+        "fs_write": null
+      }
+    },
+    {
+      "name": "verification-before-completion",
+      "version": "0.1.0",
+      "license": "MIT",
+      "description": "Hard gate before claiming work is complete: run the verification command fresh, capture output, only then claim done. Composed by polish, incremental-implementation, and pr-review to prevent silent-fail tail (convergence ≠ correctness). Adapted from obra/superpowers under MIT.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "primitive",
+        "discipline",
+        "gate"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/verification-before-completion",
+      "homepage": "https://kaijutsu.dev/skills/verification-before-completion",
+      "has_hooks": false,
+      "permissions": {
+        "bash": true,
+        "network": false,
         "fs_write": "scoped"
       }
     }
