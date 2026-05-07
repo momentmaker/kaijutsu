@@ -218,6 +218,58 @@ func (s *substringJudge) Run(ctx context.Context, prompt string, budget float64)
 	return `{"pass": false, "reason": "no match"}`, nil
 }
 
+// TestRunPersonaEval_RejectsBaselineEqualsChallenger covers the
+// v0.10 swarm pr-review fix: B==C would silently collapse map
+// entries → only one side dispatched. Parse-time validation
+// catches it.
+func TestRunPersonaEval_RejectsBaselineEqualsChallenger(t *testing.T) {
+	suite := &Suite{
+		SkillName: "demo",
+		Evals:     []Eval{{ID: "shim", Name: "shim", Prompt: "p"}},
+		Kaijutsu: &KaijutsuExtension{
+			Personas: []PersonaCase{{
+				ID:         "self-vs-self",
+				Baseline:   "default-claude",
+				Challenger: "default-claude",
+				Prompt:     "p",
+				Assertions: []string{"a"},
+			}},
+		},
+	}
+	_, err := RunPersonaSuite(context.Background(), suite, SwarmShapeOpts{
+		Judge: &fakeJudgeAlways{pass: true}, JudgeName: swarm.AgentClaude,
+	})
+	if err == nil || !strings.Contains(err.Error(), "must differ") {
+		t.Errorf("expected B==C rejection; got: %v", err)
+	}
+}
+
+// TestRunPersonaEval_AbortsAboveMaxCost covers the v0.10 swarm
+// pr-review fix: --max-cost was parity-broken (skill runner
+// enforced; swarm runners didn't). Pre-flight estimate over cap →
+// abort.
+func TestRunPersonaEval_AbortsAboveMaxCost(t *testing.T) {
+	cases := make([]PersonaCase, 50)
+	for i := range cases {
+		cases[i] = PersonaCase{
+			ID: "c" + itoa(i), Baseline: "good", Challenger: "bad",
+			Prompt: "p", Assertions: []string{"a", "b", "c"},
+		}
+	}
+	suite := &Suite{
+		SkillName: "demo",
+		Evals:     []Eval{{ID: "shim", Name: "shim", Prompt: "p"}},
+		Kaijutsu:  &KaijutsuExtension{Personas: cases},
+	}
+	_, err := RunPersonaSuite(context.Background(), suite, SwarmShapeOpts{
+		Judge: &fakeJudgeAlways{pass: true}, JudgeName: swarm.AgentClaude,
+		MaxCostUSD: 0.01, // tighter than 50-case estimate
+	})
+	if err == nil || !strings.Contains(err.Error(), "exceeds --max-cost cap") {
+		t.Errorf("expected cap abort; got: %v", err)
+	}
+}
+
 // TestKaijutsuExtensionParse_RoundTripsAllShapes verifies the v0.10
 // schema accepts the full kaijutsu.* extension in one fixture
 // without losing any case.

@@ -28,8 +28,10 @@ type personaResolver struct {
 }
 
 func (r *personaResolver) Resolve(ctx context.Context, name string) (eval.TargetAgent, error) {
-	driver := agents.For(name)
-	if driver == nil {
+	// Lookup early; reject unknown persona names before constructing
+	// the agent wrapper. agents.For supports the v0.6 native CLIs;
+	// returns nil for personas not in the registry.
+	if agents.For(name) == nil {
 		return nil, fmt.Errorf("no driver for persona %q (v0.10 Stage 2 supports claude/codex/gemini; persona-registry resolution lands in v0.10.x)", name)
 	}
 	return &nativeCliEvalAgent{name: swarm.AgentName(name), timeout: r.timeout, budget: r.budget}, nil
@@ -42,15 +44,27 @@ func (r *personaResolver) Resolve(ctx context.Context, name string) (eval.Target
 type presetModeResolver struct {
 	timeout time.Duration
 	budget  float64
+	stderrW interface {
+		Write(p []byte) (int, error)
+	}
+	warnedStub bool
 }
 
 func (r *presetModeResolver) Resolve(ctx context.Context, name string) (eval.TargetAgent, error) {
 	// Stage 2 stub: dispatch via claude regardless of preset:mode
-	// pair. Full integration with swarm.runSwarmPipeline is v0.10.x
-	// — needs the eval-runner to receive structured swarm.Synthesis
-	// outputs, not just text. Stage 2 ships the surface so authors
-	// can write evals.json with these blocks; the runtime
-	// integration arrives next.
+	// pair. Surfacing this loudly so users don't read green eval
+	// reports as "preset modes meaningfully differ" — they don't
+	// yet. Per v0.10 Stage 2 swarm pr-review feedback (claude finding):
+	// silent identical-side dispatch was the worst-case UX.
+	// Full integration with swarm.runSwarmPipeline is v0.10.x —
+	// needs the eval-runner to receive structured swarm.Synthesis
+	// outputs, not just text.
+	if !r.warnedStub && r.stderrW != nil {
+		r.warnedStub = true
+		fmt.Fprintf(r.stderrW,
+			"warning: preset/swarm-skill eval is a v0.10 STUB — both sides dispatch claude regardless of preset:mode (%q). Reports won't show real preset-mode lift until v0.10.x wires through the full swarm pipeline. Don't ship product decisions on this output.\n",
+			name)
+	}
 	return &nativeCliEvalAgent{name: swarm.AgentClaude, timeout: r.timeout, budget: r.budget}, nil
 }
 
@@ -174,6 +188,7 @@ func bindSwarmShapeFlags(cmd *cobra.Command,
 	timeout *time.Duration,
 ) {
 	cmd.Flags().StringVar(evalsPath, "evals", "", "path to evals.json (required)")
+	_ = cmd.MarkFlagRequired("evals")
 	cmd.Flags().StringVar(judgeName, "judge", "claude", "model used to grade outputs")
 	cmd.Flags().BoolVar(strict, "strict", false, "exit 1 on baseline-vs-challenger regression")
 	cmd.Flags().Float64Var(maxCost, "max-cost", 20.00, "abort if pre-flight estimate exceeds this cap (USD)")
@@ -272,19 +287,25 @@ func runEvalSwarmShape(cmd *cobra.Command, cfg swarmShapeCfg) error {
 			challengerSide = suite.Kaijutsu.Personas[0].Challenger
 		}
 	case shapePreset:
-		opts.Resolver = &presetModeResolver{timeout: cfg.timeout, budget: cfg.perAgentBudget}
+		opts.Resolver = &presetModeResolver{timeout: cfg.timeout, budget: cfg.perAgentBudget, stderrW: stderr}
 		res, err = eval.RunPresetSuite(cmd.Context(), suite, opts)
 		if err == nil && len(suite.Kaijutsu.Presets) > 0 {
 			baselineSide = suite.Kaijutsu.Presets[0].Baseline
 			challengerSide = suite.Kaijutsu.Presets[0].Challenger
 		}
 	case shapeSwarmSkill:
-		opts.Resolver = &presetModeResolver{timeout: cfg.timeout, budget: cfg.perAgentBudget}
+		opts.Resolver = &presetModeResolver{timeout: cfg.timeout, budget: cfg.perAgentBudget, stderrW: stderr}
 		res, err = eval.RunSwarmSkillSuite(cmd.Context(), suite, opts)
 		if err == nil && len(suite.Kaijutsu.Swarm) > 0 {
 			baselineSide = suite.Kaijutsu.Swarm[0].Baseline
 			challengerSide = suite.Kaijutsu.Swarm[0].Challenger
 		}
+	default:
+		// Defensive — cobra subcommand registration covers the
+		// known kinds; future shapes added without updating this
+		// switch surface here cleanly rather than nil-deref'ing
+		// on res.Bench.Iteration below.
+		return fmt.Errorf("unsupported eval shape kind %d", cfg.kind)
 	}
 	if err != nil {
 		return err

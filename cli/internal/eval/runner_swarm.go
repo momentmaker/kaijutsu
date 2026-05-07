@@ -39,6 +39,24 @@ type SwarmShapeOpts struct {
 	StderrW       Writer
 }
 
+// estimateSwarmShapeCost projects pre-flight cost for a swarm-shape
+// suite (persona/preset/swarm-skill). Each case dispatches 2 sides,
+// each side hits the target once + judges N assertions. Mirrors
+// skill-runner's Estimate so --max-cost behaves the same way across
+// shapes (parity per pr-review feedback).
+func estimateSwarmShapeCost(numCases, totalAssertions int, target, judge swarm.AgentName) float64 {
+	const (
+		targetIn  = defaultTargetInputTokensEst
+		targetOut = defaultTargetOutputTokensEst
+		judgeIn   = defaultJudgeInputTokensEst
+		judgeOut  = defaultJudgeOutputTokensEst
+	)
+	targetCost := swarm.EstimateCostUSD(target, targetIn, targetOut)
+	judgeCost := swarm.EstimateCostUSD(judge, judgeIn, judgeOut)
+	// 2 sides × cases × target + 2 sides × total-assertions × judge.
+	return float64(2*numCases)*targetCost + float64(2*totalAssertions)*judgeCost
+}
+
 // RunPersonaSuite executes the kaijutsu.personas[] cases head-to-
 // head. Each case names a baseline persona + a challenger persona;
 // the runner dispatches both against the case's prompt + grades
@@ -52,6 +70,23 @@ func RunPersonaSuite(ctx context.Context, suite *Suite, opts SwarmShapeOpts) (*R
 		return nil, fmt.Errorf("suite has no kaijutsu.personas cases")
 	}
 	cases := suite.Kaijutsu.Personas
+	// Validate baseline != challenger so map-keyed sides don't
+	// collapse silently. pr-review finding #7.
+	for _, c := range cases {
+		if c.Baseline == c.Challenger {
+			return nil, fmt.Errorf("personas[%s]: baseline and challenger must differ (got %q for both); side dirs would collide", c.ID, c.Baseline)
+		}
+	}
+	// Pre-flight cost cap. pr-review finding #1 (parity with skill
+	// runner's Estimate-then-abort path).
+	totalAssertions := 0
+	for _, c := range cases {
+		totalAssertions += len(c.Assertions)
+	}
+	estimate := estimateSwarmShapeCost(len(cases), totalAssertions, swarm.AgentClaude, opts.JudgeName)
+	if opts.MaxCostUSD > 0 && estimate > opts.MaxCostUSD {
+		return nil, fmt.Errorf("pre-flight cost estimate $%.2f exceeds --max-cost cap $%.2f (%d cases × 2 sides × judge calls)", estimate, opts.MaxCostUSD, len(cases))
+	}
 	res := &RunResult{
 		Bench: Benchmark{
 			SkillName:  suite.SkillName,
@@ -63,9 +98,18 @@ func RunPersonaSuite(ctx context.Context, suite *Suite, opts SwarmShapeOpts) (*R
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, max1(1, opts.Concurrency))
+dispatch:
 	for _, c := range cases {
 		wg.Add(1)
-		sem <- struct{}{}
+		// ctx-aware sem acquire: ctx cancellation OR slot. Without
+		// the select, an outer cancel + saturated sem would block
+		// indefinitely (pr-review finding #10).
+		select {
+		case <-ctx.Done():
+			wg.Done()
+			break dispatch
+		case sem <- struct{}{}:
+		}
 		go func(c PersonaCase) {
 			defer wg.Done()
 			defer func() { <-sem }()
@@ -117,6 +161,19 @@ func RunPresetSuite(ctx context.Context, suite *Suite, opts SwarmShapeOpts) (*Ru
 		return nil, fmt.Errorf("suite has no kaijutsu.presets cases")
 	}
 	cases := suite.Kaijutsu.Presets
+	for _, c := range cases {
+		if c.Baseline == c.Challenger {
+			return nil, fmt.Errorf("presets[%s]: baseline and challenger modes must differ (got %q for both); side dirs would collide", c.ID, c.Baseline)
+		}
+	}
+	totalAssertions := 0
+	for _, c := range cases {
+		totalAssertions += len(c.Assertions)
+	}
+	estimate := estimateSwarmShapeCost(len(cases), totalAssertions, swarm.AgentClaude, opts.JudgeName)
+	if opts.MaxCostUSD > 0 && estimate > opts.MaxCostUSD {
+		return nil, fmt.Errorf("pre-flight cost estimate $%.2f exceeds --max-cost cap $%.2f (%d cases × 2 modes × judge calls)", estimate, opts.MaxCostUSD, len(cases))
+	}
 	res := &RunResult{
 		Bench: Benchmark{
 			SkillName:  suite.SkillName,
@@ -162,6 +219,19 @@ func RunSwarmSkillSuite(ctx context.Context, suite *Suite, opts SwarmShapeOpts) 
 		return nil, fmt.Errorf("suite has no kaijutsu.swarm cases")
 	}
 	cases := suite.Kaijutsu.Swarm
+	for _, c := range cases {
+		if c.Baseline == c.Challenger {
+			return nil, fmt.Errorf("swarm[%s]: baseline and challenger sides must differ (got %q for both); side dirs would collide", c.ID, c.Baseline)
+		}
+	}
+	totalAssertions := 0
+	for _, c := range cases {
+		totalAssertions += len(c.Assertions)
+	}
+	estimate := estimateSwarmShapeCost(len(cases), totalAssertions, swarm.AgentClaude, opts.JudgeName)
+	if opts.MaxCostUSD > 0 && estimate > opts.MaxCostUSD {
+		return nil, fmt.Errorf("pre-flight cost estimate $%.2f exceeds --max-cost cap $%.2f (%d cases × 2 sides × judge calls)", estimate, opts.MaxCostUSD, len(cases))
+	}
 	res := &RunResult{
 		Bench: Benchmark{
 			SkillName:  suite.SkillName,
