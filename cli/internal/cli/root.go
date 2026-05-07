@@ -30,6 +30,7 @@ func NewRootCmd() *cobra.Command {
 		newAgentCmd(),
 		newFindingCmd(),
 		newDescribeCmd(),
+		newSuggestCmd(),
 	)
 	return root
 }
