@@ -1,0 +1,13 @@
+name: verification-before-completion
+version: 0.1.0
+license: MIT
+layout: flat
+description: "Hard gate before claiming work is complete: run the verification command fresh, capture output, only then claim done. Composed by polish, incremental-implementation, and pr-review to prevent silent-fail tail (convergence ≠ correctness). Adapted from obra/superpowers under MIT."
+homepage: https://kaijutsu.dev/skills/verification-before-completion
+repository: https://github.com/momentmaker/kaijutsu
+tags: [primitive, discipline, gate]
+agents: [claude, codex, gemini]
+permissions:
+  bash: true
+  network: false
+  fs-write: scoped
