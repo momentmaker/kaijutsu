@@ -22,6 +22,32 @@ The plan is staged 1 → 5. See `ROADMAP.md` for the public version.
 4. Author 9 seed skills under `skills/core/`
 5. `publish`, `lint`, `search`, `info` + Sigstore signing for core + Homebrew tap + `install.sh`
 
+## Design principle: agent-first, human-friendly
+
+Default lens for every design decision in this repo. Apply per-command, per-skill, per-output-format choice.
+
+> **Rule**: machine-parseable + well-formed FIRST. Aesthetically pleasing for humans SECOND. They compose ~90% of the time. When they conflict, machine wins for primitive commands; human wins for synthesis output meant for direct review.
+
+What this means in practice:
+
+- **Output format auto-detection**: `isatty(stdout) AND no --format flag → markdown / table / colored`. Non-TTY (pipe, redirect, agent capture) → `JSON`. Explicit `--format json` / `--json` / `--format markdown` overrides. Pattern from `gh`, `jq -C`, `kubectl`.
+- **Stable exit codes** + structured error messages with codes. Agents can self-recover; humans can grep.
+- **Idempotent commands**. Re-run is safe. Critical for agent retry loops.
+- **Deterministic file outputs** — sorted, stable. Avoids spurious diff churn.
+- **No interactive prompts blocking pipelines.** `--yes` for non-interactive consent. TUI / fuzzy-finder UI is rejected on principle (breaks pipes, contradicts the lens).
+- **Self-describing CLI**: `jutsu --describe` returns a JSON catalog of every command + flags + descriptions. Fresh agents ingest this to learn the surface. Humans can pipe through `jq` if curious.
+- **Pipe-friendly composition**: `jutsu list --json | jq ...` works. Every primitive command supports JSON output.
+- **Skills layer**: skills are markdown documents agents READ and ACT on. Already agent-first by design.
+- **Synthesis output (e.g. `jutsu swarm <preset>`)**: markdown by default in TTY (human reads the review), JSON in pipe (next-stage agent consumes). Auto-flip applies — same rule.
+
+What this is NOT:
+
+- Not a charm-ecosystem TUI redesign. The dream session on the gum-UX question (2026-05-07) caught this: TUIs break pipes, narrow agent surface, contradict "boring + obvious" philosophy. We OPT OUT of charm/bubbletea/lipgloss for primary UX.
+- Not "AI-only, humans secondary" branding. Humans still write the contributor docs, read the synthesis output, and ship the project. Agent-first is a DESIGN LENS, not a market position.
+- Not a strict rule. Use judgment. Some commands legitimately have no machine consumer (`jutsu --version`); JSON output there is overkill. The rule applies where agent OR human consumption is real.
+
+If a new command / output / behavior fails the lens, push back. The Why-line in the commit message should reference this principle when it's load-bearing.
+
 ## Conventions
 
 - **Skill layout**: see [`SCHEMA.md`](./SCHEMA.md). Single `SKILL.md` per skill (Anthropic Agent Skills standard, works for all three target agents). Per-agent overrides only when behavior must genuinely differ — drop them under `overrides/<agent>/`.
