@@ -20,7 +20,6 @@ import (
 	"io"
 	"os/exec"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -115,12 +114,13 @@ func collectSyncPRActions(ctx context.Context, pr int) ([]swarm.SyncPRAction, er
 	}
 	var actions []swarm.SyncPRAction
 	for _, c := range v.Comments {
-		// Skip the bot's own marker comments — they're the rendered
-		// pr-review output, not human replies. Detect via the
-		// kaijutsu marker prefix + absence of action keywords.
-		if strings.Contains(c.Body, "<!-- kaijutsu-pr-review:run-id=") &&
-			!strings.Contains(c.Body, "accept:") &&
-			!strings.Contains(c.Body, "dismiss:") {
+		// Skip comments without action lines. ParseReplyKeywords is
+		// case-insensitive ((?i)), so this also implicitly skips the
+		// bot's own marker comments (which never contain accept/
+		// dismiss action lines). Cleaner than a separate string-
+		// match filter that could disagree with the regex on case.
+		parsed := swarm.ParseReplyKeywords(c.Body)
+		if len(parsed) == 0 {
 			continue
 		}
 		// Priority-2 scoping: comment body must carry an explicit
@@ -132,7 +132,7 @@ func collectSyncPRActions(ctx context.Context, pr int) ([]swarm.SyncPRAction, er
 		// (`accept: <run_id>:<pos>`); the body-scope check above
 		// just filters out unscoped noise. Each action carries its
 		// own run-id, so no extra fallback assignment is needed.
-		actions = append(actions, swarm.ParseReplyKeywords(c.Body)...)
+		actions = append(actions, parsed...)
 	}
 	return actions, nil
 }
