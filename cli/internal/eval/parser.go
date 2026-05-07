@@ -36,14 +36,26 @@ func Parse(data []byte) (*Suite, error) {
 // Match is case-sensitive (skill names are lowercase per spec). The
 // evalsJSONPath argument is the absolute path to evals.json itself,
 // not its parent.
+//
+// Validation only fires when the file lives at the canonical
+// `<skill>/evals/evals.json` location (i.e. the immediate parent
+// directory's basename is literally "evals"). Ad-hoc paths like
+// `/tmp/some-test.json` skip the check — the mismatch error would
+// be a false positive there. The cli layer that requires the
+// canonical layout (jutsu eval skill <skill-dir>) gets the strict
+// check; --evals <arbitrary-path> users get a permissive path.
 func ParseAtPath(data []byte, evalsJSONPath string) (*Suite, error) {
 	s, err := Parse(data)
 	if err != nil {
 		return nil, err
 	}
-	// Parent of evals.json is `evals/`; parent of that is the skill
-	// directory whose basename is the canonical skill name.
-	skillDir := filepath.Dir(filepath.Dir(evalsJSONPath))
+	parentDir := filepath.Dir(evalsJSONPath)
+	if filepath.Base(parentDir) != "evals" {
+		// Not in the canonical <skill>/evals/evals.json layout —
+		// skip the skill-dir-name check.
+		return s, nil
+	}
+	skillDir := filepath.Dir(parentDir)
 	if skillDir != "" && skillDir != "." && skillDir != "/" {
 		base := filepath.Base(skillDir)
 		if base != s.SkillName {

@@ -38,7 +38,12 @@ Subcommands:
 Stage 1 ships only the skill subcommand. Stage 2 adds the swarm-
 shape subcommands.`,
 	}
-	cmd.AddCommand(newEvalSkillCmd())
+	cmd.AddCommand(
+		newEvalSkillCmd(),
+		newEvalPersonaCmd(),
+		newEvalPresetCmd(),
+		newEvalSwarmSkillCmd(),
+	)
 	return cmd
 }
 

@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -220,22 +222,31 @@ func parseJudgeJSON(s string) (Verdict, bool) {
 
 // LoadJudgeTemplate reads a per-skill judge prompt override from
 // `<skillDir>/evals/judge.md` and validates it has both required
-// placeholders. Missing file → returns DefaultJudgeTemplate (Stage 1
-// default; Stage 2 ships this helper but Stage 1 doesn't yet wire
-// it into the runner).
+// placeholders. Missing file → returns DefaultJudgeTemplate.
 //
 // Validation: override missing `{assertion}` OR `{output}` →
 // hard-fail at parse time with a clear error.
+//
+// Path safety: the override is read from a fixed relative path
+// inside the skill dir; we don't follow arbitrary user-supplied
+// template locations.
 func LoadJudgeTemplate(skillDir string) (string, error) {
 	if skillDir == "" {
 		return DefaultJudgeTemplate, nil
 	}
-	// Stage 1 stub: always returns default. Stage 2 reads
-	// `<skillDir>/evals/judge.md` if present + validates
-	// placeholders. Implementing the stub now lets the runner
-	// integrate against the final API; Stage 2 swaps in the real
-	// body without changing the signature.
-	return DefaultJudgeTemplate, nil
+	overridePath := filepath.Join(skillDir, "evals", "judge.md")
+	data, err := os.ReadFile(overridePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return DefaultJudgeTemplate, nil
+		}
+		return "", fmt.Errorf("read judge override %s: %w", overridePath, err)
+	}
+	tmpl := string(data)
+	if err := ValidateJudgeTemplate(tmpl); err != nil {
+		return "", fmt.Errorf("judge override %s: %w", overridePath, err)
+	}
+	return tmpl, nil
 }
 
 // ValidateJudgeTemplate enforces the placeholder contract. Pure

@@ -1,0 +1,50 @@
+{
+  "skill_name": "dream",
+  "evals": [
+    {
+      "id": "single-agent-baseline",
+      "name": "Single-agent dream interrogation",
+      "prompt": "Should we ship the foo feature?",
+      "assertions": [
+        "surfaces at least one load_bearing finding"
+      ]
+    }
+  ],
+  "kaijutsu": {
+    "swarm": [
+      {
+        "id": "pr-review-with-dream",
+        "preset": "pr-review",
+        "diff": "fixtures/sample.diff",
+        "baseline": "without_skill_in_swarm",
+        "challenger": "with_skill_in_swarm",
+        "assertions": [
+          "catches the auth bug at line 42"
+        ]
+      }
+    ],
+    "personas": [
+      {
+        "id": "honest-vs-default",
+        "baseline": "default-claude",
+        "challenger": "honest-deepseek",
+        "prompt": "Pre-implementation review of feature Y",
+        "assertions": [
+          "honest-deepseek surfaces concerns default-claude misses"
+        ]
+      }
+    ],
+    "presets": [
+      {
+        "id": "dream-quick-vs-full",
+        "preset": "dream",
+        "baseline": "quick",
+        "challenger": "full",
+        "prompt": "Should we ship X?",
+        "assertions": [
+          "full mode surfaces a load_bearing finding quick missed"
+        ]
+      }
+    ]
+  }
+}
