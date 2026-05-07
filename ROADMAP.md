@@ -99,13 +99,14 @@ Spec: `docs/specs/2026-05-05-v0.6.0-multi-provider-agents.md`. ADR: `docs/decisi
 - [ ] **Cross-codebase learning** — opt-in: weight a new codebase's tuples by similar codebases (same language signature). Privacy-sensitive — needs design.
 - [ ] **Multi-stage swarm pipelines**: `jutsu swarm pipeline brainstorm-then-audit` chains presets with structured handoff; new `pipeline.yaml` DSL.
 - [ ] **Live TUI with streaming partial findings**: each provider streams findings as generated; depends on streaming support landing in `http_driver`.
-- [ ] **Reverse swarm — spec-vs-impl drift detector**: run on every PR that closes a spec; flag deviations from declared scope/non-goals.
+- [x] **Reverse swarm — spec-vs-impl drift detector**: shipped v0.9.0 (`jutsu swarm reverse --spec/--diff`; ADDED/OMITTED/CHANGED/AMBIGUOUS categories; deterministic oversize truncation; distinct marker prefix). Combined trigger + draft-PR softer-header deferred to v0.9.x.
 - [ ] **Persona registry + `jutsu install persona:foo`**: personas as installable artifacts.
-- [ ] **Per-skill provider routing**: skills declare preferred personas/providers; swarm picks accordingly.
+- [x] **Per-skill provider routing**: shipped v0.9.0 (`skill.yaml` `routing:` field + 3-phase resolver; `KAIJUTSU_DISABLE_AGENTS` escape hatch). `routing.disabled` user override deferred to v0.9.x.
 - [x] **Recorder hook moves below Debate** — shipped v0.8.3.
-- [ ] **Dream-specific schema migration** — dedicated `lens TEXT` column on findings; recorder + Weighter populate it; per-lens precision tracking + adaptive lens-emphasis weighting in synthesizer.
-- [ ] **Dream-flavored Pass-2 debate** — defines what "agents critique each other's lens cells" looks like; lifts `--mode full` reject.
-- [x] **Dream graveyard auto-write** — shipped v0.8.3 (swarm preset path; standalone /dream invocation + cross-codebase recall + lens-rotation rule still pending the --lenses-flag plumbing).
+- [x] **Dream-specific schema migration** — shipped v0.9.0 (`0002_lens.sql` adds `lens TEXT` + `position INTEGER`; LIKE-based backfill; `WeightForLens` 3-tier fallback; synthesizer reads per-lens weights via `SynthOpts.LensWeights`; `KAIJUTSU_DREAM_ADAPTIVE_LENS=off` killswitch).
+- [x] **Dream-flavored Pass-2 debate** — shipped v0.9.0 (`[new]/[disputes]/[revised]/[agreed]` revision tags; cobra reject lifted; cost prompt + non-TTY hard-fail).
+- [x] **Dream graveyard auto-write** — shipped v0.8.3 + v0.9.0 (lens-rotation rule on repeat-within-7d landed v0.9.0 alongside Pass-2).
+- [x] **PR-comment auto-detection** — shipped v0.9.0 (`jutsu finding sync-pr <pr>` reply-keyword channel; dry-run default; idempotent re-run; `gh` subprocess timeout). Reaction channel + `--post-review` mode + `--auto-sync` deferred to v0.9.x.
 - [x] **`jutsu dream clear --older-than 365d`** — shipped v0.8.3.
 - [ ] **dream-as-eval-corpus** — closes the prediction loop: "did wild's predictions come true 6 months later?"
 - [x] **Runtime lens-prefix validation** — shipped v0.8.3.
