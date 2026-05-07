@@ -57,6 +57,28 @@ func TestResolveDreamLenses_CommaList(t *testing.T) {
 	}
 }
 
+// TestResolveDreamLenses_TrimsAroundAlias covers the alias whitespace
+// fix: "  base  " and " all " resolve to the canonical sets, not
+// fall-through to the comma-list parser (which would error on "" /
+// non-canonical names after splitting).
+func TestResolveDreamLenses_TrimsAroundAlias(t *testing.T) {
+	cases := map[string]int{
+		"  base  ":  4,
+		"\tbase\n":  4,
+		" all ":     8,
+		"\tall\t":   8,
+	}
+	for in, wantLen := range cases {
+		got, err := resolveDreamLenses(in)
+		if err != nil {
+			t.Fatalf("resolveDreamLenses(%q): %v (whitespace should be trimmed for aliases)", in, err)
+		}
+		if len(got) != wantLen {
+			t.Errorf("resolveDreamLenses(%q): len=%d, want %d", in, len(got), wantLen)
+		}
+	}
+}
+
 // TestResolveDreamLenses_DedupesAndStrips covers whitespace tolerance
 // + dedup. " honest , gaps , honest " → ["honest", "gaps"].
 func TestResolveDreamLenses_DedupesAndStrips(t *testing.T) {
@@ -99,6 +121,22 @@ func TestResolveDreamLenses_EmptyAfterParseErrors(t *testing.T) {
 		if err == nil {
 			t.Errorf("resolveDreamLenses(%q) expected error, got nil", bad)
 		}
+	}
+}
+
+// TestSwarmDream_RejectsOversizedTopic verifies the 8 KB cap is
+// enforced (was documented in --help + CHANGELOG but missing from
+// the code path before this commit).
+func TestSwarmDream_RejectsOversizedTopic(t *testing.T) {
+	huge := strings.Repeat("x", 9*1024) // 9 KB > 8 KB cap
+	root := NewRootCmd()
+	root.SetArgs([]string{"swarm", "dream", huge, "--yes"})
+	err := root.Execute()
+	if err == nil {
+		t.Fatal("expected error for oversized topic")
+	}
+	if !strings.Contains(err.Error(), "8 KB") {
+		t.Errorf("error should mention the 8 KB cap; got: %v", err)
 	}
 }
 

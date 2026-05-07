@@ -65,7 +65,7 @@ These appear inside every `prompts/base/*.md` and `prompts/extras/*.md`. The reg
 | **gaps** | What aren't we asking? What hidden assumptions ride along? | meta-critical |
 | **wild** | Orthogonal extensions; "what's the 10x version?" | generative |
 
-### Extras (opt-in via `--full`)
+### Extras (opt-in via `--lenses all` or `--lenses <comma-list>`)
 
 | Lens | Asks | Mode |
 |---|---|---|
@@ -90,7 +90,7 @@ Each lens emits a JSON ARRAY of objects (multiple thoughts per lens permitted; h
   },
   {
     "lens": "gaps",
-    "thought": "Cost projection assumes 4 personas; --full mode triples it.",
+    "thought": "Cost projection assumes 4 personas; --lenses=all doubles it.",
     "load_bearing": false,
     "confidence": 0.70
   }
@@ -137,7 +137,7 @@ Composes `project-memory` for the recall mechanism.
 
 Standalone `/dream <topic>`:
 - Runs all 4 base lenses sequentially in the current agent session
-- `--full` adds the 4 extras (8 total)
+- `--lenses all` expands to 8 lenses (4 base + 4 extras); `--lenses honest,gaps,inverse` for explicit subset
 - Each lens prompt is loaded from `prompts/base/<name>.md` or `prompts/extras/<name>.md`
 - The lens prompt template gets `%s` replaced with the topic
 - Each lens produces a JSON array per the output shape above
@@ -145,7 +145,7 @@ Standalone `/dream <topic>`:
 `jutsu swarm dream <topic>` (multi-agent preset, see Stage 2):
 - Each persona runs ALL lenses in parallel
 - Cell count = `personas × lenses`
-- Default 4 personas × 4 base = 16 cells; `--full` = 32
+- Default 4 personas × 4 base = 16 cells; `--lenses all` = 32
 - Synthesizer aggregates the matrix at the end
 
 ### Step 2: Stop condition (standalone only)

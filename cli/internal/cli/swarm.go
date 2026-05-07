@@ -286,6 +286,15 @@ build X?". Use brainstorm for the latter.`,
 				return errors.New("dream requires a topic argument (or --replay <key>)")
 			}
 			topic := strings.Join(args, " ")
+			// Cap matches the documented limit in --help. ResolveInput
+			// for prompt-input presets already enforces this via
+			// CacheKeyForPrompt's preset.go-side check, but we surface
+			// the error here with a dream-specific message rather than
+			// rely on a deep-stack message that mentions "brainstorm".
+			const maxTopicBytes = 8 * 1024
+			if len(topic) > maxTopicBytes {
+				return fmt.Errorf("dream topic is %d bytes; cap is %d (8 KB). Shorten the topic — dream is for high-level interrogation, not whole-spec input", len(topic), maxTopicBytes)
+			}
 			ictx, err := swarm.ResolveInput(ctx, preset, swarm.InputOptions{
 				Prompt: topic,
 			})
@@ -312,7 +321,10 @@ build X?". Use brainstorm for the latter.`,
 // lens slice the preset prompt builder expects. Returns an error with
 // the valid lens names when the flag value is malformed.
 func resolveDreamLenses(arg string) ([]string, error) {
-	switch arg {
+	// Whitespace-tolerate the alias path so `--lenses " all "` matches
+	// the same case as `--lenses all`. The comma-list branch below
+	// already trims per-item; this aligns the two paths.
+	switch strings.TrimSpace(arg) {
 	case "", "base":
 		return swarm.DreamLensesBase(), nil
 	case "all":

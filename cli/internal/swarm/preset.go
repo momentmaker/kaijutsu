@@ -982,6 +982,16 @@ TOPIC:
 // dreamPreset embeds the base 4-lens template by default. The cobra
 // command in cli/swarm.go can override DefaultPrompt at runtime when
 // --lenses selects a different set (all 8 or a comma-list).
+//
+// Debate is set to a defensive placeholder rather than left empty.
+// The cobra layer rejects --mode full for dream, but a library
+// caller using the preset directly (bypassing the cobra reject)
+// could still invoke swarm.Debate. With an empty Debate template,
+// fmt.Sprintf would dispatch agents an empty prompt → API charge
+// for garbage. The placeholder template instructs agents to return
+// an empty array, which mergePasses then folds back into Pass-1
+// results unchanged. v0.8.x candidate: replace with a real dream-
+// flavored debate template.
 var dreamPreset = Preset{
 	Name:          "dream",
 	Description:   "Pre-implementation interrogation. Walks any topic through 4-8 cognitive lenses; --lenses controls which.",
@@ -989,7 +999,25 @@ var dreamPreset = Preset{
 	SeverityVocab: []Severity{SeverityBlocker, SeverityIssue, SeverityMinor, SeverityInfo},
 	DefaultPrompt: BuildDreamPrompt(DreamLensesBase()),
 	Synthesizer:   dreamSynthesizer,
+	Debate:        dreamDebatePlaceholder,
 }
+
+// dreamDebatePlaceholder returns an empty findings array regardless
+// of input. v0.8.0 ships dream WITHOUT a real Pass-2 debate template;
+// this placeholder makes library-call paths safe (returns []) while
+// the cobra layer rejects --mode full upfront for the typical CLI
+// path. v0.8.x will define a real dream-flavored debate template
+// and lift the cobra reject.
+const dreamDebatePlaceholder = `The dream preset does not support Pass-2 debate in v0.8.0.
+Return ONLY this JSON literal: []
+Do NOT analyze the inputs. Do NOT critique. Return [] and stop.
+
+YOUR ORIGINAL OPTIONS:
+%s
+
+PEERS' OPTIONS:
+%s
+`
 
 // DreamLensesBase returns the 4 always-on lenses in canonical order.
 // LEAD lens for the lens-rotation rule (Stage 3) is the first element.

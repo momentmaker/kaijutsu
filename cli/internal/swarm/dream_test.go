@@ -166,3 +166,22 @@ func TestDreamSynthesizer_ContainsHardStop(t *testing.T) {
 		t.Error("dream synthesizer missing the end-at-last-section directive")
 	}
 }
+
+// TestDreamPreset_DebatePlaceholderSafe verifies dreamPreset.Debate is
+// a non-empty template that instructs agents to return an empty
+// array. Library callers bypassing the cobra reject would otherwise
+// dispatch agents with an empty prompt → wasted API spend on garbage
+// output. The placeholder is the safety net.
+func TestDreamPreset_DebatePlaceholderSafe(t *testing.T) {
+	if dreamPreset.Debate == "" {
+		t.Fatal("dreamPreset.Debate is empty — library callers would dispatch empty prompts to agents")
+	}
+	if !strings.Contains(dreamPreset.Debate, "[]") {
+		t.Error("debate placeholder should instruct agents to return [] explicitly")
+	}
+	// Two %s placeholders match swarm.Debate's fmt.Sprintf signature
+	// (own findings JSON + peers' findings JSON).
+	if c := strings.Count(dreamPreset.Debate, "%s"); c != 2 {
+		t.Errorf("debate template has %d %%s placeholders, want 2 (matches swarm.Debate fmt signature)", c)
+	}
+}

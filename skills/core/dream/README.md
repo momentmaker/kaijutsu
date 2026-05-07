@@ -14,14 +14,14 @@ Standalone in a Claude session:
 
 ```
 /dream should we ship a public eval harness in v0.8?
-/dream --full should we deprecate the cli-compat driver?
+/dream --lenses all should we deprecate the cli-compat driver?
 ```
 
 Multi-agent matrix mode (Stage 2 — `jutsu swarm dream` preset, lands in v0.8.0):
 
 ```bash
 jutsu swarm dream "should we add a Tauri desktop wrapper to jutsu?"
-jutsu swarm dream --full "should we add a Tauri desktop wrapper to jutsu?"
+jutsu swarm dream --lenses all "should we add a Tauri desktop wrapper to jutsu?"
 jutsu swarm dream --lenses honest,gaps,inverse "topic"
 ```
 
@@ -29,7 +29,7 @@ jutsu swarm dream --lenses honest,gaps,inverse "topic"
 
 **Base (always run):** honest · fit · gaps · wild
 
-**Extras (`--full`):** adversary · inverse · status-quo · time
+**Extras (`--lenses all` or comma-list selection):** adversary · inverse · status-quo · time
 
 Coverage: 4 critical, 2 generative, 1 contextual, 1 temporal.
 
