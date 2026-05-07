@@ -18,6 +18,7 @@ import (
 
 func newSearchCmd() *cobra.Command {
 	var registryPath string
+	var full bool
 	cmd := &cobra.Command{
 		Use:   "search <query>",
 		Short: "Search the registry by name, description, or tags",
@@ -48,13 +49,29 @@ func newSearchCmd() *cobra.Command {
 				return nil
 			}
 			sort.Slice(matches, func(i, j int) bool { return matches[i].name < matches[j].name })
-			for _, m := range matches {
-				fmt.Fprintf(out, "%-25s  %s\n", m.name, m.description)
+			// v0.9.1 readability fix: truncate description to 80 chars
+			// for the table view; add a footer with match count + hint
+			// for full descriptions via `jutsu info <name>`. The 80-char
+			// cap keeps `jutsu search "."` (matches everything) from
+			// scrolling off the screen with multi-sentence
+			// descriptions. Pass --full to suppress truncation.
+			descCap := 80
+			if full {
+				descCap = 0 // 0 disables truncation
 			}
+			for _, m := range matches {
+				desc := m.description
+				if descCap > 0 && len(desc) > descCap {
+					desc = desc[:descCap-1] + "…"
+				}
+				fmt.Fprintf(out, "%-25s  %s\n", m.name, desc)
+			}
+			fmt.Fprintf(out, "\n%d skill(s) match. `jutsu info <name>` for full description.\n", len(matches))
 			return nil
 		},
 	}
 	cmd.Flags().StringVar(&registryPath, "registry", "", "search a local kaijutsu monorepo checkout")
+	cmd.Flags().BoolVar(&full, "full", false, "show full descriptions (no truncation)")
 	return cmd
 }
 

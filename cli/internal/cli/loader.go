@@ -14,7 +14,16 @@ import (
 	"github.com/momentmaker/kaijutsu/cli/internal/registry"
 	"github.com/momentmaker/kaijutsu/cli/internal/skill"
 	"github.com/momentmaker/kaijutsu/cli/internal/source"
+	"gopkg.in/yaml.v3"
 )
+
+// yamlUnmarshal is a thin alias for yaml.Unmarshal — declared here so
+// the v0.9.1 fetchSkillVersionAtRef helper doesn't have to pull
+// yaml.v3 directly into its body's import list while keeping the call
+// site compact.
+func yamlUnmarshal(b []byte, out interface{}) error {
+	return yaml.Unmarshal(b, out)
+}
 
 // loaded carries the materialized skill source ready for install.Install.
 type loaded struct {
@@ -75,7 +84,7 @@ func loadRemote(ctx context.Context, stderr io.Writer, fetcher *fetch.Fetcher, d
 		return nil, err
 	}
 
-	ref, version, tag, err := resolveRef(ctx, fetcher, res.Source, constraint)
+	ref, version, tag, err := resolveRef(ctx, fetcher, res.Source, res.Path, constraint)
 	if err != nil {
 		return nil, err
 	}
@@ -263,7 +272,19 @@ func loadIndex(ctx context.Context, fetcher *fetch.Fetcher, src *source.Source) 
 // (or "" for highest). Returns ref (commit SHA), version (cleaned
 // semver string), tag (raw tag name like "v0.3.0", needed for sig
 // bundle fetch), error.
-func resolveRef(ctx context.Context, fetcher *fetch.Fetcher, src *source.Source, constraint string) (ref, version, tag string, err error) {
+//
+// skillPath is the in-repo directory for the skill (e.g.
+// "skills/core/doc-review"). When non-empty, the constraint matches
+// against the SKILL's internal version (skill.yaml `version:` field
+// fetched at each candidate ref) instead of against the repo tag.
+// This is the load-bearing v0.9.1 fix — without it, a constraint like
+// `doc-review@^0.1` would match repo tag v0.1.0 even though the skill
+// didn't exist in the monorepo at that ref.
+//
+// When skillPath is empty, falls back to the v0.9 behavior (constraint
+// matches against the repo tag's semver). Used only by callers that
+// don't have a skill path resolved (rare; mostly tests).
+func resolveRef(ctx context.Context, fetcher *fetch.Fetcher, src *source.Source, skillPath, constraint string) (ref, version, tag string, err error) {
 	tags, err := fetcher.ListTags(ctx, src)
 	if err != nil {
 		return "", "", "", err
@@ -278,6 +299,7 @@ func resolveRef(ctx context.Context, fetcher *fetch.Fetcher, src *source.Source,
 	}
 
 	chosen := ""
+	chosenSkillVer := "" // skill's internal version at chosen ref (when skillPath set)
 	if constraint == "" {
 		chosen = tags[0] // tags are pre-sorted highest-first
 	} else {
@@ -285,18 +307,51 @@ func resolveRef(ctx context.Context, fetcher *fetch.Fetcher, src *source.Source,
 		if err != nil {
 			return "", "", "", fmt.Errorf("invalid version constraint %q: %w", constraint, err)
 		}
-		for _, t := range tags {
-			v, err := semver.NewVersion(t)
-			if err != nil {
-				continue
+
+		if skillPath != "" {
+			// v0.9.1 path: walk tags newest→oldest, fetch the skill's
+			// skill.yaml at each ref, match the SKILL's version against
+			// the constraint. Stops at the first matching tag.
+			yamlPath := skillPath + "/skill.yaml"
+			for _, t := range tags {
+				skillVer, err := fetchSkillVersionAtRef(ctx, fetcher, src, t, yamlPath)
+				if err != nil {
+					// Skill missing at this ref OR fetch error — try
+					// the next older tag. Network errors degrade to
+					// "not at this ref" silently; the eventual
+					// no-tag-satisfies error gives a useful message.
+					continue
+				}
+				v, err := semver.NewVersion(skillVer)
+				if err != nil {
+					continue
+				}
+				if c.Check(v) {
+					chosen = t
+					chosenSkillVer = v.String()
+					break
+				}
 			}
-			if c.Check(v) {
-				chosen = t
-				break
+			if chosen == "" {
+				return "", "", "", fmt.Errorf("no tag of %s contains skill at %s with version satisfying %q", src, skillPath, constraint)
 			}
-		}
-		if chosen == "" {
-			return "", "", "", fmt.Errorf("no tag satisfies constraint %q (available: %s)", constraint, strings.Join(tags, ", "))
+		} else {
+			// Pre-v0.9.1 fallback: match the constraint against the
+			// repo tag's own semver. Used when caller doesn't have a
+			// skill path.
+			for _, t := range tags {
+				v, err := semver.NewVersion(t)
+				if err != nil {
+					continue
+				}
+				if c.Check(v) {
+					chosen = t
+					break
+				}
+			}
+			if chosen == "" {
+				return "", "", "", fmt.Errorf("no tag satisfies constraint %q (available: %s)", constraint, strings.Join(tags, ", "))
+			}
 		}
 	}
 
@@ -304,10 +359,43 @@ func resolveRef(ctx context.Context, fetcher *fetch.Fetcher, src *source.Source,
 	if err != nil {
 		return "", "", "", err
 	}
-	// `chosen` was selected from ListTags, which only returns semver-parseable
-	// tags, so this parse is guaranteed to succeed.
+	// When we matched against the skill's internal version, return
+	// THAT as the version string — not the repo tag's semver. Lockfile
+	// + jutsu list display the skill's own version.
+	if chosenSkillVer != "" {
+		return sha, chosenSkillVer, chosen, nil
+	}
 	v, _ := semver.NewVersion(chosen)
 	return sha, v.String(), chosen, nil
+}
+
+// fetchSkillVersionAtRef fetches skill.yaml from the given repo ref
+// + path and returns the `version:` field. Used by the v0.9.1
+// resolver to match constraints against the SKILL's internal version
+// instead of the repo tag.
+//
+// Returns an error if the file is missing at that ref OR the YAML
+// can't be parsed. Caller treats either as "skill not at this tag"
+// and tries the next older tag.
+func fetchSkillVersionAtRef(ctx context.Context, fetcher *fetch.Fetcher, src *source.Source, ref, yamlPath string) (string, error) {
+	body, err := fetcher.GetFile(ctx, src, ref, yamlPath)
+	if err != nil {
+		return "", err
+	}
+	// Tiny YAML peek — just the version field, no full skill.Skill
+	// parse (which would also enforce permissions schema etc.). The
+	// resolver only cares about version; full validation happens at
+	// install time after the tarball lands.
+	var sk struct {
+		Version string `yaml:"version"`
+	}
+	if err := yamlUnmarshal(body, &sk); err != nil {
+		return "", err
+	}
+	if sk.Version == "" {
+		return "", fmt.Errorf("skill.yaml at %s lacks version field", ref)
+	}
+	return sk.Version, nil
 }
 
 // parseSpec splits "name" or "name@constraint" into its parts.

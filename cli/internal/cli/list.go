@@ -21,24 +21,44 @@ func newListCmd() *cobra.Command {
 		Use:   "list",
 		Short: "List installed skills",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			out := cmd.OutOrStdout()
+
 			lockPath, err := lockfilePathFor(global)
 			if err != nil {
 				return err
 			}
-			out := cmd.OutOrStdout()
-
 			lf, err := manifest.LoadLockfile(lockPath)
+
+			// v0.9.1 UX fix: if running in a directory with no project
+			// lockfile AND --global wasn't passed, fall back to the
+			// global lockfile + label the source. Without this fallback,
+			// users who only install globally see "no skills installed"
+			// in random cwds and assume nothing's there.
+			fellBackToGlobal := false
+			if !global && os.IsNotExist(err) {
+				gPath, gerr := lockfilePathFor(true)
+				if gerr == nil {
+					if gLF, gLFerr := manifest.LoadLockfile(gPath); gLFerr == nil && gLF != nil && len(gLF.Skills) > 0 {
+						lf = gLF
+						err = nil
+						fellBackToGlobal = true
+						fmt.Fprintln(out, "(no project skills; showing globally-installed skills — pass --global to scope explicitly)")
+						fmt.Fprintln(out)
+					}
+				}
+			}
 			if err != nil {
 				if os.IsNotExist(err) {
-					fmt.Fprintln(out, "no skills installed")
+					fmt.Fprintln(out, "no skills installed (use --global to check globally-installed skills)")
 					return nil
 				}
 				return err
 			}
 			if len(lf.Skills) == 0 {
-				fmt.Fprintln(out, "no skills installed")
+				fmt.Fprintln(out, "no skills installed (use --global to check globally-installed skills)")
 				return nil
 			}
+			_ = fellBackToGlobal // suppressed — preserved for future "scope:" column
 
 			names := make([]string, 0, len(lf.Skills))
 			for n := range lf.Skills {

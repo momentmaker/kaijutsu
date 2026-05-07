@@ -4,6 +4,16 @@ All notable changes to kaijutsu (the registry + skills) and `jutsu` (the CLI). T
 
 ## [Unreleased]
 
+## [0.9.1] — 2026-05-07
+
+Patch fixing 3 user-surfaced ergonomics issues. No new features.
+
+### Fixed
+
+- **Constraint resolver: dep version mismatched against repo tags.** `deps.skills: doc-review@^0.1` resolved to repo tag v0.1.0 (where doc-review didn't exist yet), causing install to fail with "skills/core/doc-review/ doesn't exist at this ref". Fix: `resolveRef` now walks tags newest→oldest, fetches the skill's `skill.yaml` at each candidate ref via raw.githubusercontent.com, and matches the constraint against the SKILL's internal version (not the repo tag's). Affected `spec-driven-development` + `planning-and-task-breakdown` (both depend on `doc-review@^0.1`); should also fix any other skill with cross-version deps.
+- **`jutsu list` showed "no skills installed" in directories without project lockfiles**, even when global skills were present. Fix: when no project lockfile exists AND `--global` wasn't passed, fall back to the global lockfile + label the source. Users who only install globally now see their installed skills by default; explicit `--global` still works.
+- **`jutsu search "."` (matches everything) scrolled off-screen** with multi-sentence descriptions. Fix: truncate description to 80 chars in the table view; add a footer with match count + hint to use `jutsu info <name>` for full descriptions. New `--full` flag suppresses truncation.
+
 ## [0.9.0] — 2026-05-07
 
 Feedback-loop hardening — five-item bundle closing v0.7+v0.8 gaps. Spec: `docs/specs/2026-05-07-v0.9.0-feedback-loops.md`. Plan: `IMPLEMENTATION_PLAN.md` (stages 1-5).
