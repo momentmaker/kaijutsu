@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -130,26 +129,14 @@ func readLockPID(path string) (int, error) {
 }
 
 // pidAlive reports whether a PID corresponds to a running process.
-// On unix, sending signal 0 to a PID checks existence without
-// affecting the target. Returns false for pid <= 0 (sentinel /
-// invalid input).
-func pidAlive(pid int) bool {
-	if pid <= 0 {
-		return false
-	}
-	proc, err := os.FindProcess(pid)
-	if err != nil {
-		return false
-	}
-	// Signal 0 = "test if delivery is possible." err == nil means
-	// the process exists; ESRCH means it doesn't; EPERM means it
-	// exists but we can't signal (still alive for our purposes).
-	err = proc.Signal(syscall.Signal(0))
-	if err == nil {
-		return true
-	}
-	if err == syscall.EPERM {
-		return true
-	}
-	return false
-}
+// Implementation lives in pidalive_unix.go (linux+darwin via
+// syscall.Signal(0)) and pidalive_windows.go (returns false-ish
+// stale heuristic falling back on the 2h mtime gate). Build tags
+// keep the syscall-specific code out of cross-platform builds.
+//
+// Rationale per v0.10 swarm pr-review feedback: gemini + deepseek
+// both flagged the original syscall.Signal(0) path as
+// Windows-incompatible. Splitting at the build-tag boundary lets
+// the unix path keep its precision while Windows degrades to
+// mtime-only stale-clear (acceptable since the 2h threshold
+// already covers crashed-but-still-PID-recycled cases).

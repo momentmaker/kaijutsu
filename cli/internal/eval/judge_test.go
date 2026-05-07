@@ -62,6 +62,69 @@ func TestJudgeParse_BalancedBlockExtract(t *testing.T) {
 	}
 }
 
+// TestJudgeParse_BalancedBlockHandlesNestedJSON covers the v0.10
+// adversarial-pr-review fix: balanced-bracket scanner correctly
+// extracts nested JSON instead of truncating at the first `}`.
+// Regression guard against the original non-greedy regex bug.
+func TestJudgeParse_BalancedBlockHandlesNestedJSON(t *testing.T) {
+	// Outer object's reason field contains a nested object as an
+	// embedded JSON string — naive regex would stop at the inner }.
+	j := &fakeJudge{responses: []string{
+		`Here's the verdict:
+
+{"pass": true, "reason": "output had {nested: shape} embedded"}`,
+	}}
+	v := Grade(context.Background(), j, DefaultJudgeTemplate, "any", "any", 0.5)
+	if !v.Pass {
+		t.Errorf("nested-JSON parsing failed: %+v", v)
+	}
+	if v.Stage != 2 {
+		t.Errorf("expected stage=2 (balanced-block), got %d", v.Stage)
+	}
+	if !strings.Contains(v.Reason, "{nested: shape}") {
+		t.Errorf("reason should preserve nested content; got: %q", v.Reason)
+	}
+}
+
+// TestJudgeParse_BalancedBlockSkipsBracesInStrings verifies the
+// scanner's string-awareness: braces inside string literals don't
+// affect depth counting.
+func TestJudgeParse_BalancedBlockSkipsBracesInStrings(t *testing.T) {
+	j := &fakeJudge{responses: []string{
+		`{"pass": true, "reason": "the } char appears here but isn't structural"}`,
+	}}
+	v := Grade(context.Background(), j, DefaultJudgeTemplate, "any", "any", 0.5)
+	if !v.Pass {
+		t.Errorf("string-internal `}` broke parsing: %+v", v)
+	}
+}
+
+// TestFindMatchingBrace covers the helper directly. Pinned cases
+// for the depth-counting + string-aware logic.
+func TestFindMatchingBrace(t *testing.T) {
+	cases := []struct {
+		name  string
+		input string
+		start int
+		want  int
+	}{
+		{"simple object", `{"a": 1}`, 0, 7},
+		{"nested object", `{"a": {"b": 2}}`, 0, 14},
+		{"brace in string", `{"x": "}"}`, 0, 9},
+		{"escaped quote", `{"x": "\"}"}`, 0, 11},
+		{"unmatched", `{"a": 1`, 0, -1},
+		{"not at brace", `xxx{a}`, 0, -1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := findMatchingBrace(tc.input, tc.start)
+			if got != tc.want {
+				t.Errorf("findMatchingBrace(%q, %d) = %d, want %d", tc.input, tc.start, got, tc.want)
+			}
+		})
+	}
+}
+
 // TestJudgeParse_RetryWithStricterPrompt covers stage 3: first call
 // returns prose with no parseable JSON; retry with stricter prompt
 // suffix succeeds.

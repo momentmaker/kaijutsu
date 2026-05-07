@@ -161,16 +161,18 @@ func runEvalsParallel(
 
 dispatch:
 	for _, e := range evals {
+		// Race-safe slot acquisition: the SAME select must cover
+		// both abort + semaphore so we don't block on a full
+		// semaphore while abortCh is closed (gemini pr-review
+		// finding). If abortCh fires while waiting, exit cleanly.
+		wg.Add(1)
 		select {
 		case <-abortCh:
-			// Stop scheduling new evals when mid-suite cost
-			// guard fired. In-flight goroutines already have
-			// sem slots; let them drain via wg.Wait below.
+			wg.Done()
 			break dispatch
-		default:
+		case sem <- struct{}{}:
+			// got a slot — proceed to dispatch
 		}
-		wg.Add(1)
-		sem <- struct{}{}
 		go func(e Eval) {
 			defer wg.Done()
 			defer func() { <-sem }()
@@ -311,10 +313,22 @@ func filterEvals(evals []Eval, include, exclude []string) []Eval {
 	return out
 }
 
-// matchesAny is glob-friendly substring matching for the include /
-// exclude flags. v0.10 ships substring + simple `*` wildcard;
-// regex/glob shapes deferred. This is the load-bearing path for
-// `--include "auth-*"` style filters.
+// matchesAny is the include/exclude pattern matcher.
+//
+// **Pattern grammar (documented per v0.10 pr-review feedback):**
+//   - Patterns containing `*` are treated as glob: `auth-*` matches
+//     `auth-bug` AND `auth-perm` but NOT `failauth`.
+//   - Patterns WITHOUT `*` use SUBSTRING match: `auth` matches
+//     `auth-bug`, `auth-perm`, AND `failauth`. This is intentional
+//     so quick filters like `--include auth` cast a wide net; users
+//     who want exact match should anchor with no surrounding
+//     content (since exact-match is a substring match where the
+//     pattern equals the whole id).
+//
+// Trade-off: substring fallback is broad. Documented explicitly so
+// users can predict matches; v0.11+ may add a `--include-exact`
+// flag for the precise-match case if real users hit surprising
+// matches in practice.
 func matchesAny(id string, patterns []string) bool {
 	for _, p := range patterns {
 		if p == id {

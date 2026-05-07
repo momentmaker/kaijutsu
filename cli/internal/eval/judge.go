@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"strings"
 )
 
@@ -123,27 +122,78 @@ func tryParseRawJSON(raw string) (Verdict, bool) {
 	return parseJudgeJSON(strings.TrimSpace(raw))
 }
 
-// balancedBlockRe extracts the FIRST JSON object substring from a
-// blob that may contain prose, fences, or multiple chunks. Greedy
-// is fine — judge prompts ask for ONE object; longer matches just
-// fail to parse and fall through to stage 3.
-var balancedBlockRe = regexp.MustCompile(`(?s)\{.*?\}`)
-
-// tryParseBalancedBlock: stage 2. Regex-extract the first balanced
+// tryParseBalancedBlock: stage 2. Extract the first BALANCED
 // `{...}` block from the output (handles ```json fences, prose
-// preambles, "Here is your verdict: {...}" wrappers).
+// preambles, "Here is your verdict: {...}" wrappers, and nested
+// objects). The naive non-greedy regex `\{.*?\}` truncates on the
+// first `}` even when the JSON contains nested objects or
+// brace-bearing strings — flagged by adversarial pr-review. Use a
+// hand-rolled balanced-bracket scanner instead. String-aware: skips
+// braces inside JSON string literals so `{"reason": "}{"}` parses
+// correctly.
 func tryParseBalancedBlock(raw string) (Verdict, bool) {
-	// Strip common code-fence markers first to avoid the regex
-	// matching `{...}` INSIDE a fence's literal text confusion.
+	// Strip common code-fence markers first.
 	stripped := strings.ReplaceAll(raw, "```json", "")
 	stripped = strings.ReplaceAll(stripped, "```", "")
-	matches := balancedBlockRe.FindAllString(stripped, -1)
-	for _, m := range matches {
-		if v, ok := parseJudgeJSON(m); ok {
+	// Walk for balanced `{...}` blocks; try parsing each.
+	for {
+		start := strings.IndexByte(stripped, '{')
+		if start < 0 {
+			break
+		}
+		end := findMatchingBrace(stripped, start)
+		if end < 0 {
+			break
+		}
+		candidate := stripped[start : end+1]
+		if v, ok := parseJudgeJSON(candidate); ok {
 			return v, true
 		}
+		// Move past this candidate's open brace and try the next.
+		stripped = stripped[start+1:]
 	}
 	return Verdict{}, false
+}
+
+// findMatchingBrace returns the index of the closing `}` matching
+// the opening `{` at `start`. Returns -1 when no match is found.
+// Aware of JSON string literals: braces inside `"..."` are ignored.
+// Aware of escape sequences: `\"` doesn't end a string.
+func findMatchingBrace(s string, start int) int {
+	if start >= len(s) || s[start] != '{' {
+		return -1
+	}
+	depth := 0
+	inString := false
+	escaped := false
+	for i := start; i < len(s); i++ {
+		c := s[i]
+		if escaped {
+			escaped = false
+			continue
+		}
+		if c == '\\' && inString {
+			escaped = true
+			continue
+		}
+		if c == '"' {
+			inString = !inString
+			continue
+		}
+		if inString {
+			continue
+		}
+		switch c {
+		case '{':
+			depth++
+		case '}':
+			depth--
+			if depth == 0 {
+				return i
+			}
+		}
+	}
+	return -1
 }
 
 // parseJudgeJSON parses a JSON object literal into a Verdict. The
