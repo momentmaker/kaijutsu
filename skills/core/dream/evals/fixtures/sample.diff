@@ -1,0 +1,31 @@
+diff --git a/cli/internal/swarm/dispatch.go b/cli/internal/swarm/dispatch.go
+index 0000000..1111111 100644
+--- a/cli/internal/swarm/dispatch.go
++++ b/cli/internal/swarm/dispatch.go
+@@ -42,7 +42,11 @@ func (d *Dispatcher) Run(ctx context.Context, prompt string) (string, error) {
+ 	if d.budget > 0 && d.spent > d.budget {
+ 		return "", ErrBudgetExceeded
+ 	}
+-	res, err := d.driver.Invoke(ctx, prompt, d.opts)
++	res, err := d.driver.Invoke(ctx, prompt, agents.InvokeOpts{
++		MaxBudgetUSD: d.opts.MaxBudgetUSD,
++		Timeout:      d.opts.Timeout,
++		Model:        d.opts.Model,
++	})
+ 	if err != nil {
+ 		return "", err
+ 	}
+diff --git a/cli/internal/swarm/dispatch_test.go b/cli/internal/swarm/dispatch_test.go
+index 0000000..1111111 100644
+--- a/cli/internal/swarm/dispatch_test.go
++++ b/cli/internal/swarm/dispatch_test.go
+@@ -10,6 +10,8 @@ func TestDispatch_BudgetEnforced(t *testing.T) {
+ 	d := NewDispatcher(stubDriver{}, Opts{Budget: 0.10})
+ 	d.spent = 0.20
+ 	if _, err := d.Run(ctx, "x"); err != ErrBudgetExceeded {
+-		t.Errorf("got %v, want budget error", err)
++		t.Fatalf("got %v, want budget error", err)
+ 	}
++	// new branch: ensure spent isn't incremented past budget
++	// (regression guard for #1234)
+ }

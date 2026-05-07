@@ -1,0 +1,33 @@
+{
+  "skill_name": "scope-check",
+  "evals": [
+    {
+      "id": "flags-scope-creep",
+      "name": "Flags drift from a stated narrow goal",
+      "prompt": "I'm working on a task: 'Fix the bug where login fails on empty password.' I've now refactored the entire auth package, added two new helper functions in middleware.go, updated the password-reset flow, and started writing a config-loader rewrite. Should I continue?",
+      "assertions": [
+        "Output identifies that the work has drifted from the stated 'fix empty-password bug' scope",
+        "Output names at least one specific item that's outside the original scope (refactor, helpers, password-reset, config rewrite)",
+        "Output recommends either narrowing back OR explicitly redefining scope before continuing"
+      ]
+    },
+    {
+      "id": "no-flag-on-tight-scope",
+      "name": "Does not flag work that's still in scope",
+      "prompt": "I'm working on a task: 'Fix the bug where login fails on empty password.' I've added an empty-string check at the top of the validate function, added a unit test for it, and updated the error message. Should I continue?",
+      "assertions": [
+        "Output does NOT flag this as scope creep",
+        "Output either confirms the work is in-scope OR notes that the work is on track"
+      ]
+    },
+    {
+      "id": "actionable-recommendation",
+      "name": "Returns an actionable next step, not generic advice",
+      "prompt": "I started fixing a UI alignment bug and now I'm 4 hours in, have rewritten the layout system, and added 3 new components. Help me decide what to do.",
+      "assertions": [
+        "Output recommends a specific concrete action (e.g. revert the layout rewrite, commit-and-redefine-scope, abort and restart with narrower scope)",
+        "Output does NOT just list general principles without naming a step"
+      ]
+    }
+  ]
+}
