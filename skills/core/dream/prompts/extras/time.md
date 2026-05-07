@@ -32,7 +32,8 @@ Output a JSON array of objects, multiple thoughts per lens permitted:
 
 ```json
 [
-  {"lens": "time", "thought": "<concrete temporal projection>", "load_bearing": <true | false>, "confidence": <0.0..1.0>}
+  {"lens": "time", "thought": "<world-state change by 2yr-out date>", "load_bearing": <true | false>, "confidence": <0.0..1.0>},
+  {"lens": "time", "thought": "<decay vs compounding vs quaint judgment>", "load_bearing": <true | false>, "confidence": <0.0..1.0>}
 ]
 ```
 

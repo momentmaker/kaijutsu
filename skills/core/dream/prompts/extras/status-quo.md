@@ -31,7 +31,8 @@ Output a JSON array of objects, multiple thoughts per lens permitted:
 
 ```json
 [
-  {"lens": "status-quo", "thought": "<concrete observation about not doing this>", "load_bearing": <true | false>, "confidence": <0.0..1.0>}
+  {"lens": "status-quo", "thought": "<status-quo strength>", "load_bearing": <true | false>, "confidence": <0.0..1.0>},
+  {"lens": "status-quo", "thought": "<opportunity cost of inaction or compounding pain>", "load_bearing": <true | false>, "confidence": <0.0..1.0>}
 ]
 ```
 

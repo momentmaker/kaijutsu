@@ -30,8 +30,11 @@ Output a JSON array of objects, multiple thoughts per lens permitted:
 
 ```json
 [
-  {"lens": "gaps", "thought": "<concrete question or hidden assumption>", "load_bearing": <true | false>, "confidence": <0.0..1.0>}
+  {"lens": "gaps", "thought": "<concrete unasked question>", "load_bearing": <true | false>, "confidence": <0.0..1.0>},
+  {"lens": "gaps", "thought": "<hidden assumption>", "load_bearing": <true | false>, "confidence": <0.0..1.0>}
 ]
 ```
+
+Most ideas have 3+ unasked questions. Don't compress.
 
 Topic: %s

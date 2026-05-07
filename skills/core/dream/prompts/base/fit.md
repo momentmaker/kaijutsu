@@ -27,8 +27,11 @@ Output a JSON array of objects, multiple thoughts per lens permitted:
 
 ```json
 [
-  {"lens": "fit", "thought": "<concrete observation>", "load_bearing": <true | false>, "confidence": <0.0..1.0>}
+  {"lens": "fit", "thought": "<observation about project alignment>", "load_bearing": <true | false>, "confidence": <0.0..1.0>},
+  {"lens": "fit", "thought": "<observation about a potential vibe shift>", "load_bearing": <true | false>, "confidence": <0.0..1.0>}
 ]
 ```
+
+Multiple findings welcome — fit usually has both alignment AND tension to surface.
 
 Topic: %s

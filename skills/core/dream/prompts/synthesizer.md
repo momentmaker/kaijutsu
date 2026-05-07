@@ -62,7 +62,7 @@ If ALL agents converged on the SAME answer for the same lens (i.e., zero diverge
 - (all agents, fit lens): all 4 agents agreed the idea matches the project vibe. Possible blind spot — fit may be UNDER-questioned. Recommend re-running fit lens with a deliberately skeptical persona.
 ```
 
-Closing: NO summary paragraph at the end. NO "let me know if you want to dig deeper." End at the last section.
+**Hard stop rule.** End the output at the last section. Do NOT write a closing paragraph, summary, or "let me know if you want to dig deeper." If you find yourself starting any sentence after the final table that doesn't BELONG to one of the four sections, STOP — that sentence is the coda, and dream output must not have one. The user gets the matrix; they don't need a wrap-up.
 
 Per-cell input below. Each cell is shaped:
 

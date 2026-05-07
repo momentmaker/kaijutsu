@@ -20,8 +20,11 @@ Output a JSON array of objects, multiple thoughts per lens permitted:
 
 ```json
 [
-  {"lens": "honest", "thought": "<concrete observation>", "load_bearing": <true | false>, "confidence": <0.0..1.0>}
+  {"lens": "honest", "thought": "<concrete observation 1>", "load_bearing": <true | false>, "confidence": <0.0..1.0>},
+  {"lens": "honest", "thought": "<concrete observation 2>", "load_bearing": <true | false>, "confidence": <0.0..1.0>}
 ]
 ```
+
+Honest lens often surfaces 3-5 separate strengths/weaknesses. Don't compress them into one finding.
 
 Topic: %s

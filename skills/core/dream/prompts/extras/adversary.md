@@ -31,7 +31,8 @@ Output a JSON array of objects, multiple thoughts per lens permitted:
 
 ```json
 [
-  {"lens": "adversary", "thought": "<concrete abuse vector or threat>", "load_bearing": <true | false>, "confidence": <0.0..1.0>}
+  {"lens": "adversary", "thought": "<concrete abuse vector>", "load_bearing": <true | false>, "confidence": <0.0..1.0>},
+  {"lens": "adversary", "thought": "<trust boundary or data exposure concern>", "load_bearing": <true | false>, "confidence": <0.0..1.0>}
 ]
 ```
 

@@ -7,11 +7,10 @@ homepage: https://kaijutsu.dev/skills/dream
 repository: https://github.com/momentmaker/kaijutsu
 tags: [primitive, exploration, ideation, pre-implementation]
 agents: [claude, codex, gemini]
-shared: [prompts, scripts]
+shared: [prompts]
 deps:
   skills:
     - project-memory@^0.2
-    - convergence-detect@^0.2
 permissions:
   bash: true
   network: false

@@ -30,8 +30,11 @@ Output a JSON array of objects, multiple thoughts per lens permitted:
 
 ```json
 [
-  {"lens": "wild", "thought": "<orthogonal extension or 10x interpretation>", "load_bearing": <true | false>, "confidence": <0.0..1.0>}
+  {"lens": "wild", "thought": "<10x interpretation>", "load_bearing": <true | false>, "confidence": <0.0..1.0>},
+  {"lens": "wild", "thought": "<orthogonal extension into adjacent problem>", "load_bearing": <true | false>, "confidence": <0.0..1.0>}
 ]
 ```
+
+2-4 wild thoughts typical. Don't free-associate to 10+ — quality over quantity.
 
 Topic: %s

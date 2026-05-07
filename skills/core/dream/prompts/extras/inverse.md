@@ -31,7 +31,8 @@ Output a JSON array of objects, multiple thoughts per lens permitted:
 
 ```json
 [
-  {"lens": "inverse", "thought": "<concrete inversion or counter-premise>", "load_bearing": <true | false>, "confidence": <0.0..1.0>}
+  {"lens": "inverse", "thought": "<literal opposite premise>", "load_bearing": <true | false>, "confidence": <0.0..1.0>},
+  {"lens": "inverse", "thought": "<unexamined default-on assumption>", "load_bearing": <true | false>, "confidence": <0.0..1.0>}
 ]
 ```
 

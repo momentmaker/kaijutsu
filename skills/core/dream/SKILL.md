@@ -20,14 +20,14 @@ Nothing else covers this slot today. `brainstorm` preset gives you 5 OPTIONS to 
 - The user says "what do you think about X?" / "should we do X?" / "is X worth pursuing?"
 - Before any non-trivial spec/plan
 - When the user types `/dream <topic>`
-- When kaijutsu's `unstuck` walks-away level is reached — fresh re-entry runs `dream` on the gaps lens to break the groove
+- When kaijutsu's `unstuck` reaches its walk-away level — a fresh re-entry can manually invoke `dream` on the topic to break the groove (no automatic integration in v0.8.0)
 - Composed by future skills via `deps.skills`
 
 ## When NOT to invoke
 
 - Trivial fix (1-line bug, typo, dependency bump). Dream's lens machinery is overkill for a "should I rename this var?" question.
 - The user has already committed. dream is for OPEN ideas, not retrospective justification.
-- The topic IS already structured (spec exists, plan exists). Use `scope-check` or `convergence-detect` instead.
+- The topic IS already structured (spec exists, plan exists). Use `scope-check` for cost-tier classification or `polish` for review-and-fix instead.
 
 ## vs `brainstorm` preset
 
@@ -136,7 +136,7 @@ Composes `project-memory` for the recall mechanism.
 ### Step 1: Run lenses
 
 Standalone `/dream <topic>`:
-- Runs all 4 base lenses sequentially in the current Claude session
+- Runs all 4 base lenses sequentially in the current agent session
 - `--full` adds the 4 extras (8 total)
 - Each lens prompt is loaded from `prompts/base/<name>.md` or `prompts/extras/<name>.md`
 - The lens prompt template gets `%s` replaced with the topic
@@ -196,7 +196,7 @@ Signals dream is being misused:
 - All findings are `load_bearing: false` (filler, no signal)
 - User skips reading the output and just wants the slug for the graveyard
 
-Counter: skill should self-detect "low-signal dream" (all findings false, all confidence < 0.5) and warn: "this dream produced no load-bearing signal — is the topic well-shaped, or is this micro-decision territory?"
+Counter (user-side): if a session's findings are ALL `load_bearing: false` AND ALL confidence < 0.5, treat that as a signal that the topic was too narrow OR the agents are filling in template noise. Step away, reframe the topic, retry. v0.8.x may automate this detection; v0.8.0 ships user judgment.
 
 ## Hard rules
 
@@ -210,8 +210,8 @@ Counter: skill should self-detect "low-signal dream" (all findings false, all co
 ## Composes
 
 - `project-memory` — graveyard recall mechanism
-- `convergence-detect` — optional stop signal for multi-round dreams (rare; defer real use to v0.8.x)
 - `swarm dream` preset (Stage 2) — multi-agent matrix mode, records lens outputs to v0.7 findings DB via `[lens:<name>]` summary prefix
+- (deferred) `convergence-detect` — optional stop signal for multi-round dreams; v0.8.x candidate when usage data justifies it
 
 ## Future (v0.8.x)
 
