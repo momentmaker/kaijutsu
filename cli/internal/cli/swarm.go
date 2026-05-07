@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/momentmaker/kaijutsu/cli/internal/agents"
+	"github.com/momentmaker/kaijutsu/cli/internal/findings"
 	"github.com/momentmaker/kaijutsu/cli/internal/swarm"
 	"github.com/spf13/cobra"
 )
@@ -627,13 +628,14 @@ func runSwarmPipeline(ctx context.Context, cmd *cobra.Command, projectRoot strin
 		stampDriverKind(results, personaAdapters)
 	}
 
-	// v0.7 quality fingerprinting hook. Best-effort — a failed record
-	// must NOT block the markdown render. Cache key (ictx.CacheKey) is
-	// the run_id; codebase fp is computed from cwd. In legacy mode the
-	// provider-for-persona map is empty (RecordRun falls back to using
-	// the agent name as provider, which is correct: "claude" persona
-	// dispatches via "claude" provider).
-	recordFindingsBestEffort(stderr, projectRoot, ictx.CacheKey, preset.Name, results, personaAdapters)
+	// v0.7 quality fingerprinting hook moved to AFTER the optional
+	// Pass-2 debate (v0.8.3) so [new] / [disputes] / [agreed]
+	// revisions get DB rows in --full mode. The merged set is
+	// computed via swarm.MergePasses, which mergePasses-internally
+	// replaces each Pass-1 result with its Pass-2 revision when
+	// successful. Recording happens just before synthesis so we
+	// capture the same shape of data the synthesizer sees. See
+	// "v0.7 quality fingerprinting hook (post-debate)" block below.
 
 	run := swarm.SwarmRun{
 		Preset:     preset.Name,
@@ -720,16 +722,30 @@ func runSwarmPipeline(ctx context.Context, cmd *cobra.Command, projectRoot strin
 		synth    *swarm.Synthesis
 		synthErr error
 	)
+	// resultsToRecord starts equal to Pass-1 results; --full mode
+	// replaces it with the merged Pass-1⊕Pass-2 set so the recorder
+	// captures revised findings.
+	resultsToRecord := results
 	if f.mode == "full" && !overBudget {
 		fmt.Fprintln(stderr, "swarm: --full mode — Pass 2 round-robin debate starting")
 		pass2 := swarm.Debate(ctx, results, preset, f.perAgentBudget, f.timeout)
 		for _, r := range pass2 {
 			run.TotalCost += r.Cost
 		}
+		resultsToRecord = swarm.MergePasses(results, pass2)
 		synth, synthErr = swarm.SynthesizeWithDebate(ctx, results, pass2, synthAgent, preset, f.perAgentBudget, f.timeout, synthOpts)
 	} else {
 		synth, synthErr = swarm.Synthesize(ctx, results, synthAgent, preset, f.perAgentBudget, f.timeout, synthOpts)
 	}
+
+	// v0.7 quality fingerprinting hook (post-debate). Best-effort —
+	// a failed record must NOT block the markdown render. Cache key
+	// (ictx.CacheKey) is the run_id; codebase fp is computed from
+	// cwd. In legacy mode the provider-for-persona map is empty
+	// (RecordRun falls back to using the agent name as provider).
+	// In --full mode resultsToRecord is the MERGED Pass-1⊕Pass-2
+	// set; in --quick it's just Pass-1.
+	recordFindingsBestEffort(stderr, projectRoot, ictx.CacheKey, preset.Name, resultsToRecord, personaAdapters)
 	if synth != nil {
 		run.TotalCost += synth.Cost
 	}
@@ -756,6 +772,32 @@ func runSwarmPipeline(ctx context.Context, cmd *cobra.Command, projectRoot strin
 	if cerr := swarm.CacheRun(projectRoot, preset, ictx.CacheKey, results, md); cerr != nil {
 		fmt.Fprintf(stderr, "warning: cache write failed: %v\n", cerr)
 	}
+
+	// v0.8.3 dream graveyard auto-write. Only fires for the dream
+	// preset; other presets skip silently. Best-effort — failure
+	// stays in stderr, doesn't block the markdown render.
+	if preset.Name == "dream" {
+		// Resolve codebase fp the same way the recorder does.
+		cwd := projectRoot
+		if cwd == "" {
+			if wd, werr := os.Getwd(); werr == nil {
+				cwd = wd
+			}
+		}
+		fp := findings.Fingerprint(cwd)
+		// Lens order is the dream preset's selected lenses (from
+		// ictx.Body topic context — for now use the base 4-lens
+		// order since v0.8.3 doesn't yet thread the --lenses flag
+		// through here). v0.8.x can plumb the actual selected list
+		// for the lens-rotation rule to work fully.
+		path, gerr := WriteDreamSession(ictx.Body, fp, md, swarm.DreamLensesBase(), "swarm", false)
+		if gerr != nil {
+			fmt.Fprintf(stderr, "warning: dream graveyard write failed: %v\n", gerr)
+		} else {
+			fmt.Fprintf(stderr, "dream session archived → %s\n", path)
+		}
+	}
+
 	fmt.Fprint(out, md)
 	if f.postComment {
 		if ictx.PR == 0 {

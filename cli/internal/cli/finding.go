@@ -39,6 +39,12 @@ All commands operate on the resolved codebase fingerprint of the
 current cwd unless --codebase is passed. Local-only by design — no
 network calls.`,
 	}
+	// --db is a persistent flag across the whole `jutsu finding`
+	// group so list/accept/dismiss/stats/clear/export all honor the
+	// same override without each having its own flag declaration.
+	// Resolution order: --db flag > KAIJUTSU_FINDINGS_DB env > default
+	// (~/.kaijutsu/findings.db).
+	cmd.PersistentFlags().String("db", "", "override the findings DB path (default: $KAIJUTSU_FINDINGS_DB or ~/.kaijutsu/findings.db)")
 	cmd.AddCommand(
 		newFindingListCmd(),
 		newFindingAcceptCmd(),
@@ -50,17 +56,27 @@ network calls.`,
 	return cmd
 }
 
-// openFindingsStore is the shared resolver for every subcommand. It
-// honors KAIJUTSU_FINDINGS_DB so tests can scope to a temp file.
-// Refuses to create the DB on a `jutsu finding *` invocation — the
-// spec contracts that the DB is created on the first swarm run that
-// produces findings. Without this guard, a curious user running
-// `jutsu finding list` on a fresh system would silently leave a
-// 0-row findings.db behind.
-func openFindingsStore() (*findings.Store, error) {
-	path, err := findings.DefaultPath()
-	if err != nil {
-		return nil, err
+// openFindingsStore is the shared resolver for every subcommand.
+// Honors --db flag (highest priority) > KAIJUTSU_FINDINGS_DB env >
+// default ~/.kaijutsu/findings.db. Refuses to create the DB on a
+// `jutsu finding *` invocation — the spec contracts that the DB is
+// created on the first swarm run that produces findings. Without
+// this guard, a curious user running `jutsu finding list` on a
+// fresh system would silently leave a 0-row findings.db behind.
+//
+// The cobra command is passed in so the helper can read the
+// inherited --db persistent flag.
+func openFindingsStore(cmd *cobra.Command) (*findings.Store, error) {
+	var path string
+	if f := cmd.Flag("db"); f != nil {
+		path = f.Value.String()
+	}
+	if path == "" {
+		var err error
+		path, err = findings.DefaultPath()
+		if err != nil {
+			return nil, err
+		}
 	}
 	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
 		return nil, fmt.Errorf("no findings store at %s — run `jutsu swarm <preset>` first to create it", path)
@@ -100,7 +116,7 @@ func newFindingListCmd() *cobra.Command {
 --all-codebases       ignore cwd scope (every codebase ever recorded)
 --codebase <fp>       override the auto-detected codebase fingerprint`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := openFindingsStore()
+			store, err := openFindingsStore(cmd)
 			if err != nil {
 				return err
 			}
@@ -198,7 +214,7 @@ when batch-actioning across repos from a single shell session).`, action),
 			if err != nil {
 				return fmt.Errorf("id %q: must be an integer (see leftmost column of `jutsu finding list`)", args[0])
 			}
-			store, err := openFindingsStore()
+			store, err := openFindingsStore(cmd)
 			if err != nil {
 				return err
 			}
@@ -250,7 +266,7 @@ func newFindingStatsCmd() *cobra.Command {
 Tuples with fewer than 10 actioned findings show as "(insufficient
 data, default weight: 0.7)" — matching the v0.7 bootstrap state.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := openFindingsStore()
+			store, err := openFindingsStore(cmd)
 			if err != nil {
 				return err
 			}
@@ -349,7 +365,7 @@ Examples:
 
 Runs VACUUM after deletion to reclaim disk.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := openFindingsStore()
+			store, err := openFindingsStore(cmd)
 			if err != nil {
 				return err
 			}
@@ -461,7 +477,7 @@ this command does NOT make network calls.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			path := args[0]
-			store, err := openFindingsStore()
+			store, err := openFindingsStore(cmd)
 			if err != nil {
 				return err
 			}

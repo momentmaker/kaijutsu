@@ -78,6 +78,15 @@ func SynthesizeWithDebate(ctx context.Context, pass1, pass2 []AgentResult, synth
 // The reasoning field of each finding now carries [agreed]/[disputes]/
 // [new] markers (per the Debate prompt template), so downstream
 // rendering benefits automatically.
+// MergePasses is the exported alias for mergePasses. Callers in
+// cli/swarm.go use it to compute the merged Pass-1 ⊕ Pass-2 result
+// set BEFORE recording to v0.7 findings DB — so [new] / [disputes] /
+// [agreed] revisions get DB rows in --full mode (v0.8.3 fix). Internal
+// mergePasses retained as private symbol for SynthesizeWithDebate.
+func MergePasses(pass1, pass2 []AgentResult) []AgentResult {
+	return mergePasses(pass1, pass2)
+}
+
 func mergePasses(pass1, pass2 []AgentResult) []AgentResult {
 	if len(pass2) == 0 {
 		return pass1

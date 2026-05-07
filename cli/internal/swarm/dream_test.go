@@ -2,6 +2,9 @@ package swarm
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -204,6 +207,179 @@ func excerpt(s, marker string) string {
 		end = len(s)
 	}
 	return s[start:end]
+}
+
+// TestStripDreamCoda_RemovesTrailingParagraph covers the v0.8.3
+// programmatic backstop for the synthesizer HARD STOP rule. Models
+// occasionally emit a closing "In summary" / "Overall" paragraph
+// despite the prompt instruction; the strip catches them.
+func TestStripDreamCoda_RemovesTrailingParagraph(t *testing.T) {
+	draft := `### 4. Lens-blind-spots
+
+- all-agents-agreed warning: honest — model-shared bias.
+
+In summary, the dream surfaced strong signal across all four lenses.
+This is a great topic to explore further.`
+
+	got := StripDreamCoda(draft)
+	if strings.Contains(got, "In summary") {
+		t.Errorf("coda 'In summary' paragraph not stripped:\n%s", got)
+	}
+	if !strings.Contains(got, "model-shared bias") {
+		t.Errorf("legitimate section content was stripped:\n%s", got)
+	}
+}
+
+// TestStripDreamCoda_PreservesTablesAndCodeBlocks verifies the
+// strip ignores markdown table rows and fenced code blocks even
+// when they contain coda-like phrases.
+func TestStripDreamCoda_PreservesTablesAndCodeBlocks(t *testing.T) {
+	draft := `### 1. Load-bearing insights
+
+| Lens | Insight | Conf |
+|------|---------|------|
+| honest | "In summary" was caught as coda by the test | 0.9 |
+| gaps | But this row is INSIDE a table, not a coda paragraph | 0.8 |
+
+` + "```" + `
+overall, this code block also mentions overall but is fenced
+` + "```" + `
+
+### 2. Cross-lens consensus
+
+- legitimate bullet content`
+
+	got := StripDreamCoda(draft)
+	if !strings.Contains(got, `"In summary"`) {
+		t.Error("table cell containing 'In summary' was wrongly stripped")
+	}
+	if !strings.Contains(got, "overall, this code block") {
+		t.Error("code block containing 'overall' was wrongly stripped")
+	}
+	if !strings.Contains(got, "legitimate bullet content") {
+		t.Error("section after preserved coda-like words was lost")
+	}
+}
+
+// TestStripDreamCoda_NoOpWhenNoCoda verifies clean input passes
+// through unchanged. Most well-behaved dream outputs hit this path.
+func TestStripDreamCoda_NoOpWhenNoCoda(t *testing.T) {
+	draft := `### 4. Lens-blind-spots
+
+- all-agents-agreed warning: honest — bias signal
+- all-agents-agreed warning: fit — convergence on docs source
+`
+	got := StripDreamCoda(draft)
+	if got != draft {
+		t.Errorf("clean input was modified:\nbefore:\n%s\nafter:\n%s", draft, got)
+	}
+}
+
+// TestStripDreamCoda_CatchesMultipleOpeners covers the various coda
+// phrases models use. Each should trigger the strip.
+func TestStripDreamCoda_CatchesMultipleOpeners(t *testing.T) {
+	codaPhrases := []string{
+		"In summary, here's what we found.",
+		"Overall, this is a strong idea.",
+		"In conclusion, the lenses converge.",
+		"Let me know if you want to dig deeper.",
+		"Hope this helps you decide.",
+		"Feel free to ask follow-up questions.",
+	}
+	for _, coda := range codaPhrases {
+		draft := "### 4. Lens-blind-spots\n\n- legit content\n\n" + coda
+		got := StripDreamCoda(draft)
+		if strings.Contains(got, coda) {
+			t.Errorf("coda phrase %q was not stripped", coda)
+		}
+	}
+}
+
+// TestSkillPrompts_AntiSycophancyPerFile is the v0.8.3 followup to
+// TestBuildDreamPrompt_BaseHasAntiSycophancy. The Go-side test only
+// covers the assembled swarm-preset prompt; this one walks each
+// markdown file in skills/core/dream/prompts/{base,extras} and
+// asserts the anti-sycophancy forbid list is present in EACH file.
+//
+// Standalone /dream invocations load these markdown files directly,
+// skipping the Go preset path. Without this guard, a future edit
+// could soften (or accidentally drop) the anti-sycophancy preamble
+// in any single lens prompt without breaking the Go-side test.
+func TestSkillPrompts_AntiSycophancyPerFile(t *testing.T) {
+	root := repoRootFromTest(t)
+	dirs := []string{
+		filepath.Join(root, "skills", "core", "dream", "prompts", "base"),
+		filepath.Join(root, "skills", "core", "dream", "prompts", "extras"),
+	}
+	requiredPhrases := []string{
+		`"Great question!"`,
+		`"You're absolutely right!"`,
+		`"This is interesting"`,
+		`"Could be worth considering"`,
+	}
+
+	checked := 0
+	for _, dir := range dirs {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			t.Fatalf("read %s: %v", dir, err)
+		}
+		for _, e := range entries {
+			if !strings.HasSuffix(e.Name(), ".md") {
+				continue
+			}
+			path := filepath.Join(dir, e.Name())
+			body, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatalf("read %s: %v", path, err)
+			}
+			content := string(body)
+			for _, phrase := range requiredPhrases {
+				if !strings.Contains(content, phrase) {
+					t.Errorf("%s: missing required forbid phrase %q (anti-sycophancy preamble was softened)", path, phrase)
+				}
+			}
+			checked++
+		}
+	}
+	if checked < 8 {
+		t.Errorf("expected ≥8 prompt files (4 base + 4 extras), got %d", checked)
+	}
+}
+
+// repoRootFromTest derives the repo root path from the test file's
+// own location. Walks up looking for the skills/ directory + cli/
+// go.mod marker. Avoids relying on cwd, which differs between local
+// `go test` (package dir) and CI (repo root).
+func repoRootFromTest(t *testing.T) string {
+	t.Helper()
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	dir := filepath.Dir(file)
+	for i := 0; i < 10; i++ {
+		hasSkills := stat(filepath.Join(dir, "skills", "core")) != nil
+		hasCli := stat(filepath.Join(dir, "cli", "go.mod")) != nil
+		if hasSkills && hasCli {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			t.Fatal("walked to filesystem root without finding repo markers")
+		}
+		dir = parent
+	}
+	t.Fatal("repo root walk depth exceeded")
+	return ""
+}
+
+func stat(p string) os.FileInfo {
+	st, err := os.Stat(p)
+	if err != nil {
+		return nil
+	}
+	return st
 }
 
 // TestDreamPreset_DebatePlaceholderSafe verifies dreamPreset.Debate is

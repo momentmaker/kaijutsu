@@ -282,6 +282,32 @@ func TestFindingAccept_MissingIdFriendly(t *testing.T) {
 	}
 }
 
+// TestFinding_DBFlagOverridesEnv covers v0.8.3's --db persistent
+// flag. Resolution order: --db > $KAIJUTSU_FINDINGS_DB > default.
+// Test verifies the flag wins over the env var when both are set.
+func TestFinding_DBFlagOverridesEnv(t *testing.T) {
+	tmp := t.TempDir()
+	envPath := filepath.Join(tmp, "env-db.sqlite")
+	flagPath := filepath.Join(tmp, "flag-db.sqlite")
+
+	// Create the flag-target DB so openFindingsStore's existence
+	// check passes; env-target deliberately missing to detect leak.
+	t.Setenv("KAIJUTSU_FINDINGS_DB", envPath)
+	store, err := findings.Open(flagPath)
+	if err != nil {
+		t.Fatalf("seed flag DB: %v", err)
+	}
+	store.Close()
+
+	out, _, err := runCmdCapture(t, "finding", "--db", flagPath, "list")
+	if err != nil {
+		t.Fatalf("--db override should resolve to flag-target DB; got error: %v\nout: %s", err, out)
+	}
+	if strings.Contains(out, envPath) {
+		t.Errorf("--db flag was ignored (output references env path %q): %s", envPath, out)
+	}
+}
+
 // TestFinding_NoStorePathErrorsCleanly verifies the spec contract
 // that the DB is created on first swarm run, not on a `jutsu finding`
 // invocation. Without the guard we'd silently drop a 0-row file at
@@ -372,7 +398,7 @@ func mustOpen(t *testing.T) *findings.Store {
 
 func mustRecord(t *testing.T, store *findings.Store, runID, fp, preset string, results []swarm.AgentResult) {
 	t.Helper()
-	if _, err := findings.RecordRun(store, findings.RunMeta{
+	if _, _, err := findings.RecordRun(store, findings.RunMeta{
 		RunID: runID, CodebaseFP: fp, Preset: preset,
 	}, results); err != nil {
 		t.Fatalf("RecordRun: %v", err)

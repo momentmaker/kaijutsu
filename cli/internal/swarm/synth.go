@@ -84,6 +84,14 @@ func Synthesize(ctx context.Context, results []AgentResult, synth Agent, preset 
 			Clusters:    clusters,
 		}, fmt.Errorf("synthesizer (%s) failed: %w", synth.Name(), err)
 	}
+	// Dream preset post-processing: strip trailing-coda paragraphs
+	// the model wrote despite the prompt-level HARD STOP rule. Models
+	// under load violate the rule occasionally (~5-10% of runs in
+	// practice). Programmatic backstop catches what the prompt alone
+	// can't enforce. No-op for other presets.
+	if preset.Name == "dream" {
+		raw = StripDreamCoda(raw)
+	}
 	finalMD := assembleMarkdown(preset, results, table, raw, clusters)
 	return &Synthesis{
 		Markdown:    finalMD,
@@ -93,6 +101,81 @@ func Synthesize(ctx context.Context, results []AgentResult, synth Agent, preset 
 		Duration:    dur,
 		Clusters:    clusters,
 	}, nil
+}
+
+// StripDreamCoda removes trailing-coda paragraphs from a dream
+// synthesizer draft. The dream synthesizer prompt mandates "end at
+// the last section, no closing paragraph"; this function is the
+// programmatic backstop for when the model violates that rule.
+//
+// Heuristic: look for the LAST occurrence of any known coda-opener
+// phrase ("In summary", "Overall,", "In conclusion", "Let me know",
+// "Hope this", "Feel free to", "If you have any", "Would you like",
+// "Don't hesitate") on a line that's NOT inside a markdown table or
+// code block. Truncate from that line onward.
+//
+// Best-effort. Not exhaustive. Doesn't catch every coda pattern.
+// Documented limitation. v0.9 may extend the phrase list as new
+// patterns surface in real swarm output.
+func StripDreamCoda(draft string) string {
+	codaOpeners := []string{
+		"In summary",
+		"In summary,",
+		"Overall,",
+		"Overall —",
+		"In conclusion",
+		"In conclusion,",
+		"Let me know",
+		"Hope this",
+		"Hope that",
+		"Feel free to",
+		"If you have any",
+		"If you'd like",
+		"Would you like",
+		"Don't hesitate",
+		"Happy to",
+	}
+	lines := strings.Split(draft, "\n")
+	cutAt := -1
+	inTable := false
+	inCodeBlock := false
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		// Track structural context — coda detection skips lines
+		// inside tables (`|`-delimited) or code blocks (```-fenced).
+		if strings.HasPrefix(trimmed, "```") {
+			inCodeBlock = !inCodeBlock
+			continue
+		}
+		if inCodeBlock {
+			continue
+		}
+		if strings.HasPrefix(trimmed, "|") {
+			inTable = true
+			continue
+		}
+		if inTable && trimmed == "" {
+			inTable = false
+			continue
+		}
+		if inTable {
+			continue
+		}
+		// Outside structured content — check for coda openers.
+		for _, opener := range codaOpeners {
+			if strings.HasPrefix(trimmed, opener) {
+				cutAt = i
+				break
+			}
+		}
+		if cutAt != -1 {
+			break
+		}
+	}
+	if cutAt == -1 {
+		return draft
+	}
+	return strings.TrimRight(strings.Join(lines[:cutAt], "\n"), " \t\n") + "\n"
 }
 
 // stripRawForPrompt returns AgentResults shaped for the synthesizer

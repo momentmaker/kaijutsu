@@ -84,7 +84,7 @@ func recordFindingsBestEffort(stderr io.Writer, projectRoot, runID, preset strin
 		Preset:             preset,
 		ProviderForPersona: providerMap(personas),
 	}
-	n, err := findings.RecordRun(store, meta, results)
+	n, skipped, err := findings.RecordRun(store, meta, results)
 	if err != nil {
 		warnFindings(stderr, "record %d result(s): %v", len(results), err)
 		return
@@ -93,6 +93,13 @@ func recordFindingsBestEffort(stderr io.Writer, projectRoot, runID, preset strin
 		// Single line so it sits cleanly above the existing "swarm:"
 		// stderr summary. ANSI-free — caller may pipe to a log file.
 		fmt.Fprintf(stderr, "findings: recorded %d row(s) → %s (codebase fp: %s)\n", n, dbPath, fp)
+	}
+	if skipped > 0 {
+		// Dream-preset rows that failed lens-prefix validation. The
+		// rows are dropped to keep v0.9 schema migration source data
+		// clean; surface the count so the user knows their model
+		// produced malformed output (likely a prompt regression).
+		fmt.Fprintf(stderr, "findings: skipped %d malformed dream row(s) — model output didn't match [lens:<name>] / load_bearing prefix\n", skipped)
 	}
 }
 

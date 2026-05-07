@@ -38,7 +38,7 @@ func TestRecordRun_HappyPath(t *testing.T) {
 		},
 	}
 
-	n, err := RecordRun(store, meta, results)
+	n, _, err := RecordRun(store, meta, results)
 	if err != nil {
 		t.Fatalf("RecordRun: %v", err)
 	}
@@ -104,7 +104,7 @@ func TestRecordRun_LegacyModeProviderFallback(t *testing.T) {
 	}
 	meta := RunMeta{RunID: "r1", CodebaseFP: "fp1", Preset: "pr-review"}
 
-	if _, err := RecordRun(store, meta, results); err != nil {
+	if _, _, err := RecordRun(store, meta, results); err != nil {
 		t.Fatalf("RecordRun: %v", err)
 	}
 
@@ -132,7 +132,7 @@ func TestRecordRun_SkipsErrors(t *testing.T) {
 	}
 	meta := RunMeta{RunID: "r1", CodebaseFP: "fp1", Preset: "pr-review"}
 
-	n, err := RecordRun(store, meta, results)
+	n, _, err := RecordRun(store, meta, results)
 	if err != nil {
 		t.Fatalf("RecordRun: %v", err)
 	}
@@ -147,7 +147,7 @@ func TestRecordRun_EmptyResults(t *testing.T) {
 	store := openTestStore(t)
 	defer store.Close()
 
-	n, err := RecordRun(store, RunMeta{
+	n, _, err := RecordRun(store, RunMeta{
 		RunID: "r1", CodebaseFP: "fp1", Preset: "pr-review",
 	}, nil)
 	if err != nil {
@@ -175,7 +175,7 @@ func TestRecordRun_RequiresMeta(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if _, err := RecordRun(store, tc.meta, nil); err == nil {
+			if _, _, err := RecordRun(store, tc.meta, nil); err == nil {
 				t.Fatalf("RecordRun(%+v): want error, got nil", tc.meta)
 			}
 		})
@@ -186,8 +186,93 @@ func TestRecordRun_RequiresMeta(t *testing.T) {
 // error, not a panic. Stage 2's caller wraps RecordRun in
 // log-and-continue, so a nil here would otherwise crash the swarm.
 func TestRecordRun_NilStore(t *testing.T) {
-	if _, err := RecordRun(nil, RunMeta{RunID: "r", CodebaseFP: "f", Preset: "p"}, nil); err == nil {
+	if _, _, err := RecordRun(nil, RunMeta{RunID: "r", CodebaseFP: "f", Preset: "p"}, nil); err == nil {
 		t.Fatal("RecordRun(nil): want error, got nil")
+	}
+}
+
+// TestValidDreamFinding covers the v0.8.3 lens-prefix validator.
+// Dream-preset rows MUST conform to the lens-in-summary encoding;
+// malformed rows get skipped at recorder time.
+func TestValidDreamFinding(t *testing.T) {
+	cases := []struct {
+		name      string
+		summary   string
+		reasoning string
+		want      bool
+	}{
+		{"happy path", "[lens:gaps] We aren't asking about X", "load_bearing: true. The user assumed Y.", true},
+		{"happy path with status-quo", "[lens:status-quo] Inaction has cost Z", "load_bearing: false", true},
+		{"empty reasoning ok", "[lens:wild] Bold idea here", "", true},
+		{"missing prefix", "We aren't asking about X", "load_bearing: true", false},
+		{"unknown lens", "[lens:premortem] something happened", "load_bearing: true", false},
+		{"bad reasoning prefix", "[lens:honest] strong observation", "this is the reasoning without prefix", false},
+		{"uppercase reasoning bool", "[lens:honest] x", "load_bearing: TRUE  more text", true},
+		{"caps in lens name rejected", "[lens:Honest] x", "load_bearing: true", false},
+		{"prefix-only summary", "[lens:gaps]", "load_bearing: true", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ValidDreamFinding(tc.summary, tc.reasoning)
+			if got != tc.want {
+				t.Errorf("ValidDreamFinding(%q, %q) = %v, want %v", tc.summary, tc.reasoning, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestRecordRun_DreamSkipsMalformed verifies dream-preset rows that
+// fail validation get skipped (with skipped count returned), while
+// valid rows still get inserted. Non-dream presets are unaffected.
+func TestRecordRun_DreamSkipsMalformed(t *testing.T) {
+	store := openTestStore(t)
+	defer store.Close()
+
+	results := []swarm.AgentResult{
+		{Agent: "claude", Findings: []swarm.Finding{
+			{Severity: "blocker", File: "", LineRange: "", Summary: "[lens:gaps] valid finding", Reasoning: "load_bearing: true reason"},
+			{Severity: "issue", File: "", LineRange: "", Summary: "no lens prefix here", Reasoning: "load_bearing: false"},
+			{Severity: "issue", File: "", LineRange: "", Summary: "[lens:premortem] unknown lens", Reasoning: "load_bearing: true"},
+			{Severity: "info", File: "", LineRange: "", Summary: "[lens:honest] another valid", Reasoning: ""},
+		}},
+	}
+	written, skipped, err := RecordRun(store, RunMeta{
+		RunID: "r1", CodebaseFP: "fp1", Preset: "dream",
+	}, results)
+	if err != nil {
+		t.Fatalf("RecordRun: %v", err)
+	}
+	if written != 2 {
+		t.Errorf("written = %d, want 2 (two valid dream findings)", written)
+	}
+	if skipped != 2 {
+		t.Errorf("skipped = %d, want 2 (no-prefix + unknown-lens)", skipped)
+	}
+}
+
+// TestRecordRun_NonDreamUnaffected verifies the validator only fires
+// for the dream preset. pr-review / doc-review etc. record all rows
+// regardless of summary shape.
+func TestRecordRun_NonDreamUnaffected(t *testing.T) {
+	store := openTestStore(t)
+	defer store.Close()
+
+	results := []swarm.AgentResult{
+		{Agent: "claude", Findings: []swarm.Finding{
+			{Severity: "issue", File: "x.go", LineRange: "1", Summary: "no lens prefix needed", Reasoning: "any reasoning"},
+		}},
+	}
+	written, skipped, err := RecordRun(store, RunMeta{
+		RunID: "r1", CodebaseFP: "fp1", Preset: "pr-review",
+	}, results)
+	if err != nil {
+		t.Fatalf("RecordRun: %v", err)
+	}
+	if written != 1 {
+		t.Errorf("written = %d, want 1", written)
+	}
+	if skipped != 0 {
+		t.Errorf("non-dream preset should never skip; got skipped = %d", skipped)
 	}
 }
 

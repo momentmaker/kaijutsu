@@ -3,6 +3,8 @@ package findings
 import (
 	"errors"
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/momentmaker/kaijutsu/cli/internal/swarm"
 )
@@ -26,29 +28,40 @@ type RunMeta struct {
 // in a single transaction; partial failure rolls back the entire
 // batch (a half-recorded run is worse than no record).
 //
-// Returns the number of rows actually written. Skips AgentResult
-// entries with Err set (errored agents have nothing useful to record),
-// and skips empty Findings slices.
+// Returns (written, skipped, error):
+//   - written: rows successfully INSERTed
+//   - skipped: rows excluded because they failed dream-preset lens-
+//     prefix validation (dream-only — non-dream presets always have
+//     skipped == 0)
+//   - error: tx-level failure
+//
+// Skips AgentResult entries with Err set (errored agents have nothing
+// useful to record) and empty Findings slices. For dream preset:
+// also skips findings whose summary doesn't start with [lens:<known>]
+// or whose reasoning doesn't start with load_bearing: true|false.
+// Malformed dream rows would pollute the v0.9 schema migration source
+// data; better to drop them at recorder time + surface the skip count
+// to the caller for stderr logging.
 //
 // Best-effort caller pattern: the swarm pipeline wraps this in a
 // log-and-continue so a bad DB never blocks the markdown render.
-func RecordRun(s *Store, meta RunMeta, results []swarm.AgentResult) (int, error) {
+func RecordRun(s *Store, meta RunMeta, results []swarm.AgentResult) (int, int, error) {
 	if s == nil || s.db == nil {
-		return 0, errors.New("recorder: nil store")
+		return 0, 0, errors.New("recorder: nil store")
 	}
 	if meta.RunID == "" {
-		return 0, errors.New("recorder: RunID required")
+		return 0, 0, errors.New("recorder: RunID required")
 	}
 	if meta.CodebaseFP == "" {
-		return 0, errors.New("recorder: CodebaseFP required")
+		return 0, 0, errors.New("recorder: CodebaseFP required")
 	}
 	if meta.Preset == "" {
-		return 0, errors.New("recorder: Preset required")
+		return 0, 0, errors.New("recorder: Preset required")
 	}
 
 	tx, err := s.db.Begin()
 	if err != nil {
-		return 0, fmt.Errorf("begin: %w", err)
+		return 0, 0, fmt.Errorf("begin: %w", err)
 	}
 	stmt, err := tx.Prepare(`
 		INSERT INTO findings(
@@ -58,11 +71,12 @@ func RecordRun(s *Store, meta RunMeta, results []swarm.AgentResult) (int, error)
 	`)
 	if err != nil {
 		_ = tx.Rollback()
-		return 0, fmt.Errorf("prepare: %w", err)
+		return 0, 0, fmt.Errorf("prepare: %w", err)
 	}
 	defer stmt.Close()
 
-	written := 0
+	isDream := meta.Preset == "dream"
+	written, skipped := 0, 0
 	for _, r := range results {
 		if r.Err != "" || len(r.Findings) == 0 {
 			continue
@@ -78,6 +92,16 @@ func RecordRun(s *Store, meta RunMeta, results []swarm.AgentResult) (int, error)
 		}
 
 		for _, f := range r.Findings {
+			// Dream-preset rows MUST follow the lens-in-summary
+			// encoding: summary starts with [lens:<known>] and
+			// reasoning starts with load_bearing: true|false. Drop
+			// malformed rows so the v0.9 schema migration source
+			// data stays clean. Skipped count surfaces to the
+			// caller for stderr logging.
+			if isDream && !ValidDreamFinding(f.Summary, f.Reasoning) {
+				skipped++
+				continue
+			}
 			reasoning := nullableString(f.Reasoning)
 			confidence := nullableConfidence(f.Confidence)
 
@@ -95,16 +119,56 @@ func RecordRun(s *Store, meta RunMeta, results []swarm.AgentResult) (int, error)
 				confidence,
 			); err != nil {
 				_ = tx.Rollback()
-				return 0, fmt.Errorf("insert finding (%s/%s): %w", r.Agent, f.Summary, err)
+				return 0, 0, fmt.Errorf("insert finding (%s/%s): %w", r.Agent, f.Summary, err)
 			}
 			written++
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("commit: %w", err)
+		return 0, 0, fmt.Errorf("commit: %w", err)
 	}
-	return written, nil
+	return written, skipped, nil
+}
+
+// dreamLensWhitelist matches the 8 canonical lens names. Closed set
+// in v0.8.0+. ValidDreamFinding rejects anything outside this list
+// so the lens-in-summary encoding stays parseable for the v0.9
+// schema migration.
+var dreamLensWhitelist = map[string]bool{
+	"honest": true, "fit": true, "gaps": true, "wild": true,
+	"adversary": true, "inverse": true, "status-quo": true, "time": true,
+}
+
+// dreamSummaryPattern matches the [lens:<name>] prefix at start of
+// summary. Whitelist enforcement happens after capture.
+var dreamSummaryPattern = regexp.MustCompile(`^\[lens:([a-z][a-z-]+[a-z])\]\s+\S`)
+
+// ValidDreamFinding reports whether a dream-preset finding's summary
+// + reasoning fields conform to the lens-in-summary encoding.
+//
+//   - Summary must start with [lens:<name>] where <name> is in the
+//     8-lens whitelist.
+//   - Reasoning must start with "load_bearing: true" or
+//     "load_bearing: false" (case-insensitive on the bool).
+//
+// Empty reasoning is ALLOWED (the recorder converts to NULL); only
+// non-empty reasoning is checked for the load_bearing prefix. This
+// matches early dream-preset behavior where some agents omit
+// reasoning entirely.
+func ValidDreamFinding(summary, reasoning string) bool {
+	m := dreamSummaryPattern.FindStringSubmatch(summary)
+	if m == nil {
+		return false
+	}
+	if !dreamLensWhitelist[m[1]] {
+		return false
+	}
+	if reasoning == "" {
+		return true
+	}
+	lower := strings.ToLower(strings.TrimSpace(reasoning))
+	return strings.HasPrefix(lower, "load_bearing: true") || strings.HasPrefix(lower, "load_bearing: false")
 }
 
 // nullableString converts an empty string to a SQL NULL. Spec marks
