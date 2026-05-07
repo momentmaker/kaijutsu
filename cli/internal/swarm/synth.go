@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -31,11 +32,12 @@ type Synthesis struct {
 }
 
 // SynthOpts threads v0.7 quality-fingerprinting context into the
-// synthesizer. Zero value (empty Weights, ShowWeights=false) reproduces
-// v0.6.2 behavior byte-for-byte — clusterFindings sorts the same,
-// renderDisagreementTable omits weight annotations, the prompt body
-// has no `weights:` section. The cli layer fills this in via
-// findings.Weighter.WeightsForResults.
+// synthesizer. Zero value (empty Weights, ShowWeights=false, empty
+// LensWeights) reproduces v0.6.2 behavior byte-for-byte —
+// clusterFindings sorts the same, renderDisagreementTable omits
+// weight annotations, the prompt body has no `weights:` or
+// `lens_weights:` section. The cli layer fills these in via
+// findings.Weighter.WeightsForResults / WeightForLens.
 type SynthOpts struct {
 	// Weights is keyed by AgentResult.Agent (i.e. persona name in
 	// v0.6+ persona mode, native CLI name in legacy v0.5 mode).
@@ -45,6 +47,27 @@ type SynthOpts struct {
 	// agent column header gains "(<weight>)". Off by default in v0.7
 	// so users adopt weights via `jutsu finding stats` first.
 	ShowWeights bool
+	// LensWeights is the v0.9 dream-only addition: keyed by lens name
+	// ("honest", "fit", etc.), value is the per-lens precision in
+	// [PrecisionFloor, 1.0]. When non-empty AND the preset is dream,
+	// buildSynthPrompt prepends a lens-weights section that instructs
+	// the synthesizer to apply tier rules:
+	//   weight >= 0.7 + load_bearing=true → "(high-confidence)" badge
+	//   0.4 <= weight < 0.7 + load_bearing=true → load-bearing block
+	//   weight < 0.4 + load_bearing=true → "consider" section (demoted)
+	//   load_bearing=false → normal section (weight ignored)
+	// Empty map disables the feature entirely (synth output is
+	// byte-identical to v0.8.3).
+	LensWeights map[string]float64
+	// ConfidenceFloor drops findings whose Confidence is BELOW this
+	// threshold before clustering. Zero means no filter (v0.6.2
+	// byte-identical contract). v0.9 introduces this for the reverse
+	// preset's lower-than-default threshold (0.30 vs pr-review's
+	// 0.55) — drift detection benefits from admitting more findings,
+	// false-positive drift is easier to dismiss than false-negative
+	// misses. Other presets opt in via the same field; the cli layer
+	// sets it from the per-preset --confidence-threshold flag.
+	ConfidenceFloor float64
 }
 
 // FindingGroup represents one logical issue surfaced by 1+ agents.
@@ -61,6 +84,7 @@ type FindingGroup struct {
 // FanOut. Stage 3 (--full) inserts a debate pass between FanOut and
 // Synthesize. v0.7 adds SynthOpts for quality-fingerprinting weights.
 func Synthesize(ctx context.Context, results []AgentResult, synth Agent, preset *Preset, budget float64, perAgentTimeout time.Duration, opts SynthOpts) (*Synthesis, error) {
+	results = applyConfidenceFloor(results, opts.ConfidenceFloor)
 	clusters := clusterFindings(results, opts.Weights)
 	table := renderDisagreementTable(results, clusters, opts.Weights, opts.ShowWeights)
 
@@ -68,7 +92,7 @@ func Synthesize(ctx context.Context, results []AgentResult, synth Agent, preset 
 	if err != nil {
 		return nil, fmt.Errorf("marshal findings for synthesizer: %w", err)
 	}
-	prompt := buildSynthPrompt(preset.Synthesizer, body, opts.Weights)
+	prompt := buildSynthPrompt(preset, body, opts)
 
 	subCtx, cancel := context.WithTimeout(ctx, perAgentTimeout)
 	defer cancel()
@@ -180,6 +204,39 @@ func StripDreamCoda(draft string) string {
 	return strings.TrimRight(strings.Join(lines[:cutAt], "\n"), " \t\n") + "\n"
 }
 
+// applyConfidenceFloor drops findings whose Confidence is below
+// floor. Zero floor is a no-op (v0.6.2 byte-identical contract). The
+// filter respects findings that omit confidence entirely (zero value)
+// — those are kept regardless of floor since "agent didn't emit
+// confidence" is a different signal than "agent emitted 0.0". Floor
+// applies BEFORE clustering so dropped findings never reach the
+// disagreement table or the synthesizer prompt.
+func applyConfidenceFloor(results []AgentResult, floor float64) []AgentResult {
+	if floor <= 0 {
+		return results
+	}
+	out := make([]AgentResult, 0, len(results))
+	for _, r := range results {
+		if len(r.Findings) == 0 {
+			out = append(out, r)
+			continue
+		}
+		kept := make([]Finding, 0, len(r.Findings))
+		for _, f := range r.Findings {
+			// Confidence == 0 is "agent didn't emit"; keep regardless.
+			// Non-zero below floor is the drop case.
+			if f.Confidence > 0 && f.Confidence < floor {
+				continue
+			}
+			kept = append(kept, f)
+		}
+		copy := r
+		copy.Findings = kept
+		out = append(out, copy)
+	}
+	return out
+}
+
 // stripRawForPrompt returns AgentResults shaped for the synthesizer
 // prompt: keep agent name + findings, drop Raw/Err/Duration noise so
 // the prompt token count stays small.
@@ -199,30 +256,76 @@ func stripRawForPrompt(in []AgentResult) []map[string]interface{} {
 }
 
 // buildSynthPrompt formats the preset's synthesizer template with the
-// per-agent findings JSON. When weights are non-cold (any value !=
-// 1.0), prepends a `weights:` section so the model can deprioritize
-// low-weight reporters in its synthesis prose. When all weights are
-// cold OR the map is empty, output is byte-identical to v0.6.2 — no
-// weights line, just the preset's prompt as-is.
-func buildSynthPrompt(template string, body []byte, weights map[string]float64) string {
-	core := fmt.Sprintf(template, string(body))
-	if !anyNonCold(weights) {
+// per-agent findings JSON. When agent weights are non-cold OR (for
+// the dream preset) lens weights are non-empty, prepends matching
+// guidance sections so the model can apply per-(reporter, lens) tier
+// rules in its synthesis prose. When all weights are cold AND lens
+// weights are empty, output is byte-identical to v0.6.2 — no weights
+// line, just the preset's prompt as-is.
+//
+// The dream lens-weights section is suppressed by the killswitch
+// KAIJUTSU_DREAM_ADAPTIVE_LENS=off, which produces v0.8.3-identical
+// output regardless of LensWeights map contents.
+func buildSynthPrompt(preset *Preset, body []byte, opts SynthOpts) string {
+	core := fmt.Sprintf(preset.Synthesizer, string(body))
+	weights := opts.Weights
+	emitAgentWeights := anyNonCold(weights)
+	emitLensWeights := preset.Name == "dream" &&
+		len(opts.LensWeights) > 0 &&
+		os.Getenv("KAIJUTSU_DREAM_ADAPTIVE_LENS") != "off"
+	if !emitAgentWeights && !emitLensWeights {
 		return core
 	}
 	var b strings.Builder
-	b.WriteString("weights (per-(provider,persona) precision in [0.05, 1.0], 1.0 = cold start):\n")
-	// Stable ordering: alphabetical by agent name so the prompt is
-	// deterministic across runs.
-	names := make([]string, 0, len(weights))
-	for n := range weights {
-		names = append(names, n)
+	if emitAgentWeights {
+		b.WriteString("weights (per-(provider,persona) precision in [0.05, 1.0], 1.0 = cold start):\n")
+		// Stable ordering: alphabetical by agent name so the prompt is
+		// deterministic across runs.
+		names := make([]string, 0, len(weights))
+		for n := range weights {
+			names = append(names, n)
+		}
+		sort.Strings(names)
+		for _, n := range names {
+			fmt.Fprintf(&b, "- %s: %.2f\n", n, weights[n])
+		}
+		b.WriteString("\nWhen synthesizing, deprioritize findings from low-weight reporters; treat 1.0 as cold-start (no signal).\n\n")
 	}
-	sort.Strings(names)
-	for _, n := range names {
-		fmt.Fprintf(&b, "- %s: %.2f\n", n, weights[n])
+	if emitLensWeights {
+		b.WriteString(buildLensWeightsBlock(opts.LensWeights))
 	}
-	b.WriteString("\nWhen synthesizing, deprioritize findings from low-weight reporters; treat 1.0 as cold-start (no signal).\n\n")
 	b.WriteString(core)
+	return b.String()
+}
+
+// buildLensWeightsBlock returns the prompt-prepend text describing
+// per-lens precision and the v0.9 tier rule. Caller has already
+// verified preset.Name == "dream" + len(lensWeights) > 0 + killswitch
+// off; this helper just emits the deterministic markdown.
+//
+// Stable lens ordering: canonical 8-lens cycle (DreamLensesAll) so
+// the prompt is the same across runs given the same lens-weight map.
+// Reusing DreamLensesAll() also keeps swarm + cli in sync — drift
+// would surface as a missing lens line.
+func buildLensWeightsBlock(lensWeights map[string]float64) string {
+	canon := DreamLensesAll()
+	var b strings.Builder
+	b.WriteString("lens_weights (per-lens precision in [0.05, 1.0], 1.0 = cold start):\n")
+	for _, name := range canon {
+		w, ok := lensWeights[name]
+		if !ok {
+			continue
+		}
+		fmt.Fprintf(&b, "- %s: %.2f\n", name, w)
+	}
+	b.WriteString(`
+Lens-weight tier rule (apply to load_bearing=true findings):
+- weight >= 0.7  → place in load-bearing section, prepend "(high-confidence)"
+- 0.4 <= weight < 0.7 → place in load-bearing section as-is
+- weight < 0.4   → place in a "consider" section BELOW load-bearing (demoted)
+- load_bearing=false findings: ignore weight, render in normal lens section.
+
+`)
 	return b.String()
 }
 

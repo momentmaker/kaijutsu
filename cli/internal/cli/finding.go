@@ -45,6 +45,11 @@ network calls.`,
 	// Resolution order: --db flag > KAIJUTSU_FINDINGS_DB env > default
 	// (~/.kaijutsu/findings.db).
 	cmd.PersistentFlags().String("db", "", "override the findings DB path (default: $KAIJUTSU_FINDINGS_DB or ~/.kaijutsu/findings.db)")
+	// --dev unlocks dev-only subcommands (e.g. seed). The flag is
+	// always present in the help; the gated subcommands are Hidden,
+	// so end users see nothing unusual. KAIJUTSU_FINDING_SEED=1 is
+	// the equivalent env-var path used by tests + CI.
+	cmd.PersistentFlags().Bool("dev", false, "unlock dev-only subcommands (seed); see KAIJUTSU_FINDING_SEED")
 	cmd.AddCommand(
 		newFindingListCmd(),
 		newFindingAcceptCmd(),
@@ -52,6 +57,8 @@ network calls.`,
 		newFindingStatsCmd(),
 		newFindingClearCmd(),
 		newFindingExportCmd(),
+		newFindingSeedCmd(),
+		newFindingSyncPRCmd(),
 	)
 	return cmd
 }

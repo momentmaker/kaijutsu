@@ -66,8 +66,9 @@ func RecordRun(s *Store, meta RunMeta, results []swarm.AgentResult) (int, int, e
 	stmt, err := tx.Prepare(`
 		INSERT INTO findings(
 			run_id, codebase_fp, preset, provider, persona,
-			severity, file, line_range, summary, reasoning, confidence
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			severity, file, line_range, summary, reasoning, confidence,
+			lens, position
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`)
 	if err != nil {
 		_ = tx.Rollback()
@@ -77,6 +78,10 @@ func RecordRun(s *Store, meta RunMeta, results []swarm.AgentResult) (int, int, e
 
 	isDream := meta.Preset == "dream"
 	written, skipped := 0, 0
+	// position is monotonic across the entire run, not per-agent or
+	// per-lens — sync-pr's <!-- finding:<run_id>:<position> --> marker
+	// must be unique within a run and order-stable for re-render.
+	position := 0
 	for _, r := range results {
 		if r.Err != "" || len(r.Findings) == 0 {
 			continue
@@ -104,6 +109,14 @@ func RecordRun(s *Store, meta RunMeta, results []swarm.AgentResult) (int, int, e
 			}
 			reasoning := nullableString(f.Reasoning)
 			confidence := nullableConfidence(f.Confidence)
+			// lens is dream-only — non-dream rows store NULL.
+			// Re-uses LensFromSummary so the regex shape is owned
+			// by exactly one helper (recorder + validator share).
+			var lensExtracted string
+			if isDream {
+				lensExtracted = LensFromSummary(f.Summary)
+			}
+			lens := nullableString(lensExtracted)
 
 			if _, err := stmt.Exec(
 				meta.RunID,
@@ -117,11 +130,14 @@ func RecordRun(s *Store, meta RunMeta, results []swarm.AgentResult) (int, int, e
 				f.Summary,
 				reasoning,
 				confidence,
+				lens,
+				position,
 			); err != nil {
 				_ = tx.Rollback()
 				return 0, 0, fmt.Errorf("insert finding (%s/%s): %w", r.Agent, f.Summary, err)
 			}
 			written++
+			position++
 		}
 	}
 
@@ -147,6 +163,27 @@ var dreamLensWhitelist = map[string]bool{
 // Whitelist enforcement happens after capture.
 var dreamSummaryPattern = regexp.MustCompile(`^\[lens:([a-z][a-z-]+[a-z])\]\s*\S`)
 
+// LensFromSummary returns the lens name encoded in a dream finding's
+// summary prefix, or "" if the summary doesn't carry a valid prefix.
+// The lens name is checked against the 8-lens whitelist; unknown
+// lens names return "" so callers can treat them identically to a
+// missing prefix.
+//
+// This is the single source of truth for the [lens:<name>] regex —
+// recorder.go uses it to populate the lens column, ValidDreamFinding
+// uses it as the structural check before validating reasoning. Any
+// future change to the prefix grammar lives here only.
+func LensFromSummary(summary string) string {
+	m := dreamSummaryPattern.FindStringSubmatch(summary)
+	if m == nil {
+		return ""
+	}
+	if !dreamLensWhitelist[m[1]] {
+		return ""
+	}
+	return m[1]
+}
+
 // ValidDreamFinding reports whether a dream-preset finding's summary
 // + reasoning fields conform to the lens-in-summary encoding.
 //
@@ -160,11 +197,7 @@ var dreamSummaryPattern = regexp.MustCompile(`^\[lens:([a-z][a-z-]+[a-z])\]\s*\S
 // matches early dream-preset behavior where some agents omit
 // reasoning entirely.
 func ValidDreamFinding(summary, reasoning string) bool {
-	m := dreamSummaryPattern.FindStringSubmatch(summary)
-	if m == nil {
-		return false
-	}
-	if !dreamLensWhitelist[m[1]] {
+	if LensFromSummary(summary) == "" {
 		return false
 	}
 	if reasoning == "" {

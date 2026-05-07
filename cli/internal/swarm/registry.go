@@ -114,4 +114,5 @@ func init() {
 	defaultRegistry.Register(&refactorPlanPreset)
 	defaultRegistry.Register(&securityAuditPreset)
 	defaultRegistry.Register(&dreamPreset)
+	defaultRegistry.Register(&reversePreset)
 }

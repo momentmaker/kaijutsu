@@ -1,7 +1,9 @@
 package swarm
 
 import (
+	"os"
 	"os/exec"
+	"strings"
 	"sync"
 )
 
@@ -44,6 +46,14 @@ var (
 // but jutsu invocations are short-lived enough that probing once is
 // the right tradeoff.
 func Available(name AgentName) bool {
+	// v0.9 KAIJUTSU_DISABLE_AGENTS=<comma-list> gate. Test affordance
+	// + escape hatch for users who want to force a specific provider
+	// subset without uninstalling CLIs. Short-circuits BEFORE the
+	// availability cache so toggling the env-var mid-run takes effect
+	// immediately.
+	if isAgentDisabledByEnv(name) {
+		return false
+	}
 	availabilityCacheMu.Lock()
 	if availabilityCached[name] {
 		v := availabilityCache[name]
@@ -59,6 +69,22 @@ func Available(name AgentName) bool {
 	availabilityCached[name] = true
 	availabilityCacheMu.Unlock()
 	return v
+}
+
+// isAgentDisabledByEnv reports whether the agent name appears in
+// the KAIJUTSU_DISABLE_AGENTS env-var (comma-separated). Empty
+// env-var returns false. Whitespace-tolerant per item.
+func isAgentDisabledByEnv(name AgentName) bool {
+	v := os.Getenv("KAIJUTSU_DISABLE_AGENTS")
+	if v == "" {
+		return false
+	}
+	for _, item := range strings.Split(v, ",") {
+		if AgentName(strings.TrimSpace(item)) == name {
+			return true
+		}
+	}
+	return false
 }
 
 // ResetAvailabilityCache clears the cached probes. Exposed for tests

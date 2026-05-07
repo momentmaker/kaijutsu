@@ -41,6 +41,36 @@ type Trust struct {
 	ExpectedSigner string `yaml:"expected-signer,omitempty"`
 }
 
+// Routing declares per-skill provider preferences that the swarm
+// dispatcher consumes via ResolvePersonaProvider. v0.9 introduces
+// this as a hint mechanism — skill authors who know "honest lens
+// works best on claude" can encode the preference. The end-user
+// override path (`routing.disabled: true` in ~/.kaijutsu/agents.yaml)
+// is documented in the spec but deferred to v0.9.x; until then
+// users override via KAIJUTSU_DISABLE_AGENTS=<comma-list> at the
+// agent-availability layer (drops a provider entirely from
+// detection so Phase B fails over to whatever else is available).
+//
+// Resolution is two-phase (see swarm.ResolvePersonaProvider):
+//   - Phase A: build preferred-provider list (per-persona → default
+//     → registry default).
+//   - Phase B: pick first available from list. With --strict-routing
+//     ON, hard-fail when none available. Without, drop persona +
+//     warn.
+//   - Phase C: minimum-dispatch invariant — Phase B drops every
+//     persona → hard-fail regardless of --strict-routing.
+type Routing struct {
+	// PerPersona maps persona name to an ordered list of preferred
+	// providers (e.g. honest-persona → ["claude", "codex"]). Walked
+	// in declaration order; first available wins.
+	PerPersona map[string][]string `yaml:"per-persona,omitempty"`
+	// Default is the global fallback when persona isn't named in
+	// PerPersona. Empty list (or omitted) falls through to the
+	// persona registry's default mapping (existing v0.6 behavior).
+	// Per spec: empty AND omitted are equivalent.
+	Default []string `yaml:"default,omitempty"`
+}
+
 type Deps struct {
 	Skills []string `yaml:"skills,omitempty"`
 }
@@ -91,6 +121,7 @@ type Skill struct {
 	Deps        *Deps       `yaml:"deps,omitempty"`
 	Trust       *Trust      `yaml:"trust,omitempty"`
 	Hooks       []Hook      `yaml:"hooks,omitempty"`
+	Routing     *Routing    `yaml:"routing,omitempty"`
 }
 
 func Load(path string) (*Skill, error) {

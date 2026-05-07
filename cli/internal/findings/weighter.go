@@ -1,5 +1,6 @@
 package findings
 
+import "database/sql"
 
 // Weight algorithm constants (v0.7 hardcoded; v0.7.x may make
 // configurable). See spec docs/specs/2026-05-06-v0.7.0-quality-fingerprinting.md
@@ -63,30 +64,109 @@ func NewWeighter(s *Store) *Weighter {
 // quality fingerprinting is non-critical, and a partial-data warning
 // at synth time would be more confusing than missing weight data.
 func (w *Weighter) WeightFor(provider, persona, preset, codebaseFp string) float64 {
+	return w.weightInternal(provider, persona, preset, codebaseFp, "")
+}
+
+// WeightForLens returns the confidence weight for a (provider, persona,
+// preset, codebase_fp, lens) tuple. v0.9 introduces this for dream
+// preset adaptive lens-weighting; the lens column is populated only
+// for dream rows in practice, but the API is preset-neutral so future
+// presets that adopt lens-tagging can use it without a signature
+// change. Non-dream callers pass lens="" to get classic v0.7 behavior.
+//
+// Three-tier fallback (per spec §1):
+//
+//  1. Lens-specific window has actioned >= BootstrapThreshold →
+//     return clamped precision from that window.
+//  2. Lens-specific below threshold AND tuple-without-lens above
+//     threshold → return tuple precision (pre-lens v0.7 behavior).
+//  3. Both below threshold → BootstrapWeight if tuple has any
+//     actioned data; ColdWeight if tuple is empty too.
+//
+// Empty lens parameter is equivalent to WeightFor (no lens filter).
+func (w *Weighter) WeightForLens(provider, persona, preset, codebaseFp, lens string) float64 {
+	return w.weightInternal(provider, persona, preset, codebaseFp, lens)
+}
+
+// weightInternal is the unified weight resolver. lens="" runs the
+// classic v0.7 query (no lens filter) and matches v0.8.3 behavior
+// byte-for-byte. lens="<name>" runs the v0.9 3-tier fallback.
+func (w *Weighter) weightInternal(provider, persona, preset, codebaseFp, lens string) float64 {
 	if w == nil || w.store == nil || w.store.db == nil {
 		return ColdWeight
 	}
 
-	rows, err := w.store.db.Query(`
-		SELECT user_action FROM findings
-		WHERE codebase_fp = ?
-		  AND preset = ?
-		  AND provider = ?
-		  AND persona = ?
-		  AND user_action IS NOT NULL
-		ORDER BY action_at DESC
-		LIMIT ?
-	`, codebaseFp, preset, provider, persona, WindowSize)
-	if err != nil {
+	// Tier 1: lens-specific window when lens is non-empty.
+	if lens != "" {
+		accepted, dismissed, ok := w.queryWindow(provider, persona, preset, codebaseFp, lens)
+		if !ok {
+			return ColdWeight
+		}
+		actioned := accepted + dismissed
+		if actioned >= BootstrapThreshold {
+			return clampWeight(float64(accepted) / float64(actioned))
+		}
+		// Tier 1 below threshold: try tuple-without-lens fallback.
+		// Drop down to the no-lens query path.
+	}
+
+	// Tier 2 (or v0.7 path): tuple-without-lens window.
+	accepted, dismissed, ok := w.queryWindow(provider, persona, preset, codebaseFp, "")
+	if !ok {
 		return ColdWeight
+	}
+	actioned := accepted + dismissed
+	switch {
+	case actioned == 0:
+		return ColdWeight
+	case actioned < BootstrapThreshold:
+		return BootstrapWeight
+	}
+	return clampWeight(float64(accepted) / float64(actioned))
+}
+
+// queryWindow runs the sliding-window action-count query for the
+// given tuple, optionally filtered by lens. Returns (accepted,
+// dismissed, ok); ok=false signals a DB error path that should
+// degrade to ColdWeight silently.
+func (w *Weighter) queryWindow(provider, persona, preset, codebaseFp, lens string) (accepted, dismissed int, ok bool) {
+	var (
+		rows *sql.Rows
+		err  error
+	)
+	if lens == "" {
+		rows, err = w.store.db.Query(`
+			SELECT user_action FROM findings
+			WHERE codebase_fp = ?
+			  AND preset = ?
+			  AND provider = ?
+			  AND persona = ?
+			  AND user_action IS NOT NULL
+			ORDER BY action_at DESC
+			LIMIT ?
+		`, codebaseFp, preset, provider, persona, WindowSize)
+	} else {
+		rows, err = w.store.db.Query(`
+			SELECT user_action FROM findings
+			WHERE codebase_fp = ?
+			  AND preset = ?
+			  AND provider = ?
+			  AND persona = ?
+			  AND lens = ?
+			  AND user_action IS NOT NULL
+			ORDER BY action_at DESC
+			LIMIT ?
+		`, codebaseFp, preset, provider, persona, lens, WindowSize)
+	}
+	if err != nil {
+		return 0, 0, false
 	}
 	defer rows.Close()
 
-	accepted, dismissed := 0, 0
 	for rows.Next() {
 		var action string
 		if err := rows.Scan(&action); err != nil {
-			return ColdWeight
+			return 0, 0, false
 		}
 		switch action {
 		case "accepted":
@@ -96,19 +176,9 @@ func (w *Weighter) WeightFor(provider, persona, preset, codebaseFp string) float
 		}
 	}
 	if err := rows.Err(); err != nil {
-		return ColdWeight
+		return 0, 0, false
 	}
-
-	actioned := accepted + dismissed
-	switch {
-	case actioned == 0:
-		return ColdWeight
-	case actioned < BootstrapThreshold:
-		return BootstrapWeight
-	}
-
-	precision := float64(accepted) / float64(actioned)
-	return clampWeight(precision)
+	return accepted, dismissed, true
 }
 
 // WeightsForResults batches WeightFor calls into a single map keyed by
@@ -153,4 +223,3 @@ func AnyNonCold(weights map[string]float64) bool {
 	}
 	return false
 }
-

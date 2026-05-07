@@ -414,21 +414,37 @@ func stat(p string) os.FileInfo {
 	return st
 }
 
-// TestDreamPreset_DebatePlaceholderSafe verifies dreamPreset.Debate is
-// a non-empty template that instructs agents to return an empty
-// array. Library callers bypassing the cobra reject would otherwise
-// dispatch agents with an empty prompt → wasted API spend on garbage
-// output. The placeholder is the safety net.
-func TestDreamPreset_DebatePlaceholderSafe(t *testing.T) {
+// TestDreamPreset_DebateTemplateRealInV09 verifies the v0.9 lift:
+// dream's Debate is no longer the v0.8 placeholder that returns [].
+// It's the real critique template producing revision-tagged
+// findings that MergePasses + the recorder validator accept.
+func TestDreamPreset_DebateTemplateRealInV09(t *testing.T) {
 	if dreamPreset.Debate == "" {
 		t.Fatal("dreamPreset.Debate is empty — library callers would dispatch empty prompts to agents")
-	}
-	if !strings.Contains(dreamPreset.Debate, "[]") {
-		t.Error("debate placeholder should instruct agents to return [] explicitly")
 	}
 	// Two %s placeholders match swarm.Debate's fmt.Sprintf signature
 	// (own findings JSON + peers' findings JSON).
 	if c := strings.Count(dreamPreset.Debate, "%s"); c != 2 {
 		t.Errorf("debate template has %d %%s placeholders, want 2 (matches swarm.Debate fmt signature)", c)
+	}
+	// v0.9-specific assertions — the real template instructs the
+	// model to emit revision tags + preserve the lens prefix.
+	for _, mustContain := range []string{
+		"[lens:<name>]",
+		"[new]",
+		"[disputes]",
+		"[revised]",
+		"[agreed]",
+		"load_bearing:",
+	} {
+		if !strings.Contains(dreamPreset.Debate, mustContain) {
+			t.Errorf("dreamPreset.Debate missing required token %q", mustContain)
+		}
+	}
+	// The v0.8 placeholder told agents to return []. v0.9 lifts that
+	// — the prompt should NOT contain the placeholder's distinctive
+	// "Return ONLY this JSON literal: []" instruction.
+	if strings.Contains(dreamPreset.Debate, "Return ONLY this JSON literal: []") {
+		t.Error("dreamPreset.Debate still contains v0.8 placeholder instruction; v0.9 should ship the real template")
 	}
 }

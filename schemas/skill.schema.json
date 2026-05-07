@@ -113,6 +113,26 @@
         }
       }
     },
+    "routing": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "v0.9 — declares per-skill provider routing preferences the swarm dispatcher consumes via ResolvePersonaProvider. Optional; absent block means the persona registry's default mapping applies (v0.6+ behavior). Empty list and omitted field are equivalent at every level.",
+      "properties": {
+        "per-persona": {
+          "type": "object",
+          "description": "Per-persona ordered list of preferred providers. The dispatcher walks the list in declaration order and picks the first available provider. Persona names not listed here fall through to 'default'.",
+          "additionalProperties": {
+            "type": "array",
+            "items": {"enum": ["claude", "codex", "gemini"]}
+          }
+        },
+        "default": {
+          "type": "array",
+          "description": "Global preferred-provider list applied when a persona isn't named under per-persona. Empty (or omitted) falls through to the persona registry's default mapping.",
+          "items": {"enum": ["claude", "codex", "gemini"]}
+        }
+      }
+    },
     "hooks": {
       "type": "array",
       "description": "Agent hooks that the CLI registers into the target agent's settings file at install time. Each entry is translated to the agent-native format (Claude/Gemini: JSON in settings.json; Codex: TOML in config.toml).",

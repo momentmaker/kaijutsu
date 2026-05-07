@@ -23,6 +23,9 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/momentmaker/kaijutsu/cli/internal/findings"
+	"github.com/momentmaker/kaijutsu/cli/internal/swarm"
 )
 
 // newDreamCmd builds the `jutsu dream` group. Subcommands cover
@@ -434,6 +437,149 @@ func FindRecentDreamForTopic(topic, codebaseFP string, within time.Duration) (*d
 		// Use a copy to return a stable pointer.
 		match := e
 		return &match, nil
+	}
+	return nil, nil
+}
+
+// RotateLensOrder rotates the LEAD lens of `current` to the next
+// canonical-cycle entry that follows the LEAD of `prev`. Used by the
+// repeat-within-7d rule on dream `--mode full` invocations: surfaces
+// a different framing on repeat-dreams without forcing the user to
+// remember --lenses=...
+//
+// Algorithm:
+//  1. Find prev[0] in the canonical 8-lens cycle.
+//  2. Walk the cycle starting at (lead_idx + 1) mod 8.
+//  3. First cycle entry that's also in `current` becomes the new LEAD.
+//  4. Result: [newLead, ...rest of current in canonical order].
+//
+// Edge cases:
+//   - prev empty OR prev[0] not in the canonical set (data corruption
+//     or pre-v0.9 graveyard file) → returns `current` unchanged.
+//   - current empty → returns `current` unchanged.
+//   - cycle traversal finds no match (current contains only lenses
+//     not in canon — should be impossible since IsValidDreamLens
+//     enforces membership at flag parse time) → returns `current`
+//     unchanged.
+func RotateLensOrder(prev, current []string) []string {
+	if len(prev) == 0 || len(current) == 0 {
+		return current
+	}
+	canon := swarm.DreamLensesAll()
+	leadIdx := -1
+	for i, c := range canon {
+		if c == prev[0] {
+			leadIdx = i
+			break
+		}
+	}
+	if leadIdx == -1 {
+		return current
+	}
+	cur := make(map[string]bool, len(current))
+	for _, c := range current {
+		cur[c] = true
+	}
+	var newLead string
+	for i := 1; i <= len(canon); i++ {
+		candidate := canon[(leadIdx+i)%len(canon)]
+		if cur[candidate] {
+			newLead = candidate
+			break
+		}
+	}
+	if newLead == "" {
+		return current
+	}
+	out := []string{newLead}
+	for _, c := range canon {
+		if c == newLead {
+			continue
+		}
+		if cur[c] {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+// tryRotateDreamLenses bridges the swarm-cmd dream branch to
+// RotateLensOrder + ReadDreamLensOrder + FindRecentDreamForTopic.
+// Returns (rotated, true) when a recent matching graveyard file is
+// found AND its lens_order is parseable AND rotation produced a
+// different LEAD; otherwise (current, false). Best-effort: any
+// graveyard read failure logs to stderr and falls through.
+//
+// Caller must scope this to the --mode full path (the v0.9 spec
+// only enables rotation on full-mode repeat-dreams). For Stage 2
+// the caller should ALSO check that --lenses was not explicitly set
+// — when the user is asking for a specific lens subset, respect it.
+func tryRotateDreamLenses(args []string, projectRoot string, current []string, stderr io.Writer) ([]string, bool) {
+	if len(args) == 0 {
+		return current, false
+	}
+	topic := strings.Join(args, " ")
+	cwd := projectRoot
+	if cwd == "" {
+		if wd, werr := os.Getwd(); werr == nil {
+			cwd = wd
+		}
+	}
+	fp := findings.Fingerprint(cwd)
+	prev, err := FindRecentDreamForTopic(topic, fp, 7*24*time.Hour)
+	if err != nil || prev == nil {
+		return current, false
+	}
+	prevOrder, err := ReadDreamLensOrder(prev.Path)
+	if err != nil || len(prevOrder) == 0 {
+		return current, false
+	}
+	rotated := RotateLensOrder(prevOrder, current)
+	// No-op when rotation produced an unchanged LEAD (corner cases:
+	// prev[0] not in canon, current empty, single-lens current).
+	if len(rotated) == 0 || (len(current) > 0 && rotated[0] == current[0]) {
+		return current, false
+	}
+	fmt.Fprintf(stderr, "lens rotation: previous LEAD %s → %s (matched %s)\n", prevOrder[0], rotated[0], filepath.Base(prev.Path))
+	return rotated, true
+}
+
+// ReadDreamLensOrder reads the lens_order list from a graveyard
+// file's YAML frontmatter. Returns nil if the file is missing the
+// header line (pre-v0.8.3 file) or unreadable. The format we look
+// for is one of:
+//
+//	lens_order: [honest, fit, gaps, wild]
+//	lens_order: [honest]
+//
+// (Single-line YAML flow sequence, no quotes — matches what
+// WriteDreamSession emits.) Anything more elaborate falls through
+// to a nil return; callers treat that as "no rotation possible".
+func ReadDreamLensOrder(path string) ([]string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	const marker = "lens_order:"
+	for _, line := range strings.Split(string(data), "\n") {
+		s := strings.TrimSpace(line)
+		if !strings.HasPrefix(s, marker) {
+			continue
+		}
+		rest := strings.TrimSpace(strings.TrimPrefix(s, marker))
+		// Accept "[a, b, c]" only — flow sequence form.
+		if !strings.HasPrefix(rest, "[") || !strings.HasSuffix(rest, "]") {
+			return nil, nil
+		}
+		inner := strings.TrimSuffix(strings.TrimPrefix(rest, "["), "]")
+		var lenses []string
+		for _, part := range strings.Split(inner, ",") {
+			lens := strings.TrimSpace(part)
+			if lens != "" {
+				lenses = append(lenses, lens)
+			}
+		}
+		return lenses, nil
 	}
 	return nil, nil
 }

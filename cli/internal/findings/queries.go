@@ -132,6 +132,33 @@ func GetByID(s *Store, id int64) (*Row, error) {
 	return &r, nil
 }
 
+// FindByRunPosition resolves a (run_id, position) pair to the
+// finding row. Used by v0.9 sync-pr to map the
+// `<!-- finding:<run_id>:<position> -->` marker back to a real
+// finding row for SetAction. Returns sql.ErrNoRows when the run_id
+// + position pair doesn't match any row (pre-v0.9 row with NULL
+// position, or run_id mismatch). Caller logs + skips on no-match.
+func FindByRunPosition(s *Store, runID string, position int) (*Row, error) {
+	row := s.db.QueryRow(
+		`SELECT id, run_id, codebase_fp, preset, provider, persona, severity,
+		        file, line_range, summary, reasoning, confidence,
+		        created_at, user_action, action_at, action_reason
+		   FROM findings
+		  WHERE run_id = ? AND position = ?
+		  LIMIT 1`,
+		runID, position,
+	)
+	var r Row
+	if err := row.Scan(
+		&r.ID, &r.RunID, &r.CodebaseFP, &r.Preset, &r.Provider, &r.Persona,
+		&r.Severity, &r.File, &r.LineRange, &r.Summary, &r.Reasoning,
+		&r.Confidence, &r.CreatedAt, &r.UserAction, &r.ActionAt, &r.ActionReason,
+	); err != nil {
+		return nil, err
+	}
+	return &r, nil
+}
+
 // SetAction marks a finding as accepted or dismissed. The action arg
 // must be exactly "accepted" or "dismissed" — caller validates before
 // calling. action_at is set to time.Now() on the writing side (not

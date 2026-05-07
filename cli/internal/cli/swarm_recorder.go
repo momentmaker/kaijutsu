@@ -179,3 +179,95 @@ func resolveSynthWeights(stderr io.Writer, projectRoot, preset string, results [
 	w := findings.NewWeighter(store)
 	return w.WeightsForResults(personaNames, providerMap(personas), preset, fp)
 }
+
+// resolveDreamLensWeights builds the per-lens weight map the v0.9
+// synthesizer's adaptive lens-weighting consumes. Aggregation rule:
+// for each lens dispatched in this run, average the WeightForLens
+// across the (provider, persona) tuples that produced findings for
+// that lens. Empty result → killswitch fall-through (no lens-weight
+// section in the synth prompt).
+//
+// Aggregation choice: simple mean. Weighted-by-finding-count would
+// be more nuanced (a persona that produced 3 honest-lens cells
+// counts more) but premature for v0.9 — the per-(persona, lens)
+// granularity already lives in the DB; the synthesizer just needs
+// ONE scalar per lens.
+//
+// Honors the killswitch: when KAIJUTSU_DREAM_ADAPTIVE_LENS=off, this
+// returns nil so callers don't even compute the underlying queries.
+// (buildSynthPrompt also re-checks the killswitch — defense in
+// depth.)
+func resolveDreamLensWeights(stderr io.Writer, projectRoot, preset string, results []swarm.AgentResult, personas []*personaAdapter) map[string]float64 {
+	if preset != "dream" {
+		return nil
+	}
+	if os.Getenv("KAIJUTSU_DREAM_ADAPTIVE_LENS") == "off" {
+		return nil
+	}
+	if !anyFindings(results) {
+		return nil
+	}
+	dbPath, err := findings.DefaultPath()
+	if err != nil {
+		return nil
+	}
+	if _, err := os.Stat(dbPath); err != nil {
+		return nil
+	}
+	store, err := findings.Open(dbPath)
+	if err != nil {
+		warnFindings(stderr, "open db for lens weights: %v", err)
+		return nil
+	}
+	defer store.Close()
+
+	cwd := projectRoot
+	if cwd == "" {
+		if wd, werr := os.Getwd(); werr == nil {
+			cwd = wd
+		}
+	}
+	fp := findings.Fingerprint(cwd)
+	pmap := providerMap(personas)
+
+	// Discover the (lens, persona) pairs actually present in this
+	// run by parsing each finding's summary prefix. This avoids
+	// querying weights for lenses that no agent produced — they
+	// shouldn't surface in the prompt.
+	type lensPair struct{ provider, persona, lens string }
+	seen := map[lensPair]bool{}
+	for _, r := range results {
+		if r.Err != "" {
+			continue
+		}
+		provider := pmap[r.Agent]
+		if provider == "" {
+			provider = r.Agent
+		}
+		for _, f := range r.Findings {
+			lens := findings.LensFromSummary(f.Summary)
+			if lens == "" {
+				continue
+			}
+			seen[lensPair{provider, r.Agent, lens}] = true
+		}
+	}
+	if len(seen) == 0 {
+		return nil
+	}
+
+	w := findings.NewWeighter(store)
+	// Group weights by lens, average across (provider, persona) pairs.
+	lensSums := map[string]float64{}
+	lensCounts := map[string]int{}
+	for pair := range seen {
+		weight := w.WeightForLens(pair.provider, pair.persona, preset, fp, pair.lens)
+		lensSums[pair.lens] += weight
+		lensCounts[pair.lens]++
+	}
+	out := make(map[string]float64, len(lensSums))
+	for lens, sum := range lensSums {
+		out[lens] = sum / float64(lensCounts[lens])
+	}
+	return out
+}
