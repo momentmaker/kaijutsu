@@ -213,7 +213,11 @@ func dreamGraveyardDir() (string, error) {
 // their filenames into dreamEntry records, and filters by codebase
 // fp unless allCodebases is set. Returns sorted by Timestamp desc
 // (newest first) — what `dream list` and `dream clear` both want.
+//
+// Caller-supplied fp is sanitized internally so local-fs: / local-git:
+// prefixes match the underscore-form embedded in graveyard filenames.
 func listDreamFiles(dir, fp string, allCodebases bool) ([]dreamEntry, error) {
+	wantFP := SanitizeFP(fp)
 	stat, err := os.Stat(dir)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, nil // no graveyard yet — empty list, not an error
@@ -239,7 +243,7 @@ func listDreamFiles(dir, fp string, allCodebases bool) ([]dreamEntry, error) {
 		if parsed == nil {
 			continue // unrecognized filename, skip silently
 		}
-		if !allCodebases && parsed.CodebaseFP != fp {
+		if !allCodebases && parsed.CodebaseFP != wantFP {
 			continue
 		}
 		parsed.Path = filepath.Join(dir, e.Name())
@@ -378,9 +382,16 @@ func WriteDreamSession(topic, codebaseFP, body string, lensOrder []string, mode 
 	filename := fmt.Sprintf("%s-%s-%s.md", fp, slug, now.Format("20060102-150405"))
 	path := filepath.Join(dir, filename)
 
+	// Quote the topic as a YAML double-quoted scalar so colons /
+	// hashes / brackets inside the topic don't break the header
+	// parse downstream. Escape backslashes + double quotes per
+	// YAML 1.2 double-quoted-scalar rules.
+	yamlQuotedTopic := `"` +
+		strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(topic, `\`, `\\`), `"`, `\"`), "\n", " ") +
+		`"`
 	header := fmt.Sprintf(
 		"---\ntopic: %s\ncodebase_fp: %s\nlens_order: [%s]\nmode: %s\nfull: %v\ncreated_at: %s\n---\n\n",
-		strings.ReplaceAll(topic, "\n", " "),
+		yamlQuotedTopic,
 		codebaseFP,
 		strings.Join(lensOrder, ", "),
 		mode,
@@ -405,6 +416,8 @@ func FindRecentDreamForTopic(topic, codebaseFP string, within time.Duration) (*d
 	if err != nil {
 		return nil, err
 	}
+	// listDreamFiles sanitizes the fp internally so local-fs: /
+	// local-git: prefixes match the underscore-form in filenames.
 	entries, err := listDreamFiles(dir, codebaseFP, false)
 	if err != nil {
 		return nil, err

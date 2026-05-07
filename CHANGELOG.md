@@ -4,6 +4,30 @@ All notable changes to kaijutsu (the registry + skills) and `jutsu` (the CLI). T
 
 ## [Unreleased]
 
+## [0.8.3] — 2026-05-07
+
+Quick-wins bundle from the v0.7.x + v0.8.x followup backlog. Seven small-but-high-value items shipped in one release rather than dribbled across micro-tags.
+
+### Added
+
+- **`--db` flag for `jutsu finding *`** — persistent across the whole `finding` group. Resolution: `--db` flag > `KAIJUTSU_FINDINGS_DB` env > default `~/.kaijutsu/findings.db`. Closes a v0.7 deferral (env-var-only was test-friendly but user-hostile).
+- **`jutsu dream` subcommand group** — `jutsu dream list` (browse the graveyard for current codebase) + `jutsu dream clear --older-than 365d --yes` (auto-prune). Mirrors the `jutsu finding clear` UX (dry-run default, `--yes` for destructive op, `--all-codebases` to escape scope).
+- **Dream graveyard auto-write** — every `jutsu swarm dream` invocation now archives its synthesis output to `~/.kaijutsu/dreams/<fp>-<slug>-<YYYYMMDD-HHMMSS>.md` (file mode `0600`, dir mode `0700`). Header carries `topic` (YAML-quoted) + `codebase_fp` + `lens_order` + `mode` + `full` + `created_at`. Lens order in header preps the future lens-rotation rule on repeat-dreams within 7 days. New helpers: `WriteDreamSession` / `FindRecentDreamForTopic` / `SlugifyTopic` / `SanitizeFP`.
+- **Synthesizer-coda truncation post-processor** (`swarm.StripDreamCoda`) — programmatic backstop to the prompt-level HARD STOP rule in the dream synthesizer. Strips trailing "In summary" / "Overall" / "In conclusion" / "Let me know" / etc. paragraphs that models occasionally emit despite the prompt instruction. Skips lines inside markdown tables + code fences. Targets the LAST coda phrase (so an "Overall" used earlier as a transitional marker doesn't truncate downstream content).
+- **Runtime lens-prefix validation** in the recorder — dream-preset rows that fail the `[lens:<name>]` summary prefix or `load_bearing: true|false` reasoning prefix get skipped at recorder time with a stderr count. Whitelist of 8 lens names. Whitespace-tolerant (extra/zero whitespace around `:` accepted, case-insensitive bool). Keeps v0.9 schema migration source data clean.
+- **Per-file anti-sycophancy regression test** for `skills/core/dream/prompts/{base,extras}/*.md` — Go-side test only covered the assembled swarm-preset prompt; the markdown files (loaded by standalone `/dream`) were unguarded against accidental softening of the forbid list.
+
+### Changed
+
+- **Recorder hook moves below Debate** — `--full` mode now records the MERGED Pass-1 ⊕ Pass-2 result set, so `[new]` / `[disputes]` / `[agreed]` revisions land in the v0.7 findings DB. `--quick` mode unchanged. New `swarm.MergePasses` public symbol; `cli/swarm.go` computes the merged set + passes to `recordFindingsBestEffort`.
+- **`findings.RecordRun` signature**: `(int, error)` → `(int, int, error)`. Second int is the dream-validation skip count. Tests + `swarm_recorder.go` updated.
+
+### Notes
+
+- **Lens-rotation rule on repeat-dreams** is half-shipped: `WriteDreamSession` records `lens_order` in the header (the prerequisite), but the actual rotation logic on repeat-within-7-days isn't wired in v0.8.3 because `--lenses` flag selection isn't yet plumbed through to the swarm dispatch path. v0.8.x followup.
+- **All 7 items** had been in the v0.7.x or v0.8.x backlog as deferrals. Bundle ships them together to close the "half-done" feeling without dribbling micro-patches.
+- **Adversarial pr-review** caught 5 real fixes squashed before tag (StripDreamCoda first-vs-last bug, `WriteDreamSession` hardcoded `full: false`, `FindRecentDreamForTopic` missing fp-sanitize, validator over-strict on whitespace, YAML topic value unquoted). All fixed; 1 false positive dismissed (openFindingsStore signature concern — only finding subcommands call it).
+
 ## [0.8.2] — 2026-05-07
 
 Agent-first design lens + four agent-discoverability features. Sets the foundation for fresh AI agents to use jutsu without reading project docs.

@@ -76,7 +76,7 @@ Spec: `docs/specs/2026-05-05-v0.6.0-multi-provider-agents.md`. ADR: `docs/decisi
 
 ## v0.7.x — incremental followups
 
-- [ ] **`--db` flag** for `jutsu finding *` (env override `KAIJUTSU_FINDINGS_DB` ships in v0.7 for tests; user-facing flag deferred).
+- [x] **`--db` flag** for `jutsu finding *` (shipped v0.8.3).
 - [ ] **Configurable bootstrap weight + window size** — `~/.kaijutsu/findings.toml` once we have real-world tuning data.
 - [ ] **Auto-prune policy** — `prune.toml` with default-365d eviction; v0.7 ships manual `clear --older-than` only.
 - [ ] **`jutsu finding repair`** — vacuum + integrity check + best-effort recovery from corrupt DB.
@@ -89,6 +89,7 @@ Spec: `docs/specs/2026-05-05-v0.6.0-multi-provider-agents.md`. ADR: `docs/decisi
 - [x] **v0.8.0 — `dream` skill + `swarm dream` preset** — pre-implementation interrogation through 4-8 cognitive lenses (4 base: honest/fit/gaps/wild + 4 opt-in extras: adversary/inverse/status-quo/time). Anti-sycophancy gates baked into every prompt. Standalone `/dream` walks lenses sequentially; `jutsu swarm dream` dispatches the N×lenses matrix and synthesizes into 4 sections (load-bearing / cross-lens consensus / lens-unique / lens-blind-spots warning). Records to v0.7 findings DB via `[lens:<name>]` summary prefix; no schema migration. `--lenses` flag controls the lens set; default `--max-cost` raised to 3.00 (5.00 with `--lenses=all`). `--mode full` rejected until v0.8.x defines a dream-debate template.
 - [x] **v0.8.1 — patch + curation** — dream Wild lens `%!s(MISSING)` fix. Core skills tier curated 28 → 17; 6 to community (code-simplification, security-and-hardening, journal, session-retro, readme-update, dcg); 5 deleted (decide, agent-doctor, multi-model-synth, lie-to-them, project-memory). Cleaner first-party canon for fresh users + agents discovering kaijutsu.
 - [x] **v0.8.2 — agent-first design lens + 4 discoverability features** — `agent-first, human-friendly` codified in AGENTS.md as the default design lens. New helpers + commands: `output.AutoFormat()` (TTY/pipe auto-flip pattern), `jutsu describe` (JSON catalog of full CLI surface for fresh agents), `jutsu suggest <task>` (keyword-rank skills against a task description), `jutsu init` AGENTS.md fragment (idempotent marker block teaching fresh agents how to use jutsu). `docs/project-memory.md` restored as schema convention doc.
+- [x] **v0.8.3 — quick-wins bundle (7 items)** — `--db` flag for `jutsu finding *`, `jutsu dream` subcommand group (list / clear), dream graveyard auto-write, synthesizer-coda truncation post-processor (programmatic backstop to HARD STOP rule), runtime lens-prefix validation (recorder skips malformed dream rows), per-file anti-sycophancy regression test for skill markdown, recorder hook moves below Debate (--full mode now records merged Pass-1⊕Pass-2). Closes most of the v0.7.x + v0.8.x backlog.
 
 ## v0.8.x — committed targets
 
@@ -101,15 +102,15 @@ Spec: `docs/specs/2026-05-05-v0.6.0-multi-provider-agents.md`. ADR: `docs/decisi
 - [ ] **Reverse swarm — spec-vs-impl drift detector**: run on every PR that closes a spec; flag deviations from declared scope/non-goals.
 - [ ] **Persona registry + `jutsu install persona:foo`**: personas as installable artifacts.
 - [ ] **Per-skill provider routing**: skills declare preferred personas/providers; swarm picks accordingly.
-- [ ] **Recorder hook moves below Debate** — Pass-2 `[new]` / `[disputes]` / `[agreed]` revisions get DB rows. v0.7 deferred while we collect signal on whether the Pass-1/Pass-2 summary divergence actually surprises users.
+- [x] **Recorder hook moves below Debate** — shipped v0.8.3.
 - [ ] **Dream-specific schema migration** — dedicated `lens TEXT` column on findings; recorder + Weighter populate it; per-lens precision tracking + adaptive lens-emphasis weighting in synthesizer.
 - [ ] **Dream-flavored Pass-2 debate** — defines what "agents critique each other's lens cells" looks like; lifts `--mode full` reject.
-- [ ] **Dream graveyard auto-write** — `~/.kaijutsu/dreams/` write helpers wired into the standalone /dream invocation; cross-codebase recall scoping; lens-rotation rule on repeat-dreams within 7 days.
-- [ ] **`jutsu dream clear --older-than 365d`** — auto-prune for the dream graveyard.
+- [x] **Dream graveyard auto-write** — shipped v0.8.3 (swarm preset path; standalone /dream invocation + cross-codebase recall + lens-rotation rule still pending the --lenses-flag plumbing).
+- [x] **`jutsu dream clear --older-than 365d`** — shipped v0.8.3.
 - [ ] **dream-as-eval-corpus** — closes the prediction loop: "did wild's predictions come true 6 months later?"
-- [ ] **Runtime lens-prefix validation** — recorder hook parses `[lens:<name>]` summary prefix + `load_bearing: <bool>` reasoning prefix; rejects/sanitizes malformed rows so v0.8.x schema migration has clean source data. v0.8.0 ships prompt-level convention only.
-- [ ] **Per-file anti-sycophancy regression test for `skills/core/dream/prompts/*.md`** — Go test currently covers only the assembled swarm-preset prompt; skill markdown files unguarded.
-- [ ] **Programmatic synthesizer-coda truncation** — post-processing step strips any text after the last table; complements the prompt-level hard-stop rule once we see whether models violate it.
+- [x] **Runtime lens-prefix validation** — shipped v0.8.3.
+- [x] **Per-file anti-sycophancy regression test for `skills/core/dream/prompts/*.md`** — shipped v0.8.3.
+- [x] **Programmatic synthesizer-coda truncation** — shipped v0.8.3 as `swarm.StripDreamCoda`.
 
 ## v1 — maturity
 

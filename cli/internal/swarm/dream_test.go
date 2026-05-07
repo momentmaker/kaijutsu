@@ -261,6 +261,38 @@ overall, this code block also mentions overall but is fenced
 	}
 }
 
+// TestStripDreamCoda_TakesLastOccurrence guards against the v0.8.3
+// adversarial-review BLOCKER: an "Overall" used earlier as a
+// transitional marker shouldn't truncate legitimate later content.
+// Strip should target the LAST coda phrase, not the first.
+func TestStripDreamCoda_TakesLastOccurrence(t *testing.T) {
+	draft := `### 2. Cross-lens consensus
+
+Overall ranking: gemini's lens-fit lens converged with claude's gaps lens.
+
+### 3. Lens-unique findings
+
+- legitimate finding 1
+- legitimate finding 2
+
+### 4. Lens-blind-spots
+
+- model-shared bias on honest lens
+
+In summary, here's the takeaway paragraph the model wasn't supposed to write.`
+
+	got := StripDreamCoda(draft)
+	if !strings.Contains(got, "legitimate finding 1") {
+		t.Errorf("legitimate content lost (truncated at FIRST 'Overall' instead of LAST 'In summary'):\n%s", got)
+	}
+	if !strings.Contains(got, "model-shared bias") {
+		t.Errorf("section 4 content lost:\n%s", got)
+	}
+	if strings.Contains(got, "In summary") {
+		t.Errorf("trailing coda not stripped:\n%s", got)
+	}
+}
+
 // TestStripDreamCoda_NoOpWhenNoCoda verifies clean input passes
 // through unchanged. Most well-behaved dream outputs hit this path.
 func TestStripDreamCoda_NoOpWhenNoCoda(t *testing.T) {

@@ -790,7 +790,7 @@ func runSwarmPipeline(ctx context.Context, cmd *cobra.Command, projectRoot strin
 		// order since v0.8.3 doesn't yet thread the --lenses flag
 		// through here). v0.8.x can plumb the actual selected list
 		// for the lens-rotation rule to work fully.
-		path, gerr := WriteDreamSession(ictx.Body, fp, md, swarm.DreamLensesBase(), "swarm", false)
+		path, gerr := WriteDreamSession(ictx.Body, fp, md, swarm.DreamLensesBase(), "swarm", f.mode == "full")
 		if gerr != nil {
 			fmt.Fprintf(stderr, "warning: dream graveyard write failed: %v\n", gerr)
 		} else {

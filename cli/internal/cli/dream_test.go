@@ -94,7 +94,7 @@ func TestWriteDreamSession_RoundTrip(t *testing.T) {
 	}
 	bodyStr := string(body)
 	for _, must := range []string{
-		"topic: Should we ship dream",
+		`topic: "Should we ship dream"`,
 		"codebase_fp: abc123def4567890",
 		"lens_order: [honest, fit, gaps, wild]",
 		"mode: swarm",

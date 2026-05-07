@@ -162,15 +162,17 @@ func StripDreamCoda(draft string) string {
 			continue
 		}
 		// Outside structured content — check for coda openers.
+		// Track LAST occurrence so a coda phrase used earlier as a
+		// transitional marker doesn't accidentally truncate
+		// legitimate downstream content. We only care about the
+		// trailing coda paragraph.
 		for _, opener := range codaOpeners {
 			if strings.HasPrefix(trimmed, opener) {
 				cutAt = i
 				break
 			}
 		}
-		if cutAt != -1 {
-			break
-		}
+		// NOTE: don't break here — keep scanning for later matches.
 	}
 	if cutAt == -1 {
 		return draft

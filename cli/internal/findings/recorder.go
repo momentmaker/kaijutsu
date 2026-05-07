@@ -141,8 +141,11 @@ var dreamLensWhitelist = map[string]bool{
 }
 
 // dreamSummaryPattern matches the [lens:<name>] prefix at start of
-// summary. Whitelist enforcement happens after capture.
-var dreamSummaryPattern = regexp.MustCompile(`^\[lens:([a-z][a-z-]+[a-z])\]\s+\S`)
+// summary. Whitespace after the closing bracket is tolerated:
+// 0+ whitespace chars then any non-whitespace. Trailing-content
+// requirement keeps "[lens:gaps]" alone (no thought) rejected.
+// Whitelist enforcement happens after capture.
+var dreamSummaryPattern = regexp.MustCompile(`^\[lens:([a-z][a-z-]+[a-z])\]\s*\S`)
 
 // ValidDreamFinding reports whether a dream-preset finding's summary
 // + reasoning fields conform to the lens-in-summary encoding.
@@ -167,8 +170,21 @@ func ValidDreamFinding(summary, reasoning string) bool {
 	if reasoning == "" {
 		return true
 	}
+	// Tolerate variable whitespace around the colon — models emit
+	// "load_bearing:true" / "load_bearing:  true" / "load_bearing: TRUE"
+	// indistinguishably. Strip prefix shape, then check the bool word
+	// case-insensitively. Anything past the bool is the actual reason
+	// text (free-form).
 	lower := strings.ToLower(strings.TrimSpace(reasoning))
-	return strings.HasPrefix(lower, "load_bearing: true") || strings.HasPrefix(lower, "load_bearing: false")
+	if !strings.HasPrefix(lower, "load_bearing") {
+		return false
+	}
+	rest := strings.TrimSpace(strings.TrimPrefix(lower, "load_bearing"))
+	if !strings.HasPrefix(rest, ":") {
+		return false
+	}
+	rest = strings.TrimSpace(strings.TrimPrefix(rest, ":"))
+	return strings.HasPrefix(rest, "true") || strings.HasPrefix(rest, "false")
 }
 
 // nullableString converts an empty string to a SQL NULL. Spec marks
