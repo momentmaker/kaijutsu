@@ -102,6 +102,41 @@ func TestWriteAgentsFragment_RefusesCorruptMarkers(t *testing.T) {
 	}
 }
 
+// TestWriteAgentsFragment_UpgradesAcrossVersions covers the regression
+// flagged by the v0.8.2 adversarial review: a v0.8.2 user upgrading
+// to a future jutsu version (different version pin in the start
+// marker) must still get an idempotent in-place replace, not a
+// corrupt-state error.
+func TestWriteAgentsFragment_UpgradesAcrossVersions(t *testing.T) {
+	tmp := t.TempDir()
+	// Simulate a marker block written by an older jutsu version.
+	older := "# Project\n\n" +
+		"<!-- kaijutsu:start name=jutsu-cli version=0.5.0 -->\nold body from v0.5.0\n" +
+		agentsFragmentMarkerEnd + "\n\n## User content\n"
+	mustWrite(t, filepath.Join(tmp, "AGENTS.md"), older)
+
+	action, err := writeAgentsFragment(tmp)
+	if err != nil {
+		t.Fatalf("upgrade scenario errored (should idempotent-replace): %v", err)
+	}
+	if action != "replaced" {
+		t.Errorf("action = %q, want replaced", action)
+	}
+	body := mustRead(t, filepath.Join(tmp, "AGENTS.md"))
+	if strings.Contains(body, "version=0.5.0") {
+		t.Error("old version marker not replaced — upgrade path broken")
+	}
+	if !strings.Contains(body, "version=0.8.2") {
+		t.Error("new version marker missing")
+	}
+	if strings.Contains(body, "old body from v0.5.0") {
+		t.Error("old body not replaced")
+	}
+	if !strings.Contains(body, "## User content") {
+		t.Error("user content after the block was lost during upgrade")
+	}
+}
+
 // TestWriteAgentsFragment_Idempotent covers running writeAgentsFragment
 // twice in succession — second call should report 'unchanged' (or
 // 'replaced' depending on byte-equality), and content stays the same.

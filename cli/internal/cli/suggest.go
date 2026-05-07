@@ -29,7 +29,6 @@ import (
 
 func newSuggestCmd() *cobra.Command {
 	var topN int
-	var installedOnly bool
 	cmd := &cobra.Command{
 		Use:   "suggest <task description>",
 		Short: "Rank skills by relevance to a task description",
@@ -54,7 +53,7 @@ once usage signal informs the right shape.`,
 				return fmt.Errorf("task description required (e.g. `jutsu suggest \"review my PR\"`)")
 			}
 
-			scores := scoreSkills(task, installedOnly)
+			scores := scoreSkills(task)
 			if topN > 0 && len(scores) > topN {
 				scores = scores[:topN]
 			}
@@ -70,7 +69,6 @@ once usage signal informs the right shape.`,
 	}
 	BindFormatFlags(cmd)
 	cmd.Flags().IntVar(&topN, "top", 5, "max number of suggestions to return (0 = all)")
-	cmd.Flags().BoolVar(&installedOnly, "installed-only", false, "only rank installed skills (default: scan skills/core + skills/community)")
 	return cmd
 }
 
@@ -84,15 +82,11 @@ type suggestion struct {
 	Tags        []string `json:"tags,omitempty"`
 }
 
-// scoreSkills walks skills/core/ and (unless --installed-only)
-// skills/community/, scores each against the task description, and
-// returns suggestions sorted by score desc.
-//
-// Note: "installedOnly" is currently a misnomer — we don't yet
-// distinguish locally-installed-via-jutsu from monorepo-shipped. v1
-// scans both core + community in the local monorepo; v0.9 may add a
-// proper installed-skills filter via lockfile lookup.
-func scoreSkills(task string, installedOnly bool) []suggestion {
+// scoreSkills walks skills/core/ + skills/community/, scores each
+// against the task description, and returns suggestions sorted by
+// score desc. v0.8.2 ships monorepo-local scan only; v0.9 may add
+// remote registry scan + lockfile-aware installed-only filter.
+func scoreSkills(task string) []suggestion {
 	tokens := tokenize(task)
 	if len(tokens) == 0 {
 		return nil

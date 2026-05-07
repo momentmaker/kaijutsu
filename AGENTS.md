@@ -38,7 +38,7 @@ What this means in practice:
 - **Idempotent commands**. Re-run is safe. Critical for agent retry loops.
 - **Deterministic file outputs** — sorted, stable. Avoids spurious diff churn.
 - **No interactive prompts blocking pipelines.** `--yes` for non-interactive consent. TUI / fuzzy-finder UI is rejected on principle (breaks pipes, contradicts the lens).
-- **Self-describing CLI**: `jutsu --describe` returns a JSON catalog of every command + flags + descriptions. Fresh agents ingest this to learn the surface. Humans can pipe through `jq` if curious.
+- **Self-describing CLI**: `jutsu describe` returns a JSON catalog of every command + flags + descriptions. Fresh agents ingest this to learn the surface. Humans can pipe through `jq` if curious.
 - **Pipe-friendly composition**: `jutsu list --json | jq ...` works. Every primitive command supports JSON output.
 - **Skills layer**: skills are markdown documents agents READ and ACT on. Already agent-first by design.
 - **Synthesis output (e.g. `jutsu swarm <preset>`)**: markdown by default in TTY (human reads the review), JSON in pipe (next-stage agent consumes). Auto-flip applies — same rule.

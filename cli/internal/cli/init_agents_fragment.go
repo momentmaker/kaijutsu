@@ -17,8 +17,14 @@ import (
 )
 
 const (
-	agentsFragmentMarkerStart = "<!-- kaijutsu:start name=jutsu-cli version=0.8.2 -->"
-	agentsFragmentMarkerEnd   = "<!-- kaijutsu:end -->"
+	// agentsFragmentMarkerStart is the FULL start marker emitted on
+	// write (carries current jutsu version for traceability). On
+	// READ / detection we match the version-agnostic PREFIX so that
+	// blocks written by an older jutsu get found + replaced cleanly
+	// during upgrade — not mistaken for "corrupt state."
+	agentsFragmentMarkerStart       = "<!-- kaijutsu:start name=jutsu-cli version=0.8.2 -->"
+	agentsFragmentMarkerStartPrefix = "<!-- kaijutsu:start name=jutsu-cli"
+	agentsFragmentMarkerEnd         = "<!-- kaijutsu:end -->"
 )
 
 // agentsFragmentBody is the content placed between the markers.
@@ -77,7 +83,10 @@ func writeAgentsFragment(cwd string) (string, error) {
 	}
 
 	content := string(existing)
-	startIdx := strings.Index(content, agentsFragmentMarkerStart)
+	// Match by version-AGNOSTIC prefix so blocks from older jutsu
+	// versions get found + replaced (the version pin is metadata,
+	// not the matching contract).
+	startIdx := strings.Index(content, agentsFragmentMarkerStartPrefix)
 	endIdx := strings.Index(content, agentsFragmentMarkerEnd)
 
 	if startIdx == -1 && endIdx == -1 {

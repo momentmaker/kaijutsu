@@ -17,6 +17,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// fdHolder is satisfied by *os.File (the writer behind os.Stdout).
+// When cmd.OutOrStdout() returns something else (e.g. a *bytes.Buffer
+// in tests, or a wrapping writer), the type assertion fails and we
+// fall back to "non-TTY" → JSON. That's the desired behavior for
+// programmatic captures.
+type fdHolder interface {
+	Fd() uintptr
+}
+
 // FormatMarkdown / FormatJSON / FormatTable are the canonical
 // format names. Commands switch on the AutoFormat result. Other
 // formats (e.g. yaml) can extend this enum without breaking callers.
@@ -47,9 +56,21 @@ func AutoFormat(cmd *cobra.Command, ttyDefault string) string {
 			return FormatJSON
 		}
 	}
-	if isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd()) {
-		return ttyDefault
+	// Prefer cobra's OutOrStdout writer for TTY check — when tests
+	// or wrapping callers redirect via cmd.SetOut(buf), AutoFormat
+	// must see the redirection and return JSON (the default for
+	// non-TTY consumers). Falls back to the process stdout when the
+	// cobra writer doesn't carry a file descriptor (e.g. *bytes.Buffer
+	// → fdHolder assertion fails → treat as non-TTY).
+	if w, ok := cmd.OutOrStdout().(fdHolder); ok {
+		if isatty.IsTerminal(w.Fd()) || isatty.IsCygwinTerminal(w.Fd()) {
+			return ttyDefault
+		}
+		return FormatJSON
 	}
+	// Non-fd writer (test buffer, wrapping writer) → non-TTY by
+	// definition → JSON.
+	_ = os.Stdout
 	return FormatJSON
 }
 
