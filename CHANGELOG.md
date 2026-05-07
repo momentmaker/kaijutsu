@@ -4,6 +4,54 @@ All notable changes to kaijutsu (the registry + skills) and `jutsu` (the CLI). T
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-05-07
+
+`dream` skill + `swarm dream` preset. Pre-implementation interrogation primitive — walks any topic through 4-8 cognitive lenses with anti-sycophancy gates baked into every prompt. Standalone `/dream` for single-agent walks; `jutsu swarm dream` for the multi-agent matrix.
+
+Spec: [`docs/specs/2026-05-07-v0.8.0-dream-skill-and-preset.md`](docs/specs/2026-05-07-v0.8.0-dream-skill-and-preset.md).
+
+### Added
+
+- **`dream` skill** at `skills/core/dream/` (rich layout). 8 lenses split into 4 base (always run) and 4 opt-in extras:
+  - **Base**: honest · fit · gaps · wild
+  - **Extras**: adversary · inverse · status-quo · time
+  - Coverage balance: 4 critical, 2 generative, 1 contextual, 1 temporal.
+- **Anti-sycophancy gates** baked into every lens prompt: explicit forbid list of "Great question!" / "Excellent!" / "You're absolutely right!" / hedging language. Regression test parses each prompt file and asserts the forbid list survives future edits.
+- **`load_bearing` calibration** — 4 concrete criteria for marking a finding load-bearing: changes whether to proceed / reveals new constraint / hidden assumption invalidated / "wait — that changes things" reaction. Drives consistent severity mapping (`load_bearing` × confidence → blocker / issue / minor / info).
+- **`jutsu swarm dream <topic>`** preset — multi-agent matrix mode. Each persona runs ALL selected lenses; synthesizer aggregates the N×lenses cells into a 4-section report:
+  - Load-bearing insights (top, sorted by confidence)
+  - Cross-lens consensus (insight surfaced from 2+ lenses)
+  - Lens-unique findings (single cell — possible noise OR the perspective others missed)
+  - Lens-blind-spots warning (all-agents-agreed on same lens → suspected model-shared training bias, not consensus signal)
+- **`--lenses` flag** controls the lens set: `base` (default, 4), `all` (8), or comma-list (subset). Whitespace-tolerant + dedupes + validates each name.
+- **Default `--max-cost` raised** for swarm dream: 3.00 (base) / 5.00 (`--lenses=all`). Mirrors the matrix-size cost increase. Users override via `--max-cost N` or `--estimate` to project actual cost first.
+- **`--mode full` rejected for dream** in v0.8.0 — Pass-2 debate over lens-cell findings is undefined. Error message redirects users to `--lenses=all` for matrix-expansion. Lifted in v0.8.x once a dream-debate template is designed.
+- **Lens-in-summary encoding** records dream output to v0.7 findings DB without schema migration. Each finding's `summary` field starts with `[lens:<name>]` (whitelist of 8 names); `reasoning` field starts with `load_bearing: true|false`. v0.8.x will migrate to a dedicated `lens TEXT` column once 30+ real dream sessions inform the right shape.
+- **Severity vocab unchanged**: dream uses standard kaijutsu vocabulary (blocker / issue / minor / info), keeping it composable with `jutsu finding *` subcommand group from v0.7.
+- **Synthesizer hard-stop rule** prevents the trailing-coda failure mode: "if you find yourself starting any sentence after the final table that doesn't BELONG to one of the four sections, STOP."
+
+### Changed
+
+- **Skill catalog grows to 28 core skills** (was 27); sitegen catalog at 51 entries (was 50).
+- **`registry/index.json`**: pointers to 3 anthropic skills (skill-creator, frontend-design, mcp-builder) and 5 obra/superpowers skills (subagent-driven-development, using-git-worktrees, verification-before-completion, systematic-debugging, executing-plans). Authors maintain upstream; jutsu just routes.
+- **Existing skill upgrades**:
+  - `verification-before-completion` ported as a new kaijutsu primitive (not finding-triage gate; verifies CODE state).
+  - `unstuck` v0.3 — Step 0.5 evidence-gathering before articulation (iron law adapted from obra/superpowers/systematic-debugging).
+  - `polish` v0.3 — Step V verification gate composes verification-before-completion to enforce convergence ≠ correctness.
+  - `incremental-implementation` v0.2 — per-slice two-stage review chain (spec-compliance subagent first, then code quality via polish), continuous-execution rule between independent slices.
+  - `planning-and-task-breakdown` v0.3 — plan-doc header template, file-structure-up-front section, bite-sized 2-5-minute checkbox steps inside each slice.
+
+### Privacy
+
+- **No new network surface.** Dream skill composes existing swarm primitives which carry their own v0.7 privacy boundaries. Dream itself adds nothing.
+- **Graveyard at `~/.kaijutsu/dreams/`** (Stage 3 deferred to v0.8.x for the auto-write helpers): directory mode `0700`, files `0600` when manually written. Same boundary as findings.db.
+
+### Notes
+
+- **Cold-start UX**: dream output looks identical for a new user vs an experienced user — there's no per-(persona, lens) precision tracking yet. v0.8.x will add the dedicated `lens TEXT` column on findings + Weighter integration so the synthesizer can downweight low-precision lenses per codebase.
+- **Anti-sycophancy is a prompt-level guardrail**, not a runtime check. Models may still produce performative agreement under load. The file-content regression test guards against accidental softening of the prompt text; runtime output verification deferred to v0.8.x (needs an eval harness which kaijutsu doesn't yet have).
+- **`brainstorm` preset and `dream` skill are NOT substitutes.** brainstorm = "give me 5 options to solve X"; dream = "is X worth pursuing?". Use them in sequence on big decisions: dream first to validate the problem shape, brainstorm to enumerate solutions.
+
 ## [0.7.0] — 2026-05-06
 
 Quality fingerprinting + confidence-weighted synthesizer. `jutsu swarm` now learns from your accept/dismiss actions: every finding goes into a local SQLite store at `~/.kaijutsu/findings.db`, and the synthesizer weights each agent's vote by its observed precision per (provider, persona, preset, codebase) tuple. The 51st run finally weights gemini's pattern-consistency lens differently from the 50 you've already dismissed.

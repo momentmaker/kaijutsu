@@ -74,7 +74,11 @@ Spec: `docs/specs/2026-05-05-v0.6.0-multi-provider-agents.md`. ADR: `docs/decisi
 
 - [x] **Quality fingerprinting + confidence-weighted synthesizer**: local SQLite at `~/.kaijutsu/findings.db` records user accept/dismiss per (provider, persona, preset, codebase-fingerprint) tuple. Synthesizer weights agent votes by observed precision via 3-state algo (cold=1.0 / bootstrap=0.7 / mature=clamped precision) over a sliding 200-action window. `jutsu finding {list,accept,dismiss,stats,clear,export}` CLI surface. `--show-weights` opt-in for synthesizer column annotations. No-network privacy boundary enforced by import-list test.
 
-## v0.8 — committed targets
+## v0.8 — pre-implementation interrogation primitive ✅
+
+- [x] **`dream` skill + `swarm dream` preset** — pre-implementation interrogation through 4-8 cognitive lenses (4 base: honest/fit/gaps/wild + 4 opt-in extras: adversary/inverse/status-quo/time). Anti-sycophancy gates baked into every prompt. Standalone `/dream` walks lenses sequentially; `jutsu swarm dream` dispatches the N×lenses matrix and synthesizes into 4 sections (load-bearing / cross-lens consensus / lens-unique / lens-blind-spots warning). Records to v0.7 findings DB via `[lens:<name>]` summary prefix; no schema migration. `--lenses` flag controls the lens set; default `--max-cost` raised to 3.00 (5.00 with `--lenses=all`). `--mode full` rejected until v0.8.x defines a dream-debate template.
+
+## v0.8.x — committed targets
 
 - [ ] **Anonymized opt-in telemetry** — share aggregated `(provider, persona, preset, precision)` tuples to a community dashboard. Requires consent flow + scrubbing protocol — separate spec + ADR.
 - [ ] **PR-comment auto-detection** — `gh pr comments` parsing for `accept`/`dismiss` markers in the kaijutsu-pr-review block; closes the loop without requiring CLI subcommand.
@@ -86,6 +90,11 @@ Spec: `docs/specs/2026-05-05-v0.6.0-multi-provider-agents.md`. ADR: `docs/decisi
 - [ ] **Persona registry + `jutsu install persona:foo`**: personas as installable artifacts.
 - [ ] **Per-skill provider routing**: skills declare preferred personas/providers; swarm picks accordingly.
 - [ ] **Recorder hook moves below Debate** — Pass-2 `[new]` / `[disputes]` / `[agreed]` revisions get DB rows. v0.7 deferred while we collect signal on whether the Pass-1/Pass-2 summary divergence actually surprises users.
+- [ ] **Dream-specific schema migration** — dedicated `lens TEXT` column on findings; recorder + Weighter populate it; per-lens precision tracking + adaptive lens-emphasis weighting in synthesizer.
+- [ ] **Dream-flavored Pass-2 debate** — defines what "agents critique each other's lens cells" looks like; lifts `--mode full` reject.
+- [ ] **Dream graveyard auto-write** — `~/.kaijutsu/dreams/` write helpers wired into the standalone /dream invocation; cross-codebase recall scoping; lens-rotation rule on repeat-dreams within 7 days.
+- [ ] **`jutsu dream clear --older-than 365d`** — auto-prune for the dream graveyard.
+- [ ] **dream-as-eval-corpus** — closes the prediction loop: "did wild's predictions come true 6 months later?"
 
 ## v0.7.x — incremental followups
 
