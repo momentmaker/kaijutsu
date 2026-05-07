@@ -16,7 +16,7 @@ Spec: [`docs/specs/2026-05-07-v0.8.0-dream-skill-and-preset.md`](docs/specs/2026
   - **Base**: honest · fit · gaps · wild
   - **Extras**: adversary · inverse · status-quo · time
   - Coverage balance: 4 critical, 2 generative, 1 contextual, 1 temporal.
-- **Anti-sycophancy gates** baked into every lens prompt: explicit forbid list of "Great question!" / "Excellent!" / "You're absolutely right!" / hedging language. Regression test parses each prompt file and asserts the forbid list survives future edits.
+- **Anti-sycophancy gates** baked into every lens prompt: explicit forbid list of "Great question!" / "Excellent!" / "You're absolutely right!" / hedging language. The Go-side regression test (`TestBuildDreamPrompt_BaseHasAntiSycophancy`) asserts the forbid phrases survive in the assembled swarm-preset prompt across future edits. The skill-side markdown prompts (`skills/core/dream/prompts/`) carry the same forbid list but are not yet covered by an automated per-file test — v0.8.x followup.
 - **`load_bearing` calibration** — 4 concrete criteria for marking a finding load-bearing: changes whether to proceed / reveals new constraint / hidden assumption invalidated / "wait — that changes things" reaction. Drives consistent severity mapping (`load_bearing` × confidence → blocker / issue / minor / info).
 - **`jutsu swarm dream <topic>`** preset — multi-agent matrix mode. Each persona runs ALL selected lenses; synthesizer aggregates the N×lenses cells into a 4-section report:
   - Load-bearing insights (top, sorted by confidence)
@@ -28,7 +28,7 @@ Spec: [`docs/specs/2026-05-07-v0.8.0-dream-skill-and-preset.md`](docs/specs/2026
 - **`--mode full` rejected for dream** in v0.8.0 — Pass-2 debate over lens-cell findings is undefined. Error message redirects users to `--lenses=all` for matrix-expansion. Lifted in v0.8.x once a dream-debate template is designed.
 - **Lens-in-summary encoding** records dream output to v0.7 findings DB without schema migration. Each finding's `summary` field starts with `[lens:<name>]` (whitelist of 8 names); `reasoning` field starts with `load_bearing: true|false`. v0.8.x will migrate to a dedicated `lens TEXT` column once 30+ real dream sessions inform the right shape.
 - **Severity vocab unchanged**: dream uses standard kaijutsu vocabulary (blocker / issue / minor / info), keeping it composable with `jutsu finding *` subcommand group from v0.7.
-- **Synthesizer hard-stop rule** prevents the trailing-coda failure mode: "if you find yourself starting any sentence after the final table that doesn't BELONG to one of the four sections, STOP."
+- **Synthesizer hard-stop rule** guards against the trailing-coda failure mode at the prompt level: "if you find yourself starting any sentence after the final table that doesn't BELONG to one of the four sections, STOP." This is a model-instructed guardrail, not programmatic enforcement; runtime truncation deferred to v0.8.x once we see whether models violate the rule in practice.
 
 ### Changed
 

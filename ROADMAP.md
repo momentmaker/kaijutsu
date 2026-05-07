@@ -105,6 +105,9 @@ Spec: `docs/specs/2026-05-05-v0.6.0-multi-provider-agents.md`. ADR: `docs/decisi
 - [ ] **Dream graveyard auto-write** — `~/.kaijutsu/dreams/` write helpers wired into the standalone /dream invocation; cross-codebase recall scoping; lens-rotation rule on repeat-dreams within 7 days.
 - [ ] **`jutsu dream clear --older-than 365d`** — auto-prune for the dream graveyard.
 - [ ] **dream-as-eval-corpus** — closes the prediction loop: "did wild's predictions come true 6 months later?"
+- [ ] **Runtime lens-prefix validation** — recorder hook parses `[lens:<name>]` summary prefix + `load_bearing: <bool>` reasoning prefix; rejects/sanitizes malformed rows so v0.8.x schema migration has clean source data. v0.8.0 ships prompt-level convention only.
+- [ ] **Per-file anti-sycophancy regression test for `skills/core/dream/prompts/*.md`** — Go test currently covers only the assembled swarm-preset prompt; skill markdown files unguarded.
+- [ ] **Programmatic synthesizer-coda truncation** — post-processing step strips any text after the last table; complements the prompt-level hard-stop rule once we see whether models violate it.
 
 ## v1 — maturity
 

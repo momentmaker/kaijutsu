@@ -863,10 +863,34 @@ ARTIFACT:`
 
 // --- dream preset (v0.8) ----------------------------------------------------
 // Pre-implementation interrogation. Each agent runs ALL selected lenses
-// on the topic. Skill at skills/core/dream/ ships parallel prompts for
-// standalone /dream invocation; this preset embeds equivalents so the
-// CLI dispatch path doesn't need to read skill files at runtime. v0.8.x
-// can dedupe via go:embed once the skill format stabilizes.
+// on the topic.
+//
+// DUAL-PATH NOTE — important for future readers and reviewers:
+//
+// The dream feature ships TWO distinct prompt artifacts that look
+// similar but serve different paths and use different output schemas:
+//
+//   1. skills/core/dream/prompts/{base,extras}/*.md — used by the
+//      STANDALONE skill ("/dream <topic>" invoked inside a Claude /
+//      Codex / Gemini session). Output schema is the lens-shaped
+//      JSON: {lens, thought, load_bearing, confidence}. Loaded by the
+//      agent harness directly, not by jutsu.
+//
+//   2. dreamSharedHeader + dreamLens* + dreamLensFooter (this file) —
+//      used by the SWARM preset dispatch ("jutsu swarm dream"). Output
+//      schema is the kaijutsu standard finding shape:
+//      {severity, file, line_range, summary, reasoning, confidence}.
+//      Lens identity rides in the summary's "[lens:<name>]" prefix;
+//      load_bearing rides in the reasoning's leading token. This shape
+//      is required so the v0.7 findings DB recorder can ingest the
+//      rows under the existing schema with zero migration.
+//
+// Both schemas exist because the audiences differ. The standalone
+// path talks to a single agent in a long-lived session; the swarm
+// path produces structured findings the recorder writes to SQLite.
+// They are never loaded together. v0.8.x may unify (likely by adding
+// a `lens TEXT` schema column + collapsing both to a single shape),
+// pending real-world signal on which fields matter most.
 
 const dreamSharedHeader = `You are running a DREAM session — pre-implementation interrogation of an idea. Walk the topic through one or more LENSES; each lens gets its own JSON array of findings. The user does not need encouragement — they need real perspective.
 
