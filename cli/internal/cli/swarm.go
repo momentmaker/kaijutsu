@@ -35,6 +35,7 @@ before the synthesizer.`,
 	cmd.AddCommand(newSwarmPRReviewCmd())
 	cmd.AddCommand(newSwarmDocReviewCmd())
 	cmd.AddCommand(newSwarmBrainstormCmd())
+	cmd.AddCommand(newSwarmDreamCmd())
 	cmd.AddCommand(newSwarmRefactorPlanCmd())
 	cmd.AddCommand(newSwarmSecurityAuditCmd())
 	return cmd
@@ -209,6 +210,125 @@ speculative) with cross-cut themes called out separately.`,
 	}
 	bindCommonFlags(cmd, &flags, false) // no --post-comment for brainstorm (no PR)
 	return cmd
+}
+
+// newSwarmDreamCmd wires `jutsu swarm dream <topic>` — the multi-agent
+// matrix mode of the dream skill. Each persona runs ALL selected
+// lenses (default 4 base; --lenses=all expands to 8; --lenses
+// honest,gaps explicit override). --max-cost defaults to 3.00 (4×
+// brainstorm baseline ≈ matrix size); --lenses=all raises to 5.00.
+func newSwarmDreamCmd() *cobra.Command {
+	var flags commonSwarmFlags
+	var lensesArg string
+	cmd := &cobra.Command{
+		Use:   "dream <topic>",
+		Short: "Multi-agent pre-implementation interrogation across 4-8 lenses",
+		Long: `Walk a topic through 4-8 cognitive lenses with N agents in parallel.
+Each persona runs ALL selected lenses; the synthesizer aggregates the
+N×lenses matrix into a single report (load-bearing insights, cross-
+lens consensus, lens-unique findings, lens-blind-spots warning).
+
+Lenses (canonical order):
+  base:   honest, fit, gaps, wild
+  extras: adversary, inverse, status-quo, time
+
+--lenses controls the lens set:
+  --lenses base                 (default — 4 base)
+  --lenses all                  (8 — base + extras)
+  --lenses honest,gaps,inverse  (explicit comma-list; subset of the 8)
+
+The topic is a positional arg. Quote it. Cap is 8 KB.
+
+Use this BEFORE specs / plans / commits — when the question is
+"is this idea worth pursuing? what are we missing?" not "how do we
+build X?". Use brainstorm for the latter.`,
+		Args: cobra.ArbitraryArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			projectRoot, _ := os.Getwd()
+
+			lenses, err := resolveDreamLenses(lensesArg)
+			if err != nil {
+				return err
+			}
+
+			preset, err := swarm.LoadPresetWithSkillOverrides(projectRoot, "dream")
+			if err != nil {
+				return err
+			}
+			// Override DefaultPrompt with the user-selected lens set.
+			// LoadPresetWithSkillOverrides does not handle dream's
+			// dynamic lens composition — it expects per-agent files.
+			// We mutate the loaded preset in place; the registry-level
+			// dreamPreset is left at its base-4 default for any other
+			// call site (none today, but defensive).
+			presetCopy := *preset
+			presetCopy.DefaultPrompt = swarm.BuildDreamPrompt(lenses)
+			preset = &presetCopy
+
+			if flags.grantConsent {
+				return runGrantConsent(cmd, projectRoot, preset)
+			}
+			if flags.replayKey != "" {
+				return runReplay(ctx, cmd, projectRoot, "dream", flags.replayKey, flags.synthesizer, flags.perAgentBudget, flags.timeout, false)
+			}
+			if len(args) == 0 {
+				return errors.New("dream requires a topic argument (or --replay <key>)")
+			}
+			topic := strings.Join(args, " ")
+			ictx, err := swarm.ResolveInput(ctx, preset, swarm.InputOptions{
+				Prompt: topic,
+			})
+			if err != nil {
+				return err
+			}
+			// --lenses=all raises the default cost ceiling because the
+			// matrix doubles in size (N × 8 cells vs N × 4). Users
+			// who set --max-cost explicitly keep their value.
+			if !cmd.Flags().Changed("max-cost") && len(lenses) > 4 {
+				flags.maxCostUSD = 5.00
+			} else if !cmd.Flags().Changed("max-cost") {
+				flags.maxCostUSD = 3.00
+			}
+			return runSwarmPipeline(ctx, cmd, projectRoot, preset, ictx, flags)
+		},
+	}
+	bindCommonFlags(cmd, &flags, false) // no --post-comment (no PR)
+	cmd.Flags().StringVar(&lensesArg, "lenses", "base", "lens set: 'base' (4), 'all' (8), or comma-list (subset). See full lens list in --help.")
+	return cmd
+}
+
+// resolveDreamLenses parses the --lenses flag value into the ordered
+// lens slice the preset prompt builder expects. Returns an error with
+// the valid lens names when the flag value is malformed.
+func resolveDreamLenses(arg string) ([]string, error) {
+	switch arg {
+	case "", "base":
+		return swarm.DreamLensesBase(), nil
+	case "all":
+		return swarm.DreamLensesAll(), nil
+	}
+	parts := strings.Split(arg, ",")
+	out := make([]string, 0, len(parts))
+	seen := map[string]bool{}
+	for _, p := range parts {
+		name := strings.TrimSpace(p)
+		if name == "" {
+			continue
+		}
+		if !swarm.IsValidDreamLens(name) {
+			return nil, fmt.Errorf("--lenses %q: unknown lens %q. Valid: %v", arg, name, swarm.DreamLensesAll())
+		}
+		if seen[name] {
+			continue // dedupe quietly
+		}
+		seen[name] = true
+		out = append(out, name)
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("--lenses %q: empty after parsing; pass 'base', 'all', or a comma-list of: %v", arg, swarm.DreamLensesAll())
+	}
+	return out, nil
 }
 
 func newSwarmRefactorPlanCmd() *cobra.Command {
