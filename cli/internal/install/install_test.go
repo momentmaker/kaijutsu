@@ -118,3 +118,105 @@ func mustWrite(t *testing.T, path, content string) {
 		t.Fatal(err)
 	}
 }
+
+// TestInstallAutopilot_ArchivesPreExistingSkillMd covers the v0.11.0
+// breaking-change handler: pre-existing autopilot SKILL.md gets
+// copied to a sibling .archived/ dir before the install pipeline
+// overwrites the target. Sibling-not-child placement matters
+// because Install does RemoveAll(fullDest) before copy — a child
+// .archived/ would be nuked.
+func TestInstallAutopilot_ArchivesPreExistingSkillMd(t *testing.T) {
+	tmp := t.TempDir()
+
+	src := filepath.Join(tmp, "src", "autopilot")
+	if err := os.MkdirAll(src, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mustWrite(t, filepath.Join(src, "SKILL.md"), "v2 content\n")
+
+	root := filepath.Join(tmp, "home")
+	// Pre-seed a v1 SKILL.md at the install destination — simulates
+	// an existing user install at ~/.claude/skills/autopilot/.
+	preExistingDir := filepath.Join(root, ".claude", "skills", "autopilot")
+	preExistingPath := filepath.Join(preExistingDir, "SKILL.md")
+	v1Body := "v1 SKILL.md content with user edits\n"
+	mustWrite(t, preExistingPath, v1Body)
+
+	sk := &skill.Skill{Name: "autopilot", Agents: []string{"claude"}}
+	if err := Install(src, root, []string{"claude"}, sk); err != nil {
+		t.Fatal(err)
+	}
+
+	// The new SKILL.md should be in place.
+	body, err := os.ReadFile(preExistingPath)
+	if err != nil {
+		t.Fatalf("read post-install SKILL.md: %v", err)
+	}
+	if string(body) != "v2 content\n" {
+		t.Errorf("post-install SKILL.md = %q, want v2 content", body)
+	}
+
+	// The pre-existing SKILL.md should be preserved at the SIBLING
+	// .archived/ dir.
+	archivedPath := filepath.Join(root, ".claude", "skills", "autopilot.archived", "SKILL.md")
+	archivedBody, err := os.ReadFile(archivedPath)
+	if err != nil {
+		t.Fatalf("read archived SKILL.md: %v", err)
+	}
+	if string(archivedBody) != v1Body {
+		t.Errorf("archived SKILL.md = %q, want %q", archivedBody, v1Body)
+	}
+}
+
+// TestInstallAutopilot_NoArchiveWhenNoPreExisting covers the
+// idempotent path: a fresh autopilot install (no existing SKILL.md)
+// must not create an empty .archived/ dir.
+func TestInstallAutopilot_NoArchiveWhenNoPreExisting(t *testing.T) {
+	tmp := t.TempDir()
+
+	src := filepath.Join(tmp, "src", "autopilot")
+	if err := os.MkdirAll(src, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mustWrite(t, filepath.Join(src, "SKILL.md"), "v2 content\n")
+
+	root := filepath.Join(tmp, "home")
+	sk := &skill.Skill{Name: "autopilot", Agents: []string{"claude"}}
+	if err := Install(src, root, []string{"claude"}, sk); err != nil {
+		t.Fatal(err)
+	}
+
+	archDir := filepath.Join(root, ".claude", "skills", "autopilot.archived")
+	if _, err := os.Stat(archDir); !os.IsNotExist(err) {
+		t.Errorf("expected no .archived dir on fresh install; stat err = %v", err)
+	}
+}
+
+// TestInstallAutopilot_NonAutopilotSkillsSkipArchive covers the
+// scope-limit: only autopilot triggers archival. A different skill
+// with a pre-existing SKILL.md at its install path goes through
+// normal RemoveAll-then-copy without archiving.
+func TestInstallAutopilot_NonAutopilotSkillsSkipArchive(t *testing.T) {
+	tmp := t.TempDir()
+
+	src := filepath.Join(tmp, "src", "decide")
+	if err := os.MkdirAll(src, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mustWrite(t, filepath.Join(src, "SKILL.md"), "v2 decide\n")
+
+	root := filepath.Join(tmp, "home")
+	preExistingPath := filepath.Join(root, ".claude", "skills", "decide", "SKILL.md")
+	mustWrite(t, preExistingPath, "v1 decide content\n")
+
+	sk := &skill.Skill{Name: "decide", Agents: []string{"claude"}}
+	if err := Install(src, root, []string{"claude"}, sk); err != nil {
+		t.Fatal(err)
+	}
+
+	// No archive sibling for non-autopilot skills.
+	archDir := filepath.Join(root, ".claude", "skills", "decide.archived")
+	if _, err := os.Stat(archDir); !os.IsNotExist(err) {
+		t.Errorf("non-autopilot skill should not produce .archived dir; got stat err = %v", err)
+	}
+}

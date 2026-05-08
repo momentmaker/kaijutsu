@@ -3,7 +3,6 @@ package cli
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -12,7 +11,6 @@ import (
 	"time"
 
 	"github.com/mattn/go-isatty"
-	"github.com/momentmaker/kaijutsu/cli/internal/agents"
 	"github.com/momentmaker/kaijutsu/cli/internal/findings"
 	"github.com/momentmaker/kaijutsu/cli/internal/swarm"
 	"github.com/spf13/cobra"
@@ -539,315 +537,61 @@ the preset name is part of the cache-key salt.`,
 	return cmd
 }
 
-// runSwarmPipeline is the shared per-preset pipeline: privacy gate →
-// consent gate → fan-out → synthesis (+ optional debate / strict) →
-// cache → optional PR-comment post → stderr summary.
+// runSwarmPipeline is the v0.11.0 thin cobra adapter around
+// swarm.RunPipeline. Maps cobra command + commonSwarmFlags into a
+// PipelineOpts (with cli-pkg helpers wired via callbacks because
+// those depend on findings pkg, which would import-cycle into
+// swarm), then delegates the orchestration to swarm.RunPipeline.
 //
-// pr-review and doc-review share this. Stages 5-7 will plug in
-// brainstorm, refactor-plan, security-audit by adding subcommands
-// that fill InputOptions and call this same pipeline.
+// All previous behaviors (privacy gate, consent flow, debate,
+// lie-to-them filter, lens rotation, cache, persona resolution,
+// telemetry warning, replay path) are preserved verbatim — they
+// live in swarm.RunPipeline now.
+//
+// pr-review, doc-review, brainstorm, dream, refactor-plan,
+// security-audit, reverse all share this adapter.
 func runSwarmPipeline(ctx context.Context, cmd *cobra.Command, projectRoot string, preset *swarm.Preset, ictx *swarm.InputContext, f commonSwarmFlags) error {
 	out := cmd.OutOrStdout()
 	stderr := cmd.ErrOrStderr()
+	stdin := cmd.InOrStdin()
 
-	// Estimate dry-run: print cost projection table and exit before
-	// touching the privacy gate / consent / fan-out.
-	if f.estimate {
-		return runEstimate(out, stderr, projectRoot, preset, ictx, f)
-	}
-
-	// Telemetry-warning sink: route the cli-compat one-shot warning
-	// through cobra's stderr so tests can capture it; suppress when
-	// --no-telemetry-warning is set.
-	if f.noTelemWarn {
-		agents.SetCompatWarningSink(io.Discard)
-	} else {
-		agents.SetCompatWarningSink(stderr)
-	}
-
-	// Privacy gate: hard-block on secrets unless explicitly
-	// overridden. InputDiff + InputFiles get scanned; InputPrompt
-	// is user-authored and skips (callers shouldn't dump secrets
-	// into a brainstorm prompt; if they do, --allow-secrets isn't
-	// the gate that protects them).
-	if ictx.InputKind == swarm.InputDiff || ictx.InputKind == swarm.InputFiles {
-		hits := swarm.SecretsScan(ictx.Body)
-		if len(hits) > 0 && !f.allowSecrets {
-			fmt.Fprintf(stderr, "secrets pre-flight scan blocked %d match(es):\n", len(hits))
-			for _, h := range hits {
-				fmt.Fprintf(stderr, "  - %s (%s)\n", h.Match, h.Reason)
-			}
-			return errors.New("refusing to send input to remote models; remove the secrets or pass --allow-secrets at your own risk")
-		}
-		if len(hits) > 0 {
-			fmt.Fprintf(stderr, "warning: --allow-secrets bypassed %d secrets-scan hit(s); input WILL be sent to model providers\n", len(hits))
-		}
-	}
-
-	// Persona-driven dispatch (v0.6 Stage 3b): when --personas is set,
-	// jobs are assembled from agents.yaml-resolved personas instead of
-	// auto-detected native CLIs. Legacy v0.5 path runs unchanged when
-	// the flag is absent.
-	var (
-		jobs            []swarm.Job
-		personaAdapters []*personaAdapter
-	)
-	if len(f.personas) > 0 {
-		var err error
-		jobs, personaAdapters, err = assemblePersonaJobs(projectRoot, preset, ictx, f.personas)
-		if err != nil {
-			return err
-		}
-		// Consent uses persona names as the provider list. The
-		// existing EnsureConsent contract takes []AgentName, so we
-		// reify each persona's name as a synthetic AgentName.
-		consentNames := make([]swarm.AgentName, 0, len(personaAdapters))
-		for _, p := range personaAdapters {
-			consentNames = append(consentNames, p.Name())
-		}
-		if cerr := swarm.EnsureConsent(projectRoot, preset, cmd.InOrStdin(), stderr, consentNames, f.yes); cerr != nil {
-			return cerr
-		}
-		// Spec D6: --personas mode invalidates the legacy v0.5 cache
-		// key. Mix persona names into the key so two different
-		// persona mixes against the same input don't collide.
-		ictx.CacheKey = swarm.MixCacheKeyWithPersonas(ictx.CacheKey, f.personas)
-		fmt.Fprintf(stderr, "swarm: %d persona(s) dispatching: %v\n", len(personaAdapters), f.personas)
-	} else {
-		available := swarm.AvailableAgents()
-		if len(available) == 0 {
-			return errors.New("no agent CLI available. Install at least one of: claude, codex, gemini, then re-run (or pass --personas to dispatch via agents.yaml)")
-		}
-
-		if cerr := swarm.EnsureConsent(projectRoot, preset, cmd.InOrStdin(), stderr, available, f.yes); cerr != nil {
-			return cerr
-		}
-
-		fmt.Fprintf(stderr, "swarm: %d agent(s) available: %v\n", len(available), available)
-
-		jobs = make([]swarm.Job, 0, len(available))
-		for _, name := range available {
-			tmpl, ok := preset.PerAgent[name]
-			if !ok {
-				fmt.Fprintf(stderr, "swarm: no preset prompt for %s; skipping\n", name)
-				continue
-			}
-			jobs = append(jobs, swarm.Job{
-				Agent:  swarm.AgentFor(name),
-				Prompt: fmt.Sprintf(tmpl, ictx.Body),
-			})
-		}
-		if len(jobs) == 0 {
-			return fmt.Errorf("no jobs assembled — preset %q is missing prompts for every available agent", preset.Name)
-		}
-	}
-
-	start := time.Now()
-	results := swarm.FanOut(ctx, jobs, f.perAgentBudget, f.timeout)
-	finished := time.Now()
-
-	// Persona mode: replace estimated costs with the real billed cost
-	// reported by drivers (HTTP driver populates Result.CostUSD from
-	// the API's usage block). cli driver leaves the estimate in place
-	// because Result.CostUSD is 0 there. Also stamp the driver kind
-	// on each result so the synthesizer can tag mcp findings as
-	// [deterministic] and apply the info-severity floor.
-	if len(personaAdapters) > 0 {
-		overlayPersonaCosts(results, personaAdapters)
-		stampDriverKind(results, personaAdapters)
-	}
-
-	// v0.7 quality fingerprinting hook moved to AFTER the optional
-	// Pass-2 debate (v0.8.3) so [new] / [disputes] / [agreed]
-	// revisions get DB rows in --full mode. The merged set is
-	// computed via swarm.MergePasses, which mergePasses-internally
-	// replaces each Pass-1 result with its Pass-2 revision when
-	// successful. Recording happens just before synthesis so we
-	// capture the same shape of data the synthesizer sees. See
-	// "v0.7 quality fingerprinting hook (post-debate)" block below.
-
-	run := swarm.SwarmRun{
-		Preset:     preset.Name,
-		PR:         ictx.PR,
-		SHA:        ictx.SHA,
-		Mode:       f.mode,
-		Agents:     results,
-		StartedAt:  start,
-		FinishedAt: finished,
-	}
-	for _, r := range results {
-		run.TotalCost += r.Cost
-	}
-
-	// Hard-fail when EVERY agent errored. Without this guard, a
-	// 3/3-error fan-out would proceed to synthesis with an empty
-	// findings list, render a "0 findings" markdown report, and
-	// bury the per-agent errors in a collapsed <details> block —
-	// user reads "no findings" and assumes the input was clean.
-	usable := 0
-	for _, r := range results {
-		if r.Err == "" {
-			usable++
-		}
-	}
-	if usable == 0 {
-		var b strings.Builder
-		fmt.Fprintf(&b, "all %d agent(s) errored; no synthesis performed:", len(results))
-		for _, r := range results {
-			fmt.Fprintf(&b, "\n  - %s: %s", r.Agent, r.Err)
-		}
-		reportSwarmStderr(stderr, results, finished.Sub(start), run.TotalCost)
-		return errors.New(b.String())
-	}
-
-	// JSON-only path: skip synthesis entirely.
-	if f.format == "json" {
-		if f.maxCostUSD > 0 && run.TotalCost > f.maxCostUSD {
-			fmt.Fprintf(stderr, "warning: estimated total cost $%.2f exceeded --max-cost $%.2f\n", run.TotalCost, f.maxCostUSD)
-		}
-		enc := json.NewEncoder(out)
-		enc.SetIndent("", "  ")
-		if err := enc.Encode(run); err != nil {
-			return err
-		}
-		reportSwarmStderr(stderr, results, finished.Sub(start), run.TotalCost)
-		return nil
-	}
-
-	// Markdown synthesis path. In persona mode the synthesizer is
-	// picked from the persona list; legacy mode uses native CLI lookup.
-	var synthAgent swarm.Agent
-	if len(personaAdapters) > 0 {
-		synthAgent = pickPersonaSynthesizer(f.synthesizer, results, personaAdapters)
-	} else {
-		synthAgent = pickSynthesizer(f.synthesizer, results)
-	}
-	if synthAgent == nil {
-		fmt.Fprintln(stderr, "warning: no synthesizer agent available; falling back to JSON dump")
-		enc := json.NewEncoder(out)
-		enc.SetIndent("", "  ")
-		if err := enc.Encode(run); err != nil {
-			return err
-		}
-		reportSwarmStderr(stderr, results, finished.Sub(start), run.TotalCost)
-		return nil
-	}
-
-	overBudget := f.maxCostUSD > 0 && run.TotalCost > f.maxCostUSD
-	if overBudget {
-		fmt.Fprintf(stderr, "warning: Pass-1 cost $%.2f already exceeds --max-cost $%.2f; skipping optional debate/strict passes\n", run.TotalCost, f.maxCostUSD)
-	}
-
-	// v0.7 quality fingerprinting: compute per-agent weights from the
-	// findings DB BEFORE synthesis. Best-effort — when the DB is
-	// absent, weights collapses to nil and Synthesize behaves
-	// byte-identical to v0.6.2 (cold-start contract).
-	synthOpts := swarm.SynthOpts{
-		Weights:         resolveSynthWeights(stderr, projectRoot, preset.Name, results, personaAdapters),
+	opts := swarm.PipelineOpts{
+		ProjectRoot:     projectRoot,
+		Preset:          preset,
+		Input:           ictx,
+		Personas:        f.personas,
+		Synthesizer:     f.synthesizer,
+		Mode:            f.mode,
+		Strict:          f.strict,
+		PerAgentBudget:  f.perAgentBudget,
+		Timeout:         f.timeout,
+		MaxCostUSD:      f.maxCostUSD,
+		Format:          f.format,
+		PostComment:     f.postComment,
+		Yes:             f.yes,
+		AllowSecrets:    f.allowSecrets,
+		NoTelemWarn:     f.noTelemWarn,
 		ShowWeights:     f.showWeights,
-		LensWeights:     resolveDreamLensWeights(stderr, projectRoot, preset.Name, results, personaAdapters),
 		ConfidenceFloor: f.confidenceFloor,
+		DreamLenses:     f.dreamLenses,
+		Estimate:        f.estimate,
+		Stdout:          out,
+		Stderr:          stderr,
+		Stdin:           stdin,
+		EstimateFn: func(po swarm.PipelineOpts) error {
+			return runEstimate(po.Stdout, po.Stderr, po.ProjectRoot, po.Preset, po.Input, f)
+		},
+		RecordFindings:          recordFindingsBestEffort,
+		ResolveSynthWeights:     resolveSynthWeights,
+		ResolveDreamLensWeights: resolveDreamLensWeights,
+		ArchiveDreamSession: func(topic, cwd, body string, lensOrder []string, mode string, full bool) (string, error) {
+			fp := findings.Fingerprint(cwd)
+			return WriteDreamSession(topic, fp, body, lensOrder, mode, full)
+		},
 	}
 
-	var (
-		synth    *swarm.Synthesis
-		synthErr error
-	)
-	// resultsToRecord starts equal to Pass-1 results; --full mode
-	// replaces it with the merged Pass-1⊕Pass-2 set so the recorder
-	// captures revised findings.
-	resultsToRecord := results
-	if f.mode == "full" && !overBudget {
-		fmt.Fprintln(stderr, "swarm: --full mode — Pass 2 round-robin debate starting")
-		pass2 := swarm.Debate(ctx, results, preset, f.perAgentBudget, f.timeout)
-		for _, r := range pass2 {
-			run.TotalCost += r.Cost
-		}
-		resultsToRecord = swarm.MergePasses(results, pass2)
-		synth, synthErr = swarm.SynthesizeWithDebate(ctx, results, pass2, synthAgent, preset, f.perAgentBudget, f.timeout, synthOpts)
-	} else {
-		synth, synthErr = swarm.Synthesize(ctx, results, synthAgent, preset, f.perAgentBudget, f.timeout, synthOpts)
-	}
-
-	// v0.7 quality fingerprinting hook (post-debate). Best-effort —
-	// a failed record must NOT block the markdown render. Cache key
-	// (ictx.CacheKey) is the run_id; codebase fp is computed from
-	// cwd. In legacy mode the provider-for-persona map is empty
-	// (RecordRun falls back to using the agent name as provider).
-	// In --full mode resultsToRecord is the MERGED Pass-1⊕Pass-2
-	// set; in --quick it's just Pass-1.
-	recordFindingsBestEffort(stderr, projectRoot, ictx.CacheKey, preset.Name, resultsToRecord, personaAdapters)
-	if synth != nil {
-		run.TotalCost += synth.Cost
-	}
-	if synthErr != nil {
-		fmt.Fprintf(stderr, "warning: synthesis: %v (using deterministic fallback markdown)\n", synthErr)
-	}
-	md := ""
-	if synth != nil {
-		md = synth.Markdown
-	}
-	if f.strict && md != "" && !overBudget {
-		filtered, lieCost, lieErr := swarm.LieToThem(ctx, md, synthAgent, f.perAgentBudget, f.timeout)
-		if lieErr != nil {
-			fmt.Fprintf(stderr, "warning: --strict lie-to-them filter failed: %v (keeping unfiltered draft)\n", lieErr)
-		} else {
-			md = filtered
-			run.TotalCost += lieCost
-		}
-	}
-	if f.maxCostUSD > 0 && run.TotalCost > f.maxCostUSD {
-		fmt.Fprintf(stderr, "warning: total cost $%.2f exceeded --max-cost $%.2f\n", run.TotalCost, f.maxCostUSD)
-	}
-	md = appendMarker(md, ictx.CacheKey)
-	if cerr := swarm.CacheRun(projectRoot, preset, ictx.CacheKey, results, md); cerr != nil {
-		fmt.Fprintf(stderr, "warning: cache write failed: %v\n", cerr)
-	}
-
-	// v0.8.3 dream graveyard auto-write. Only fires for the dream
-	// preset; other presets skip silently. Best-effort — failure
-	// stays in stderr, doesn't block the markdown render.
-	if preset.Name == "dream" {
-		// Resolve codebase fp the same way the recorder does.
-		cwd := projectRoot
-		if cwd == "" {
-			if wd, werr := os.Getwd(); werr == nil {
-				cwd = wd
-			}
-		}
-		fp := findings.Fingerprint(cwd)
-		// Lens order is the dream preset's selected lenses (from
-		// ictx.Body topic context — for now use the base 4-lens
-		// order since v0.8.3 doesn't yet thread the --lenses flag
-		// through here). v0.8.x can plumb the actual selected list
-		// for the lens-rotation rule to work fully.
-		// Use the actual selected lens list when populated (v0.9+
-		// dream cmd threads it through commonSwarmFlags). Falls back
-		// to base-4 for non-dream-cmd code paths (defensive).
-		lensOrder := f.dreamLenses
-		if len(lensOrder) == 0 {
-			lensOrder = swarm.DreamLensesBase()
-		}
-		path, gerr := WriteDreamSession(ictx.Body, fp, md, lensOrder, "swarm", f.mode == "full")
-		if gerr != nil {
-			fmt.Fprintf(stderr, "warning: dream graveyard write failed: %v\n", gerr)
-		} else {
-			fmt.Fprintf(stderr, "dream session archived → %s\n", path)
-		}
-	}
-
-	fmt.Fprint(out, md)
-	if f.postComment {
-		if ictx.PR == 0 {
-			fmt.Fprintln(stderr, "warning: --post-comment requested but no PR detected; skipping post")
-		} else if perr := swarm.PostOrUpdateComment(ctx, ictx.PR, md); perr != nil {
-			fmt.Fprintf(stderr, "warning: post comment failed: %v\n", perr)
-		} else {
-			fmt.Fprintf(stderr, "posted/updated PR comment on #%d\n", ictx.PR)
-		}
-	}
-	reportSwarmStderr(stderr, results, finished.Sub(start), run.TotalCost)
-	return nil
+	_, err := swarm.RunPipeline(ctx, opts)
+	return err
 }
 
 // confirmDreamFullModeCost is the v0.9 cost guard for `swarm dream

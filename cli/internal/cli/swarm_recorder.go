@@ -37,7 +37,7 @@ import (
 // summary text divergence is real. v0.7.x will move the recorder
 // below the debate block once we have signal on whether users hit
 // this divergence in practice.
-func recordFindingsBestEffort(stderr io.Writer, projectRoot, runID, preset string, results []swarm.AgentResult, personas []*personaAdapter) {
+func recordFindingsBestEffort(stderr io.Writer, projectRoot, runID, preset string, results []swarm.AgentResult, personas []*swarm.PersonaAdapter) {
 	// Cheap pre-check: nothing to record at all? Skip silently — we
 	// don't even want to open the DB for a 0-finding fan-out.
 	if !anyFindings(results) {
@@ -116,13 +116,13 @@ func anyFindings(results []swarm.AgentResult) bool {
 // uses to populate the `provider` column. Legacy v0.5 mode passes nil
 // adapters; RecordRun then falls back to using the agent name as the
 // provider, which is correct for native CLIs (claude/codex/gemini).
-func providerMap(personas []*personaAdapter) map[string]string {
+func providerMap(personas []*swarm.PersonaAdapter) map[string]string {
 	if len(personas) == 0 {
 		return nil
 	}
 	m := make(map[string]string, len(personas))
 	for _, p := range personas {
-		m[p.personaName] = p.providerName
+		m[p.PersonaName] = p.ProviderName
 	}
 	return m
 }
@@ -142,7 +142,7 @@ func warnFindings(stderr io.Writer, format string, args ...any) {
 // The map keys match AgentResult.Agent (persona name in v0.6+, native
 // CLI name in v0.5 legacy mode). swarm.weightFor falls back to 1.0
 // for missing keys, so partial maps are safe.
-func resolveSynthWeights(stderr io.Writer, projectRoot, preset string, results []swarm.AgentResult, personas []*personaAdapter) map[string]float64 {
+func resolveSynthWeights(stderr io.Writer, projectRoot, preset string, results []swarm.AgentResult, personas []*swarm.PersonaAdapter) map[string]float64 {
 	if !anyFindings(results) {
 		return nil
 	}
@@ -197,7 +197,7 @@ func resolveSynthWeights(stderr io.Writer, projectRoot, preset string, results [
 // returns nil so callers don't even compute the underlying queries.
 // (buildSynthPrompt also re-checks the killswitch — defense in
 // depth.)
-func resolveDreamLensWeights(stderr io.Writer, projectRoot, preset string, results []swarm.AgentResult, personas []*personaAdapter) map[string]float64 {
+func resolveDreamLensWeights(stderr io.Writer, projectRoot, preset string, results []swarm.AgentResult, personas []*swarm.PersonaAdapter) map[string]float64 {
 	if preset != "dream" {
 		return nil
 	}

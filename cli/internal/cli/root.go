@@ -33,6 +33,7 @@ func NewRootCmd() *cobra.Command {
 		newSuggestCmd(),
 		newDreamCmd(),
 		newEvalCmd(),
+		newAutopilotCmd(),
 	)
 	return root
 }

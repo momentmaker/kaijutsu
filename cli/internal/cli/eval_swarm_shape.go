@@ -7,14 +7,17 @@ package cli
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/momentmaker/kaijutsu/cli/internal/agents"
 	"github.com/momentmaker/kaijutsu/cli/internal/eval"
+	"github.com/momentmaker/kaijutsu/cli/internal/findings"
 	"github.com/momentmaker/kaijutsu/cli/internal/swarm"
 )
 
@@ -37,35 +40,106 @@ func (r *personaResolver) Resolve(ctx context.Context, name string) (eval.Target
 	return &nativeCliEvalAgent{name: swarm.AgentName(name), timeout: r.timeout, budget: r.budget}, nil
 }
 
-// presetModeResolver resolves "<preset>:<mode>" tuples. v0.10 Stage
-// 2 ships a placeholder that delegates to the preset's default
-// agent (claude); future iterations route through the full swarm
-// pipeline so --mode quick vs --mode full produces real lift data.
+// presetModeResolver resolves "<preset>:<mode>" tuples. v0.11.0 wires
+// real `swarm.RunPipeline` dispatch — each baseline / challenger side
+// runs a full swarm pipeline (privacy gate → consent → fan-out →
+// debate-if-full → synthesis → strict-if-set), and the synthesis
+// markdown becomes the eval-runner's "agent output" for that side.
+//
+// The v0.10 stub returned identical claude output regardless of
+// preset:mode pair; v0.11.0 makes the per-side outputs reflect the
+// actual preset + mode behavior. Eval reports finally show real lift.
 type presetModeResolver struct {
-	timeout time.Duration
-	budget  float64
-	stderrW interface {
+	timeout     time.Duration
+	budget      float64
+	projectRoot string
+	stderrW     interface {
 		Write(p []byte) (int, error)
 	}
-	warnedStub bool
 }
 
 func (r *presetModeResolver) Resolve(ctx context.Context, name string) (eval.TargetAgent, error) {
-	// Stage 2 stub: dispatch via claude regardless of preset:mode
-	// pair. Surfacing this loudly so users don't read green eval
-	// reports as "preset modes meaningfully differ" — they don't
-	// yet. Per v0.10 Stage 2 swarm pr-review feedback (claude finding):
-	// silent identical-side dispatch was the worst-case UX.
-	// Full integration with swarm.runSwarmPipeline is v0.10.x —
-	// needs the eval-runner to receive structured swarm.Synthesis
-	// outputs, not just text.
-	if !r.warnedStub && r.stderrW != nil {
-		r.warnedStub = true
-		fmt.Fprintf(r.stderrW,
-			"warning: preset/swarm-skill eval is a v0.10 STUB — both sides dispatch claude regardless of preset:mode (%q). Reports won't show real preset-mode lift until v0.10.x wires through the full swarm pipeline. Don't ship product decisions on this output.\n",
-			name)
+	// Parse "<preset>:<mode>"; default mode = "quick" when missing.
+	preset := name
+	mode := "quick"
+	if i := strings.Index(name, ":"); i > 0 {
+		preset = name[:i]
+		mode = name[i+1:]
 	}
-	return &nativeCliEvalAgent{name: swarm.AgentClaude, timeout: r.timeout, budget: r.budget}, nil
+	p, err := swarm.LoadPresetWithSkillOverrides(r.projectRoot, preset)
+	if err != nil {
+		return nil, fmt.Errorf("preset %q: %w", preset, err)
+	}
+	return &swarmPipelineEvalAgent{
+		preset:      p,
+		mode:        mode,
+		budget:      r.budget,
+		timeout:     r.timeout,
+		projectRoot: r.projectRoot,
+		stderrW:     r.stderrW,
+	}, nil
+}
+
+// swarmPipelineEvalAgent adapts a configured swarm pipeline (preset +
+// mode) into the eval.TargetAgent interface. Each Run dispatches a
+// fresh pipeline; the synthesis markdown becomes the side's output.
+type swarmPipelineEvalAgent struct {
+	preset      *swarm.Preset
+	mode        string
+	budget      float64
+	timeout     time.Duration
+	projectRoot string
+	stderrW     interface {
+		Write(p []byte) (int, error)
+	}
+}
+
+func (a *swarmPipelineEvalAgent) Name() swarm.AgentName {
+	return swarm.AgentName(fmt.Sprintf("%s:%s", a.preset.Name, a.mode))
+}
+
+func (a *swarmPipelineEvalAgent) Run(ctx context.Context, prompt string, budget float64) (string, error) {
+	// Build a prompt-input context from the eval prompt. Eval prompts
+	// are user-authored text, not diffs/files, so InputPrompt is the
+	// right kind. CacheKey hashes the (preset, prompt) pair so each
+	// (preset:mode, prompt) combo gets its own cache entry.
+	ictx := &swarm.InputContext{
+		Preset:    a.preset,
+		InputKind: swarm.InputPrompt,
+		Body:      swarm.CanonicalizePrompt(prompt),
+		CacheKey:  swarm.CacheKeyForPrompt(a.preset, prompt),
+	}
+	stderr := a.stderrW
+	if stderr == nil {
+		stderr = io.Discard
+	}
+	// Output goes to discard — eval-runner captures the synthesis
+	// markdown via Result.Markdown, not via stdout. Stderr stays
+	// connected so warnings (cost, telemetry, dream-archive) surface.
+	opts := swarm.PipelineOpts{
+		ProjectRoot:             a.projectRoot,
+		Preset:                  a.preset,
+		Input:                   ictx,
+		Mode:                    a.mode,
+		PerAgentBudget:          a.budget,
+		Timeout:                 a.timeout,
+		Yes:                     true, // non-interactive: eval runs are always headless
+		Stdout:                  io.Discard,
+		Stderr:                  stderr,
+		Stdin:                   strings.NewReader(""),
+		RecordFindings:          recordFindingsBestEffort,
+		ResolveSynthWeights:     resolveSynthWeights,
+		ResolveDreamLensWeights: resolveDreamLensWeights,
+		ArchiveDreamSession: func(topic, cwd, body string, lensOrder []string, mode string, full bool) (string, error) {
+			fp := findings.Fingerprint(cwd)
+			return WriteDreamSession(topic, fp, body, lensOrder, mode, full)
+		},
+	}
+	res, err := swarm.RunPipeline(ctx, opts)
+	if err != nil {
+		return "", err
+	}
+	return res.Markdown, nil
 }
 
 func newEvalPersonaCmd() *cobra.Command {
@@ -287,14 +361,16 @@ func runEvalSwarmShape(cmd *cobra.Command, cfg swarmShapeCfg) error {
 			challengerSide = suite.Kaijutsu.Personas[0].Challenger
 		}
 	case shapePreset:
-		opts.Resolver = &presetModeResolver{timeout: cfg.timeout, budget: cfg.perAgentBudget, stderrW: stderr}
+		root, _ := projectRoot()
+		opts.Resolver = &presetModeResolver{timeout: cfg.timeout, budget: cfg.perAgentBudget, projectRoot: root, stderrW: stderr}
 		res, err = eval.RunPresetSuite(cmd.Context(), suite, opts)
 		if err == nil && len(suite.Kaijutsu.Presets) > 0 {
 			baselineSide = suite.Kaijutsu.Presets[0].Baseline
 			challengerSide = suite.Kaijutsu.Presets[0].Challenger
 		}
 	case shapeSwarmSkill:
-		opts.Resolver = &presetModeResolver{timeout: cfg.timeout, budget: cfg.perAgentBudget, stderrW: stderr}
+		root, _ := projectRoot()
+		opts.Resolver = &presetModeResolver{timeout: cfg.timeout, budget: cfg.perAgentBudget, projectRoot: root, stderrW: stderr}
 		res, err = eval.RunSwarmSkillSuite(cmd.Context(), suite, opts)
 		if err == nil && len(suite.Kaijutsu.Swarm) > 0 {
 			baselineSide = suite.Kaijutsu.Swarm[0].Baseline

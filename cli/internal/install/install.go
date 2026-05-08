@@ -29,6 +29,20 @@ func Install(srcDir, installRoot string, activeAgents []string, sk *skill.Skill)
 		if err := os.MkdirAll(filepath.Dir(fullDest), 0755); err != nil {
 			return err
 		}
+		// v0.11.0: archive a pre-existing SKILL.md to .archived/SKILL.md
+		// before overwrite. Currently only autopilot needs this — v1
+		// users have local edits worth preserving across the v2
+		// replacement. Other skills that need this in the future can
+		// either special-case here or graduate to a generic
+		// `archive_on_overwrite: true` skill.yaml field.
+		if sk.Name == "autopilot" {
+			if err := archivePreExistingAutopilot(fullDest); err != nil {
+				// Best-effort: log to stderr would require plumbing;
+				// we silently continue. The install will proceed +
+				// overwrite without the archive backup.
+				_ = err
+			}
+		}
 		if err := os.RemoveAll(fullDest); err != nil {
 			return err
 		}
@@ -37,6 +51,32 @@ func Install(srcDir, installRoot string, activeAgents []string, sk *skill.Skill)
 		}
 	}
 	return nil
+}
+
+// archivePreExistingAutopilot copies a pre-existing SKILL.md at
+// fullDest/SKILL.md into a SIBLING dir (autopilot.archived/SKILL.md)
+// before the install pipeline RemoveAll's fullDest. Sibling-not-
+// child placement matters: putting the archive inside fullDest
+// would get nuked by the very RemoveAll that follows.
+//
+// Idempotent: if no existing SKILL.md, no-op. Safe across re-runs:
+// each call overwrites the prior archive so multiple v0.11.x
+// updates don't stack — only the most-recent pre-overwrite content
+// is preserved.
+func archivePreExistingAutopilot(fullDest string) error {
+	src := filepath.Join(fullDest, "SKILL.md")
+	body, err := os.ReadFile(src)
+	if os.IsNotExist(err) {
+		return nil // nothing to archive
+	}
+	if err != nil {
+		return err
+	}
+	archDir := fullDest + ".archived"
+	if err := os.MkdirAll(archDir, 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(archDir, "SKILL.md"), body, 0o644)
 }
 
 // Remove deletes the named skill from each install destination implied by

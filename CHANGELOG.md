@@ -4,6 +4,51 @@ All notable changes to kaijutsu (the registry + skills) and `jutsu` (the CLI). T
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-05-08
+
+Two converging features land in one release: **`swarm.RunPipeline` extraction** (closes the v0.10.1-deferred Stage 1 work — `eval preset` + `eval swarm-skill` ship real implementations instead of stubs) and **autopilot v2** (kaijutsu-distributed intent-to-PR pipeline replacing the `~/.claude/skills/autopilot` v1 skill). The extraction is load-bearing for autopilot v2's reverse-drift gate (Phase 5 calls `swarm.RunPipeline` directly).
+
+Spec: `docs/specs/2026-05-07-v0.11.0-autopilot.md`. Plan: `IMPLEMENTATION_PLAN.md` (3 stages).
+
+### Added
+
+- **`swarm.RunPipeline(ctx, opts) (*Result, error)`** — non-cobra public API for the swarm pipeline. Lives in `cli/internal/swarm/pipeline.go`. Accepts a structured `PipelineOpts` (mirrors `commonSwarmFlags` + I/O writers + callback fields for cli-pkg-only helpers that depend on `findings` pkg). All v0.6/v0.7/v0.8/v0.9/v0.10 swarm behavior preserved verbatim — privacy gate, consent flow, debate, lie-to-them filter, lens rotation, cache, persona resolution, telemetry warning, replay path. Used by the cobra `runSwarmPipeline` adapter, by `eval preset` / `eval swarm-skill`, and by autopilot v2's reverse-drift gate.
+- **Stage 2 stub replacement**: `eval preset` + `eval swarm-skill` now invoke real `swarm.RunPipeline` per side. The v0.10 stub stderr warning is gone. Per-side `output.txt` artifacts diverge semantically (synthesis findings_count differs between sides) when the underlying preset:mode pair differs.
+- **`autopilot` skill v2** (`skills/core/autopilot/`) — distributed via `jutsu install autopilot`. Replaces the `~/.claude/skills/autopilot` v1 skill. 6-phase pipeline (BRAINSTORM → SPEC → PLAN → BUILD → SHIP → LEARN), 2 gates total (post-brainstorm + GitHub PR review), multi-agent adversarial review at every artifact stage, anti-sycophancy via `jutsu swarm dream` at brainstorm, reverse-drift gate before PR opens (informational, tagged on PR). Cost-capped: $20 soft default, $100 hard ceiling in skill code, env-var override per-shell only.
+- **`jutsu autopilot` cobra command group** (`cli/internal/cli/autopilot.go`) — `init` (write `.kaijutsu/autopilot.yaml` from baked-in defaults), `status` (read state file), `abort` (clean state), `resume` (read state, print resume target), `run "<intent>"` (non-interactive entry). The `/autopilot` slash command remains the primary interactive entry point inside an agent CLI session.
+- **Cost cap layered model**:
+  - Soft cap: `.kaijutsu/autopilot.yaml::cost.max_total_usd` (default $20) + `--max-cost N` CLI flag.
+  - Hard ceiling: `MaxAutopilotCostUSD = 100.0` constant in `cli/internal/cli/autopilot.go`. Cannot be raised by editing yaml. `--max-cost` rejected if N exceeds ceiling.
+  - Env override: `KAIJUTSU_AUTOPILOT_HARD_CAP_OVERRIDE=N` raises ceiling per-shell. Read once at autopilot start.
+- **Test mode**: `KAIJUTSU_AUTOPILOT_TEST_MODE=1` writes the planned PR (title, body, branch, labels) to `.kaijutsu/autopilot-pr.json` instead of invoking `gh pr create`. CI-friendly without requiring a live GitHub remote.
+- **3 new built-in personas** in `cli/internal/agents/builtin_personas.go` — all CLI-backed (claude/gemini/codex), no HTTP API keys required:
+  - `claim-auditor-claude` — load-bearing-claim audit lens.
+  - `cross-file-gemini` — cross-file-consistency lens.
+  - `perf-purist-codex` — algorithmic-complexity lens.
+- **Pre-existing autopilot SKILL.md archival** — when `jutsu install autopilot` runs and `~/.claude/skills/autopilot/SKILL.md` already exists, the install pipeline copies the existing file to a SIBLING dir (`autopilot.archived/SKILL.md`) before the v2 overwrite. Sibling-not-child placement matters because the install does `RemoveAll(fullDest)` before copy — a child `.archived/` would be nuked.
+
+### Changed
+
+- **`cli/internal/cli/swarm.go::runSwarmPipeline`**: 470 LOC inline implementation → 50 LOC cobra adapter. Real orchestration moved into `swarm.RunPipeline`; the adapter just maps cobra → `PipelineOpts` and wires cli-pkg helpers (findings recorder, dream archive) via callback fields.
+- **Moved cli pkg → swarm pkg** (with exported names): `personaAdapter` → `PersonaAdapter`, `assemblePersonaJobs` → `AssemblePersonaJobs`, `pickPersonaSynthesizer` → `PickPersonaSynthesizer`, `stampDriverKind` → `StampDriverKind`, `overlayPersonaCosts` → `OverlayPersonaCosts`, `userSentinel` → `UserSentinel`, plus `BuildEstimateProjections`, `EstimateOpts`, `ListPersonas`, `ListProviders`, `ReportSwarmStderr`. Persona-dispatch tests moved with the source.
+- **`init_agents_fragment` marker version**: `0.10.1` → `0.11.0`. Older versions still detected via the version-agnostic prefix.
+
+### Notes
+
+- **Doc-review on spec caught 14 findings**, all incorporated before implementation: undefined v0.6+ behaviors → 8-row pinning table; approved-spec capture defined in state file; PR creation automatable in CI via test-mode hook; semantic divergence replaces brittle byte-equality assertion; persona/env caching documented; reverse-drift uses `swarm.RunPipeline` (not cobra) per Stage 1's architectural intent; layered cost-ceiling threat-surface honestly framed (skill code is signed at install via cosign, yaml is unsigned per-project — different defenses).
+- **Doc-review on plan caught 10 findings**, 8 incorporated: removed circular-dep fallback path (Stage 1 is load-bearing for Stages 2+3); added `jutsu autopilot resume` CLI command; clarified `state.approved_spec_path` source; dropped v1 detection heuristic in favor of file-presence-only archival; cost-ceiling abstraction-leak resolved (const lives in Go, skill markdown documents only); idempotency wording corrected to "non-destructive: refuses overwrite without --force"; Decision #6 reference repaired; `--max-cost` flag test added. 2 prompt-injection false-positives skipped (plain markdown headers).
+- **Stage 1 polish caught 2 fixes**: dropped dead `EstimateFn` callback in `swarmPipelineEvalAgent.Run`; added `swarm/pipeline_test.go` covering the 5 load-bearing branches missing per Stage 1 success criteria.
+- **Adversarial dream pass on the v2 design** (5 load-bearing concerns → all incorporated): cascading errors with no firewall under one-gate model → kept 2-gate default; multi-agent consensus is correlation filter not correctness oracle → never auto-apply doc-review findings; $5/run cost cap is fiction → raised to $20 soft + $100 hard; reviewer/generator boundary preserved (report-only); prompt-injection blast radius compounds → hard ceiling lives in skill code, not yaml.
+
+### Deferred to v0.12+
+
+- Skill-aware orchestration (`jutsu suggest "<phase intent>"` integration).
+- Forkable build graph (multiple spec/plan branches at gates).
+- Async gates (review on phone, autopilot resumes).
+- Multi-candidate impl at final gate.
+- Self-improving autopilot via PR-review feedback loop.
+- Runtime behavior validation gate (current "success" = PR opened, not feature works).
+
 ## [0.10.1] — 2026-05-07
 
 Polish patch. Tier-A/B subset of the agent-native CLI audit (per [trevinsays.com/p/10-principles-for-agent-native-clis](https://trevinsays.com/p/10-principles-for-agent-native-clis)) plus the v0.10.x deferral list re-shaped: live judge dispatch in CI is dropped from the roadmap (CLI > API key — most users have paid Pro/Max/Plus subscriptions on the native CLIs; CI judge dispatch via injected `ANTHROPIC_API_KEY` would silently re-charge them via a separate billing channel). Spec: `docs/specs/2026-05-07-v0.10.1-polish.md`.
