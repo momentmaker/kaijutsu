@@ -192,6 +192,26 @@ See [CHANGELOG.md](./CHANGELOG.md#0100--2026-05-08) for the full feature list, S
 - **`--dry-run` on `install`/`upgrade`/`remove`/`publish`**. Each command resolves + validates as normal but skips every filesystem, lockfile, and network mutation. Per the agent-native CLI [principle #4](https://trevinsays.com/p/10-principles-for-agent-native-clis).
 - **Error messages enumerate valid options** when rejecting an enum value (preset name, persona name, agent name, hook event). Self-correct in one retry instead of trial-and-erroring against `--help`.
 
+### v0.11.0 — `swarm.RunPipeline` extraction + autopilot v2
+
+Two converging features. The `runSwarmPipeline` extraction (470 LOC inline → 50 LOC cobra adapter + reusable public API) closes the v0.10.1-deferred Stage 1 work; `eval preset` and `eval swarm-skill` ship real implementations. Autopilot v2 lands as a distributed core skill, replacing the user-scope v1.
+
+```bash
+# autopilot v2 — distributed via kaijutsu
+jutsu install autopilot                     # archives any pre-existing v1 to .archived/
+jutsu autopilot init                        # writes .kaijutsu/autopilot.yaml from defaults
+# Inside an agent CLI session:
+/autopilot add a feature flag system        # 6-phase pipeline → opens PR
+```
+
+- **6-phase pipeline**: brainstorm (anti-sycophancy via dream) → spec → doc-review → plan → doc-review → build/polish per stage → final swarm pr-review → reverse-drift gate → PR.
+- **2 gates total**: post-brainstorm + PR review on GitHub. Adversarial multi-agent review at every artifact replaces single-reviewer model.
+- **Cost-capped**: $20 soft default, $100 hard ceiling in skill code. Env-var override per-shell only — yaml cannot raise the ceiling.
+- **Reverse-drift gate**: spec drift between approved spec and pre-PR branch diff surfaces in PR description; PR labeled `autopilot-drift`. Informational, not blocking.
+- **3 new built-in personas** ship with kaijutsu (CLI-backed, no API keys): `claim-auditor-claude`, `cross-file-gemini`, `perf-purist-codex`.
+
+See [CHANGELOG.md](./CHANGELOG.md#0110--2026-05-08) for the full feature list, doc-review fixes, dream-design pass, and v0.12+ deferral list.
+
 ## Trust model
 
 - **Core skills** (this monorepo, `skills/core/`) are signed at release time using [Sigstore](https://www.sigstore.dev/) keyless signing. The CLI verifies the signature and the GitHub identity of the signer before installing.

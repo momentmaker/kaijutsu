@@ -34,6 +34,8 @@ func TestResolve_BuiltinPersonasRegistered(t *testing.T) {
 		"default-claude", "default-codex", "default-gemini",
 		"paranoid-security-claude", "pragmatic-codex",
 		"architecture-purist-gemini", "brainstorm-creative-claude",
+		// v0.11.0 additions
+		"claim-auditor-claude", "cross-file-gemini", "perf-purist-codex",
 	}
 	for _, name := range wantNames {
 		p, ok := r.Personas[name]
@@ -50,6 +52,43 @@ func TestResolve_BuiltinPersonasRegistered(t *testing.T) {
 	for _, n := range []string{"default-claude", "default-codex", "default-gemini"} {
 		if r.Personas[n].SystemPrompt != "" {
 			t.Errorf("default persona %q has non-empty system_prompt; cache-key compat broken", n)
+		}
+	}
+	// v0.11.0 additions must have non-empty system_prompts (each is
+	// a distinct lens; an empty prompt would defeat the purpose).
+	for _, n := range []string{"claim-auditor-claude", "cross-file-gemini", "perf-purist-codex"} {
+		p, ok := r.Personas[n]
+		if !ok {
+			continue // already covered above
+		}
+		if p.SystemPrompt == "" {
+			t.Errorf("v0.11.0 persona %q has empty system_prompt; lens differentiation broken", n)
+		}
+	}
+}
+
+// TestResolve_NewV011BuiltinPersonas pins the provider routing for
+// the 3 v0.11.0 additions. Each must point to its expected
+// CLI-backed provider so users without HTTP API keys get all 3
+// lenses for free via paid CLI subscriptions.
+func TestResolve_NewV011BuiltinPersonas(t *testing.T) {
+	r, err := Resolve(&GlobalConfig{}, &ProjectConfig{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := map[string]string{
+		"claim-auditor-claude": "claude",
+		"cross-file-gemini":    "gemini",
+		"perf-purist-codex":    "codex",
+	}
+	for name, wantProvider := range cases {
+		p, ok := r.Personas[name]
+		if !ok {
+			t.Errorf("v0.11.0 persona %q not registered", name)
+			continue
+		}
+		if p.Provider != wantProvider {
+			t.Errorf("persona %q provider = %q, want %q", name, p.Provider, wantProvider)
 		}
 	}
 }

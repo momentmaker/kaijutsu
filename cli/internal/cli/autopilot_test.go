@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -332,5 +333,93 @@ func TestAutopilotResolveHardCap_IgnoresNegativeEnv(t *testing.T) {
 	t.Setenv(AutopilotEnvHardCapOverride, "-1")
 	if got := resolveHardCap(); got != MaxAutopilotCostUSD {
 		t.Errorf("negative env should fall back; got %v", got)
+	}
+}
+
+// TestAutopilotRun_TestModeWritesPRJSON pins the CI test-mode
+// contract from the spec: with KAIJUTSU_AUTOPILOT_TEST_MODE=1, the
+// run command writes a planned-PR JSON to .kaijutsu/autopilot-pr.json
+// instead of invoking gh. CI tests assert against this file.
+func TestAutopilotRun_TestModeWritesPRJSON(t *testing.T) {
+	tmp := t.TempDir()
+	prev, _ := os.Getwd()
+	mustChdir(t, tmp)
+	defer os.Chdir(prev)
+
+	t.Setenv(AutopilotEnvTestMode, "1")
+
+	cmd := newAutopilotCmd()
+	cmd.SetArgs([]string{"run", "add a hello world endpoint", "--yes", "--max-cost", "10"})
+	var stdout bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("test-mode run: %v\nstdout: %s", err, stdout.String())
+	}
+
+	path := filepath.Join(tmp, ".kaijutsu", "autopilot-pr.json")
+	body, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read planned PR: %v", err)
+	}
+	var planned struct {
+		Intent      string   `json:"intent"`
+		Title       string   `json:"title"`
+		Branch      string   `json:"branch"`
+		Labels      []string `json:"labels"`
+		MaxCostUSD  float64  `json:"max_cost_usd"`
+		HardCeiling float64  `json:"hard_ceiling_usd"`
+		TestMode    bool     `json:"test_mode"`
+	}
+	if err := json.Unmarshal(body, &planned); err != nil {
+		t.Fatalf("parse planned PR: %v\nbody: %s", err, body)
+	}
+	if planned.Intent != "add a hello world endpoint" {
+		t.Errorf("planned.Intent = %q", planned.Intent)
+	}
+	if !strings.HasPrefix(planned.Title, "autopilot:") {
+		t.Errorf("planned.Title = %q, want prefix 'autopilot:'", planned.Title)
+	}
+	if planned.MaxCostUSD != 10 {
+		t.Errorf("planned.MaxCostUSD = %v, want 10", planned.MaxCostUSD)
+	}
+	if planned.HardCeiling != MaxAutopilotCostUSD {
+		t.Errorf("planned.HardCeiling = %v, want %v", planned.HardCeiling, MaxAutopilotCostUSD)
+	}
+	if !planned.TestMode {
+		t.Error("planned.TestMode must be true in test mode")
+	}
+	if planned.Branch == "" {
+		t.Error("planned.Branch must be non-empty")
+	}
+	if !strings.Contains(stdout.String(), "test-mode: planned PR written to") {
+		t.Errorf("stdout missing test-mode marker; got %q", stdout.String())
+	}
+}
+
+// TestAutopilotRun_NonTestModeDoesNotWritePRJSON pins the contract
+// boundary: without the env var, no .kaijutsu/autopilot-pr.json is
+// produced. Production runs go through the agent CLI orchestration
+// path, not this CLI command.
+func TestAutopilotRun_NonTestModeDoesNotWritePRJSON(t *testing.T) {
+	tmp := t.TempDir()
+	prev, _ := os.Getwd()
+	mustChdir(t, tmp)
+	defer os.Chdir(prev)
+
+	t.Setenv(AutopilotEnvTestMode, "")
+
+	cmd := newAutopilotCmd()
+	cmd.SetArgs([]string{"run", "test", "--yes", "--max-cost", "5"})
+	var stdout bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("non-test-mode run: %v", err)
+	}
+
+	path := filepath.Join(tmp, ".kaijutsu", "autopilot-pr.json")
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Errorf("non-test-mode should not produce planned PR JSON; stat err = %v", err)
 	}
 }

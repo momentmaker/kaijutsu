@@ -13,6 +13,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -290,9 +291,15 @@ skill (running inside an agent CLI session).`,
 }
 
 // newAutopilotRunCmd is the non-interactive entry point. Real
-// orchestration lives in the skill body; this CLI command exists
-// for scripted use + CI test mode (KAIJUTSU_AUTOPILOT_TEST_MODE=1
-// writes the planned PR to JSON instead of invoking gh).
+// orchestration lives in the skill body (running inside an agent
+// CLI session via `/autopilot`); this CLI command exists for
+// scripted use + CI test mode.
+//
+// In test mode (KAIJUTSU_AUTOPILOT_TEST_MODE=1), the command writes
+// a planned-PR JSON to .kaijutsu/autopilot-pr.json instead of
+// invoking gh. CI asserts against that file. Production runs
+// (env var unset) print a one-line marker + tell the user to use
+// /autopilot for the actual orchestration.
 func newAutopilotRunCmd() *cobra.Command {
 	var (
 		yes     bool
@@ -318,14 +325,11 @@ func newAutopilotRunCmd() *cobra.Command {
 			if !yes {
 				return errors.New("--yes required for non-interactive run; for interactive runs invoke /autopilot inside an agent CLI session")
 			}
-			// The cobra command is intentionally a thin entry point.
-			// Real orchestration is performed by the autopilot skill,
-			// which the agent CLI invokes when the user types /autopilot.
-			// This command exists for CI test mode + scripted recovery
-			// scenarios where the agent isn't in the loop. Per spec:
-			// docs/specs/2026-05-07-v0.11.0-autopilot.md.
 			out := cmd.OutOrStdout()
 			testMode := os.Getenv(AutopilotEnvTestMode) == "1"
+			if testMode {
+				return writeTestModePlannedPR(cmd, intent, maxCost, ceiling)
+			}
 			fmt.Fprintf(out, "autopilot run: intent=%q max_cost=$%.2f hard_ceiling=$%.2f test_mode=%v\n",
 				intent, maxCost, ceiling, testMode)
 			fmt.Fprintln(out, "(orchestration is performed by the autopilot skill running inside an agent CLI session)")
@@ -335,4 +339,51 @@ func newAutopilotRunCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "non-interactive: skip Gate 1 brainstorm approval")
 	cmd.Flags().Float64Var(&maxCost, "max-cost", 20.0, "soft cap on total run spend in USD (cannot exceed the hard ceiling)")
 	return cmd
+}
+
+// writeTestModePlannedPR writes a planned-PR JSON describing what
+// the autopilot run WOULD have submitted. CI tests assert against
+// this file rather than against a real GitHub API call. The shape
+// mirrors gh's pr-create flag set so future versions can add fields
+// (labels for autopilot-drift, body for the synthesized review)
+// without breaking consumers.
+func writeTestModePlannedPR(cmd *cobra.Command, intent string, maxCost, ceiling float64) error {
+	root, err := projectRoot()
+	if err != nil {
+		return fmt.Errorf("locate project root: %w", err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, ".kaijutsu"), 0o755); err != nil {
+		return fmt.Errorf("create .kaijutsu/: %w", err)
+	}
+	plannedPR := struct {
+		Intent       string   `json:"intent"`
+		Title        string   `json:"title"`
+		Body         string   `json:"body"`
+		Branch       string   `json:"branch"`
+		Labels       []string `json:"labels"`
+		MaxCostUSD   float64  `json:"max_cost_usd"`
+		HardCeiling  float64  `json:"hard_ceiling_usd"`
+		TestMode     bool     `json:"test_mode"`
+		DriftFindings int      `json:"drift_findings"`
+	}{
+		Intent:       intent,
+		Title:        "autopilot: " + intent,
+		Body:         "(test-mode placeholder: real autopilot run via /autopilot inside an agent CLI synthesizes the body)",
+		Branch:       "feat/autopilot-test-mode",
+		Labels:       []string{},
+		MaxCostUSD:   maxCost,
+		HardCeiling:  ceiling,
+		TestMode:     true,
+		DriftFindings: 0,
+	}
+	body, err := json.MarshalIndent(plannedPR, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal planned PR: %w", err)
+	}
+	path := AutopilotPlannedPRPath(root)
+	if err := os.WriteFile(path, body, 0o644); err != nil {
+		return fmt.Errorf("write %s: %w", path, err)
+	}
+	fmt.Fprintf(cmd.OutOrStdout(), "test-mode: planned PR written to %s\n", path)
+	return nil
 }
