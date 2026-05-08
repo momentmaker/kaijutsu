@@ -1,0 +1,23 @@
+name: autopilot
+version: 2.0.0
+license: MIT
+layout: rich
+description: "Intent-to-PR pipeline. Multi-agent adversarial review at every artifact stage; cost-capped; reverse-drift gate. Replaces the v1 autopilot skill."
+author: "rubberduck <zendosoul@gmail.com>"
+homepage: https://kaijutsu.dev/skills/autopilot
+repository: https://github.com/momentmaker/kaijutsu
+
+agents: [claude, codex, gemini]
+
+shared: [references, runbooks]
+
+permissions:
+  bash: true
+  network: true
+  fs-write: scoped
+
+deps:
+  skills: []
+
+trust:
+  expected-signer: kaijutsu-core@github
