@@ -40,6 +40,8 @@ before the synthesizer.`,
 	cmd.AddCommand(newSwarmRefactorPlanCmd())
 	cmd.AddCommand(newSwarmSecurityAuditCmd())
 	cmd.AddCommand(newSwarmReverseCmd())
+	// v0.12.0 Tier A presets
+	cmd.AddCommand(newSwarmTestGapCmd())
 	return cmd
 }
 
