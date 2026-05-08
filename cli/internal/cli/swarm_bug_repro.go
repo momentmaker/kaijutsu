@@ -131,7 +131,7 @@ func readBugReproFiles(paths []string) (string, error) {
 			b.WriteString("\n")
 			continue
 		}
-		err = filepath.Walk(root, func(p string, d os.FileInfo, walkErr error) error {
+		err = filepath.WalkDir(root, func(p string, d os.DirEntry, walkErr error) error {
 			if walkErr != nil {
 				return walkErr
 			}
@@ -141,7 +141,7 @@ func readBugReproFiles(paths []string) (string, error) {
 				}
 				return nil
 			}
-			if !d.Mode().IsRegular() {
+			if !d.Type().IsRegular() {
 				return nil
 			}
 			body, err := os.ReadFile(p)

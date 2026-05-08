@@ -120,7 +120,20 @@ func readTestsContent(path string) ([]byte, error) {
 		return nil, err
 	}
 	if !info.IsDir() {
-		return os.ReadFile(path)
+		body, err := os.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+		// Always emit the header so single-file + directory paths
+		// produce uniformly-shaped prompt content. Mirrors
+		// readBugReproFiles convention; gives the agent a stable
+		// place to anchor scenario citations regardless of input
+		// shape.
+		var b []byte
+		b = append(b, []byte("// === "+filepath.Base(path)+" ===\n")...)
+		b = append(b, body...)
+		b = append(b, '\n')
+		return b, nil
 	}
 	var b strings.Builder
 	err = filepath.WalkDir(path, func(p string, d fs.DirEntry, walkErr error) error {

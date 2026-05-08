@@ -115,6 +115,31 @@ func TestReadBugReproFiles_SingleFile(t *testing.T) {
 	}
 }
 
+// TestSwarmBugRepro_RejectsOversizeFiles pins the 200 KB cap on
+// --files content (Decision #8). Final-pr-review caught this
+// missing.
+func TestSwarmBugRepro_RejectsOversizeFiles(t *testing.T) {
+	tmp := t.TempDir()
+	bigBody := strings.Repeat("a", MaxBugReproFilesBytes+1024)
+	bigPath := filepath.Join(tmp, "big.go")
+	if err := os.WriteFile(bigPath, []byte(bigBody), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := newSwarmBugReproCmd()
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	cmd.SetErr(&buf)
+	cmd.SetArgs([]string{"a real bug", "--files", bigPath})
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected error for oversize --files content")
+	}
+	if !strings.Contains(err.Error(), "exceeds") {
+		t.Errorf("error should mention the size cap; got: %v", err)
+	}
+}
+
 // TestReadBugReproFiles_DirectoryRecursive walks a directory +
 // concatenates all regular files with relative-path headers.
 func TestReadBugReproFiles_DirectoryRecursive(t *testing.T) {

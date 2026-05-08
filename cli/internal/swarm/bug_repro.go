@@ -27,7 +27,7 @@ var bugReproPreset = Preset{
 	SeverityVocab: []Severity{SeverityBlocker, SeverityIssue, SeverityMinor, SeverityInfo},
 	DefaultPrompt: bugReproDefaultPrompt,
 	Synthesizer:   bugReproSynthesizer,
-	Debate:        prReviewPreset.Debate,
+	Debate:        genericDebateTemplate, // artifact-agnostic — input is a bug description, not a PR
 }
 
 // bugReproDefaultPrompt is the no-files-context fallback. Used when

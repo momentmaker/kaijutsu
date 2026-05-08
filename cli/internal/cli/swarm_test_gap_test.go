@@ -86,8 +86,9 @@ func TestSwarmTestGap_RejectsUnreadableTests(t *testing.T) {
 	}
 }
 
-// TestReadTestsContent_File reads a single file and returns the
-// bytes verbatim (no header injection for single-file mode).
+// TestReadTestsContent_File reads a single file. v0.12.0 final
+// pr-review: emit the header even for single-file inputs (mirrors
+// readBugReproFiles for prompt-shape consistency across presets).
 func TestReadTestsContent_File(t *testing.T) {
 	tmp := t.TempDir()
 	path := filepath.Join(tmp, "x_test.go")
@@ -99,8 +100,11 @@ func TestReadTestsContent_File(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(got) != body {
-		t.Errorf("file body mismatch: got %q, want %q", got, body)
+	if !strings.Contains(string(got), "// === x_test.go ===") {
+		t.Errorf("expected single-file header; got %q", got)
+	}
+	if !strings.Contains(string(got), body) {
+		t.Errorf("expected file body; got %q", got)
 	}
 }
 
@@ -132,6 +136,37 @@ func TestReadTestsContent_DirectoryWithHeaders(t *testing.T) {
 		if !strings.Contains(string(got), want) {
 			t.Errorf("output missing %q; got %q", want, got)
 		}
+	}
+}
+
+// TestSwarmTestGap_RejectsOversizeInput pins the spec Decision #8
+// 200 KB cap. With a tests directory that exceeds the cap, the
+// cobra layer should error with the narrow-with-smaller-path
+// hint BEFORE dispatching the swarm. Final-pr-review caught this
+// missing.
+func TestSwarmTestGap_RejectsOversizeInput(t *testing.T) {
+	tmp := t.TempDir()
+	codePath := filepath.Join(tmp, "code.go")
+	if err := os.WriteFile(codePath, []byte("package x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Build a tests dir with > 200 KB of content.
+	bigBody := strings.Repeat("a", MaxTestsContentBytes+1024)
+	if err := os.WriteFile(filepath.Join(tmp, "big_test.go"), []byte(bigBody), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := newSwarmTestGapCmd()
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	cmd.SetErr(&buf)
+	cmd.SetArgs([]string{"--code", codePath, "--tests", tmp})
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected error for oversize tests content")
+	}
+	if !strings.Contains(err.Error(), "exceeds") {
+		t.Errorf("error should mention the size cap; got: %v", err)
 	}
 }
 

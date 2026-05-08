@@ -118,4 +118,5 @@ func init() {
 	// v0.12.0 Tier A presets
 	defaultRegistry.Register(&testGapPreset)
 	defaultRegistry.Register(&bugReproPreset)
+	defaultRegistry.Register(&codeArchaeologyPreset)
 }

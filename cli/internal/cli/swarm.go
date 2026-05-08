@@ -43,6 +43,7 @@ before the synthesizer.`,
 	// v0.12.0 Tier A presets
 	cmd.AddCommand(newSwarmTestGapCmd())
 	cmd.AddCommand(newSwarmBugReproCmd())
+	cmd.AddCommand(newSwarmCodeArchaeologyCmd())
 	return cmd
 }
 

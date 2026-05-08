@@ -199,7 +199,14 @@ and prepended to your output; do NOT duplicate them.
 REVIEWERS' FINDINGS:
 %s
 `,
-	Debate: `You previously reviewed a PR. Here are the findings from your peer
+	Debate: prReviewDebateTemplate,
+}
+
+// prReviewDebateTemplate is the Pass-2 critique prompt for
+// pr-review. Per-preset Debate templates that share critique-mode
+// shape but want preset-specific framing reference this OR
+// genericDebateTemplate (artifact-agnostic).
+const prReviewDebateTemplate = `You previously reviewed a PR. Here are the findings from your peer
 reviewers, plus your own. Your job: critique the others.
 
 For each peer finding:
@@ -217,8 +224,34 @@ YOUR ORIGINAL FINDINGS:
 
 PEERS' FINDINGS:
 %s
-`,
-}
+`
+
+// genericDebateTemplate is artifact-agnostic — used by presets
+// whose Pass-2 debate doesn't have a preset-specific framing
+// (test-gap, bug-repro, code-archaeology). Same critique-mode
+// shape as prReview Debate, but says "artifact" instead of "PR"
+// so agents don't hallucinate diff/code-line references when the
+// preset's input was actually a bug description or a tests file.
+const genericDebateTemplate = `You previously reviewed an artifact and produced findings. Here
+are the findings from your peer reviewers, plus your own. Your
+job: critique the others.
+
+For each peer finding:
+- If you agree, add it to your kept-findings list with confidence boosted.
+- If you disagree (the finding is wrong, overcounted, or overblown),
+  add it to your rejected list with a brief reason.
+- Add any NEW findings the peers' reviews surfaced that you missed.
+
+Return ONLY a JSON array matching the original findings schema, where
+the reasoning field includes "[agreed with peer X]" or "[disputes peer
+X: <reason>]" markers when applicable.
+
+YOUR ORIGINAL FINDINGS:
+%s
+
+PEERS' FINDINGS:
+%s
+`
 
 const prReviewSharedHeader = `You are reviewing a code change. Return ONLY a JSON array of findings.
 Schema for each finding:

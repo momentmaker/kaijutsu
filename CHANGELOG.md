@@ -4,6 +4,41 @@ All notable changes to kaijutsu (the registry + skills) and `jutsu` (the CLI). T
 
 ## [Unreleased]
 
+## [0.12.0] — 2026-05-08
+
+Tier A swarm presets — three new presets that share a structural signature: **hypothesis generation + cross-agent ranking by evidence**. Multi-agent disagreement IS the differentiator (single-agent produces the obvious answer + misses adversarial angles).
+
+Picks survived a `jutsu swarm dream --mode full --lenses all` adversarial pass on 7 candidates. Spec: `docs/specs/2026-05-08-v0.12.0-tier-a-presets.md`.
+
+### Added
+
+- **`jutsu swarm test-gap --code <path> --tests <path>`** — surfaces failure scenarios MISSING from existing tests. Multi-agent imagines edge cases / races / resource exhaustion / malformed input / integration boundaries / state issues; synthesizer clusters by category + ranks by severity + corroboration count. Pairs with `/polish`: polish ensures tests pass, test-gap ensures they cover.
+- **`jutsu swarm bug-repro "<bug description>" [--files <paths>]`** — vague bug → ranked repro hypotheses across categories (state / race / env / input / version) + minimal-repro steps for top hypothesis. Differs from brainstorm (generates SOLUTIONS) and pr-review (hunts BUGS in a diff). Bug-repro reasons from a bug REPORT — symptoms only.
+- **`jutsu swarm code-archaeology --code <path> [--git-log <since>]`** — explain WHY legacy code looks the way it does. Multi-agent generates competing historical-context theories (workaround / era-pattern / abandoned-migration / perf-opt / security-mitigation / accidental-complexity) with evidence citations from git history; synthesizer marks theories as corroborated / single-source / contested. Use BEFORE refactoring legacy code; surfaces the "why is this weird" answer faster than reading commit history manually.
+- **3 new public APIs** in `cli/internal/swarm/`: `BuildTestGapPrompt(testsContent)`, `BuildBugReproPrompt(filesContent)`, `BuildCodeArchaeologyPrompt(historyContent)`. All follow the v0.9 reverse-preset two-slot pattern (`{{PLACEHOLDER}}` via `strings.Replace` + literal `%` escaped to `%%` to protect downstream `fmt.Sprintf` from format-directive interpretation — the v0.8 dreamLensWild safety pattern).
+- **`fetchGitLog`** in `cli/internal/cli/swarm_code_archaeology.go` — best-effort git-log fetch with graceful degradation per spec Decision #9: failures (not a git repo, gh not on PATH, no commits) yield empty history + stderr warning, NOT a hard error. 50 KB cap on captured log content (independent of 200 KB code cap).
+
+### Changed
+
+- **`init_agents_fragment` marker version**: `0.11.0` → `0.12.0`. Older versions still detected via the version-agnostic prefix.
+
+### Notes
+
+- **Dream-survival framing**: 7 candidates entered (`dep-review`, `api-review`, `test-gap`, `migrate`, `postmortem`, `code-archaeology`, `bug-repro`); 3 survived. Killed: `dep-review` (high-cost vibes-check on low-entropy data — deterministic tools win), `api-review` (commodity, IDE-native by 2028 per dream's time lens). Deferred: `migrate` (too high-stakes for a v0.12 minor), `postmortem` (harm-vector flagged: "authoritative blame reports enabling targeted harassment" — needs design before shipping).
+- **Severity vocab consistency**: all 3 new presets share pr-review/reverse vocab `[blocker, issue, minor, info]` for cross-preset coherence. For code-archaeology specifically, severity means "trust this theory" (blocker = load-bearing, must verify before refactoring) rather than "code-quality severity".
+- **Confidence threshold default 0.30** (matches reverse). Hypothesis-generation surfaces SPECULATIVE findings; lower threshold admits them; the synthesizer's ranking + the user's filter via the confidence column do the gatekeeping. pr-review's 0.55 default would over-filter many of test-gap's "what if there's a race here?" findings.
+- **Doc-review** caught 13 spec findings + 13 plan findings; all incorporated pre-implementation. Notable: `InputKind` clarification (it names dispatch shape, not totality of bytes — auxiliary `--tests` / `--files` / `--git-log` content bakes into prompt at cobra layer, matches reverse's `--spec` pattern). 200 KB combined-input cap (spec Decision #8) + 50 KB git-log cap (Decision #9) + bug-description max 8 KB.
+- **34 new tests** across 6 test files: 7 swarm + 7 cli per preset roughly, covering preset registration, prompt-slot pattern, severity vocab, two-slot escape safety, empty-input fallback, cobra wiring, validation, file-walking, hidden-dir skip, git-log graceful degradation, real-git-repo happy path.
+- **Dream lens-blindspot warnings flagged but accepted**: cross-corpus diversity premise possibly self-confirming under RLHF convergence; v0.12.x will run controlled A/B (single-agent vs 3-agent shared-prompt) on benchmark fixtures to validate. If A/B shows no diversity benefit, downgrade preset to skill OR escalate to per-agent prompt specialization in v0.13.
+
+### Deferred to v0.13+
+
+- **`dep-review`**: deterministic tools (`npm audit`, `osv-scanner`, `snyk`) outperform multi-agent for structured-data linting. May land as `jutsu suggest dep-review-tools` (skill-routing, not preset).
+- **`api-review`**: short window before vendor IDEs subsume; revisit only if user demand surfaces.
+- **`migrate`**: framework migration plan generation — too high-stakes for a v0.12 minor; needs spec + adversarial review pass of its own.
+- **`postmortem`**: harm-vector concerns; needs design around blame-report / scapegoating risks before shipping.
+- Per-agent prompt specialization (vs current shared-prompt-per-preset). Opt-in v0.13+ if A/B shows shared prompts collapse to identical outputs.
+
 ## [0.11.0] — 2026-05-08
 
 Two converging features land in one release: **`swarm.RunPipeline` extraction** (closes the v0.10.1-deferred Stage 1 work — `eval preset` + `eval swarm-skill` ship real implementations instead of stubs) and **autopilot v2** (kaijutsu-distributed intent-to-PR pipeline replacing the `~/.claude/skills/autopilot` v1 skill). The extraction is load-bearing for autopilot v2's reverse-drift gate (Phase 5 calls `swarm.RunPipeline` directly).

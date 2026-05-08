@@ -28,7 +28,7 @@ var testGapPreset = Preset{
 	SeverityVocab: []Severity{SeverityBlocker, SeverityIssue, SeverityMinor, SeverityInfo},
 	DefaultPrompt: testGapDefaultPrompt,
 	Synthesizer:   testGapSynthesizer,
-	Debate:        prReviewPreset.Debate, // reuse pr-review debate shape
+	Debate:        genericDebateTemplate, // artifact-agnostic — input is tests, not a PR
 }
 
 // testGapDefaultPrompt is the placeholder template loaded from the
