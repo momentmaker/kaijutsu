@@ -12,18 +12,16 @@ import (
 
 // runEstimate prints a per-persona cost projection table and returns
 // without invoking any agent. Reused by every swarm subcommand under
-// the --estimate flag.
-//
-// Two sources of providers:
-//   - personas mode (--personas): resolved Provider per persona
-//   - legacy mode: built-in cli providers from agents.BuiltinProviders,
-//     filtered to swarm.AvailableAgents() (matches what the legacy
-//     fan-out would dispatch)
+// the --estimate flag. v0.11.0 thin wrapper around
+// swarm.BuildEstimateProjections.
 //
 // Output is deterministic (sorted by persona name) so users can grep
 // it in scripts; same input → same output.
 func runEstimate(stdout, stderr io.Writer, projectRoot string, preset *swarm.Preset, ictx *swarm.InputContext, f commonSwarmFlags) error {
-	projections, err := buildEstimateProjections(projectRoot, preset, ictx, f)
+	projections, err := swarm.BuildEstimateProjections(projectRoot, preset, ictx, swarm.EstimateOpts{
+		Personas:   f.personas,
+		MaxCostUSD: f.maxCostUSD,
+	})
 	if err != nil {
 		return err
 	}
@@ -72,81 +70,4 @@ func runEstimate(stdout, stderr io.Writer, projectRoot string, preset *swarm.Pre
 		fmt.Fprintln(stdout, footer)
 	}
 	return nil
-}
-
-// buildEstimateProjections resolves providers and tokenizes prompts
-// for every persona / legacy agent, returning one CostProjection per.
-func buildEstimateProjections(projectRoot string, preset *swarm.Preset, ictx *swarm.InputContext, f commonSwarmFlags) ([]agents.CostProjection, error) {
-	if len(f.personas) > 0 {
-		return personaProjections(projectRoot, preset, ictx, f.personas)
-	}
-	return legacyProjections(preset, ictx)
-}
-
-func personaProjections(projectRoot string, preset *swarm.Preset, ictx *swarm.InputContext, personaNames []string) ([]agents.CostProjection, error) {
-	global, err := agents.LoadGlobalConfig()
-	if err != nil {
-		return nil, err
-	}
-	project, err := agents.LoadProjectConfig(projectRoot)
-	if err != nil {
-		return nil, err
-	}
-	resolved, err := agents.Resolve(global, project)
-	if err != nil {
-		return nil, err
-	}
-
-	out := make([]agents.CostProjection, 0, len(personaNames))
-	for _, name := range personaNames {
-		persona, ok := resolved.Personas[name]
-		if !ok {
-			return nil, fmt.Errorf("--estimate --personas: persona %q not found. Defined personas: %s", name, listPersonas(resolved.Personas))
-		}
-		provider, ok := resolved.Providers[persona.Provider]
-		if !ok {
-			return nil, fmt.Errorf("--estimate --personas %q: provider %q not enabled. Enabled providers: %s", name, persona.Provider, listProviders(resolved.Providers))
-		}
-		// Same override application as persona dispatch — projections
-		// reflect the model the actual swarm run uses. Cost rate
-		// stays per-provider until v0.7's model-keyed rate cards
-		// land; --estimate cost is approximate when persona overrides
-		// model to a different tier (e.g. deepseek-v4-pro vs flash).
-		provider = agents.ApplyPersonaOverrides(provider, persona)
-		// Use the preset's resolved fallback chain so estimate
-		// numbers reflect what the actual swarm dispatch would send.
-		tmpl, ok := preset.PromptFor(persona.Provider)
-		if !ok {
-			tmpl = "%s"
-		}
-		body := fmt.Sprintf(tmpl, ictx.Body)
-		fullPrompt := body
-		if persona.SystemPrompt != "" {
-			fullPrompt = persona.SystemPrompt + userSentinel + body
-		}
-		out = append(out, agents.ProjectCost(name, provider, fullPrompt))
-	}
-	return out, nil
-}
-
-func legacyProjections(preset *swarm.Preset, ictx *swarm.InputContext) ([]agents.CostProjection, error) {
-	available := swarm.AvailableAgents()
-	if len(available) == 0 {
-		return nil, nil
-	}
-	builtins := agents.BuiltinProviders()
-	out := make([]agents.CostProjection, 0, len(available))
-	for _, name := range available {
-		provider, ok := builtins[string(name)]
-		if !ok {
-			continue
-		}
-		tmpl, ok := preset.PerAgent[name]
-		if !ok {
-			continue
-		}
-		body := fmt.Sprintf(tmpl, ictx.Body)
-		out = append(out, agents.ProjectCost("default-"+string(name), provider, body))
-	}
-	return out, nil
 }
