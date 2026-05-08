@@ -21,6 +21,7 @@ func newRemoveCmd() *cobra.Command {
 	var global bool
 	var cascade bool
 	var yes bool
+	var dryRun bool
 	cmd := &cobra.Command{
 		Use:   "remove <skill>",
 		Short: "Remove an installed skill",
@@ -74,7 +75,7 @@ skill.yaml; the lockfile's installedAs field is informational only.`,
 			out := cmd.OutOrStdout()
 			if cascade && len(toRemove) > 1 {
 				fmt.Fprintf(out, "Cascade will remove: %s\n", strings.Join(toRemove, ", "))
-				if !yes {
+				if !yes && !dryRun {
 					fmt.Fprint(out, "Continue? [y/N]: ")
 					r := bufio.NewReader(cmd.InOrStdin())
 					line, rerr := r.ReadString('\n')
@@ -86,6 +87,27 @@ skill.yaml; the lockfile's installedAs field is informational only.`,
 						return errors.New("aborted")
 					}
 				}
+			}
+
+			if dryRun {
+				for _, name := range toRemove {
+					entry := lf.Skills[name]
+					ver := ""
+					if entry.Version != nil {
+						ver = *entry.Version
+					}
+					fmt.Fprintf(out, "[dry-run] would remove %s@%s (source=%s ref=%s)\n",
+						name, ver, entry.Source, shortRef(entry.Ref))
+					for _, agent := range lf.Agents {
+						dir := paths.AgentSkillsDir(installRoot, agent)
+						if dir == "" {
+							continue
+						}
+						fmt.Fprintf(out, "[dry-run]   would delete %s\n", filepath.Join(dir, name))
+					}
+				}
+				fmt.Fprintf(out, "[dry-run] would update %s: %d entries removed\n", lockPath, len(toRemove))
+				return nil
 			}
 
 			var m *manifest.Manifest
@@ -121,6 +143,7 @@ skill.yaml; the lockfile's installedAs field is informational only.`,
 	cmd.Flags().BoolVarP(&global, "global", "g", false, "remove from global installation")
 	cmd.Flags().BoolVar(&cascade, "cascade", false, "also remove dependencies that become orphaned")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "non-interactive: skip the cascade-confirm prompt")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "print the planned removal set + exit 0 without touching the filesystem or lockfile")
 	return cmd
 }
 

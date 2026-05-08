@@ -16,7 +16,7 @@ import (
 )
 
 func newUpgradeCmd() *cobra.Command {
-	var global, yes, major bool
+	var global, yes, major, dryRun bool
 	cmd := &cobra.Command{
 		Use:   "upgrade [<skill>]",
 		Short: "Check for newer skill versions; show diffs and apply on confirm",
@@ -67,6 +67,17 @@ that exceed the constraint.`,
 			}
 			if len(candidates) == 0 {
 				fmt.Fprintln(out, "all skills up to date")
+				return nil
+			}
+
+			if dryRun {
+				fmt.Fprintln(out, "[dry-run] upgrades available:")
+				for _, c := range candidates {
+					fmt.Fprintf(out, "[dry-run]   %s: %s -> %s (ref %s -> %s)\n",
+						c.name, displayTagOrVersion(c.oldTag, c.oldVersion), c.newTag,
+						shortRef(c.oldRef), shortRef(c.newRef))
+				}
+				fmt.Fprintf(out, "[dry-run] would update %s\n", lockPath)
 				return nil
 			}
 
@@ -139,6 +150,7 @@ that exceed the constraint.`,
 	cmd.Flags().BoolVarP(&global, "global", "g", false, "upgrade global installation")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "non-interactive: apply without prompting")
 	cmd.Flags().BoolVar(&major, "major", false, "allow upgrades that exceed the manifest's version constraint")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "list available upgrades + exit 0 without applying or modifying the lockfile")
 	return cmd
 }
 
