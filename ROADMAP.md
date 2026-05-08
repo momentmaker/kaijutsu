@@ -115,6 +115,44 @@ Spec: `docs/specs/2026-05-05-v0.6.0-multi-provider-agents.md`. ADR: `docs/decisi
 - [x] **Per-file anti-sycophancy regression test for `skills/core/dream/prompts/*.md`** — shipped v0.8.3.
 - [x] **Programmatic synthesizer-coda truncation** — shipped v0.8.3 as `swarm.StripDreamCoda`.
 
+## v0.12 — Tier A swarm presets
+
+Three new presets that share a structural signature: *hypothesis generation + cross-agent ranking by evidence*. Multi-agent disagreement IS the differentiator (versus single-agent which produces the obvious answer + misses adversarial angles).
+
+Picks survived a `jutsu swarm dream --mode full --lenses all` adversarial pass on the v0.12 candidate set (7 → 3 after dream's "swarm-value" filter killed `dep-review`/`api-review` as solo-agent territory and `migrate`/`postmortem` as too-high-stakes / harm-vector concerns).
+
+- [ ] **`jutsu swarm test-gap`** — failure scenarios MISSING from existing tests. Input: code under test + existing test file. Output: ranked missing-scenario list. Different agents imagine different attacker/edge profiles. Pairs with `polish` skill: polish ensures tests pass, test-gap ensures they cover.
+- [ ] **`jutsu swarm bug-repro`** — vague bug report → ranked repro hypotheses. Input: bug description + relevant code. Output: ranked hypotheses (state, race, env, config, version) + minimal-repro steps for the top hypothesis. Hypothesis-generation + parallel-verification is multi-agent native.
+- [ ] **`jutsu swarm code-archaeology`** — explain WHY legacy code looks the way it does. Input: code path + git log. Output: ranked historical-context theories ("workaround for issue X", "matches era-Y pattern", "this might be wrong + the test that would fail doesn't exist"). Multi-perspective theory generation + evidence ranking.
+
+## v0.13 — Preset SDK
+
+Configurable swarm orchestration. Users compose their own swarm shapes via `swarm.yaml` per-project rather than picking from a fixed catalog of subcommands. Reordered ahead of v0.13's original Persona SDK plan after dream surfaced 3-agent consensus that real user pain is **lens routing, not lens authoring** — a persona authoring SDK makes the discovery problem worse.
+
+- [ ] **`swarm.yaml` per-project DSL** — defines swarm shape (preset + persona mix + mode + lenses + cost cap) under a user-chosen name. `jutsu swarm <name>` looks up project-local `swarm.yaml` first, falls back to built-in presets.
+- [ ] **Curated example presets** in repo — reference implementations of `swarm.yaml` for the v0.12 Tier A presets so users see how to compose their own.
+- [ ] **Hot-reload** — `swarm.yaml` re-read on each invocation; no `jutsu install` step needed.
+
+## v0.13.x — Read-only persona browse
+
+80% of persona-sharing benefit at 5% of full-SDK effort (per dream's status-quo lens). Defer the persona-authoring SDK until user data validates demand.
+
+- [ ] **`jutsu agent persona browse`** — list curated built-ins + community examples. Output is paste-into-`agents.yaml` ready. No install pipeline.
+- [ ] **`jutsu agent persona test <name>`** — dry-run validation. Sends a fixed test prompt through the persona; shows the synthesis. Validates lens BEFORE committing to a real swarm run.
+- [ ] **`jutsu agent persona new <name>`** — interactive wizard scaffolding into `agents.yaml`. Pure ergonomics; no design risk.
+
+## v0.14+ — Maybe Persona SDK
+
+Conditional on:
+1. **A/B evidence** that cross-corpus diversity (claude+gemini+deepseek with same system_prompt) outperforms multi-persona-on-one-provider. Dream flagged this premise as untested + possibly self-confirming bias from RLHF-aligned reviewers.
+2. **User data** showing persona authoring (not routing) is the bottleneck. v0.13 Preset SDK addresses routing first; ship Persona SDK only if v0.13 surface usage shows authoring demand.
+3. **Behavioral lint** infrastructure (not token-only regex) for catching self-defeating user prompts. Token-only lint = false safety per dream's gaps+adversary cross-lens consensus.
+
+If those hold, scope:
+- [ ] Cross-agent personas (`providers: []` field, omitting `provider:` for cross-agent dispatch)
+- [ ] Persona-authoring wizard (full lifecycle, not just `persona new`)
+- [ ] **Explicitly NOT** persona-as-skill installation — dream flagged as category error (behavior shaping vs capability tool); install pipeline stays scoped to skills only
+
 ## v1 — maturity
 
 - [ ] Skill DNA / fingerprinting for semantic dedup
