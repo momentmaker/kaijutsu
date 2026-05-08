@@ -101,11 +101,11 @@ func personaProjections(projectRoot string, preset *swarm.Preset, ictx *swarm.In
 	for _, name := range personaNames {
 		persona, ok := resolved.Personas[name]
 		if !ok {
-			return nil, fmt.Errorf("--estimate --personas: persona %q not found", name)
+			return nil, fmt.Errorf("--estimate --personas: persona %q not found. Defined personas: %s", name, listPersonas(resolved.Personas))
 		}
 		provider, ok := resolved.Providers[persona.Provider]
 		if !ok {
-			return nil, fmt.Errorf("--estimate --personas %q: provider %q not enabled", name, persona.Provider)
+			return nil, fmt.Errorf("--estimate --personas %q: provider %q not enabled. Enabled providers: %s", name, persona.Provider, listProviders(resolved.Providers))
 		}
 		// Same override application as persona dispatch — projections
 		// reflect the model the actual swarm run uses. Cost rate

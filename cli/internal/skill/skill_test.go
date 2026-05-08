@@ -3,6 +3,7 @@ package skill
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -60,5 +61,38 @@ agents: [claude]
 	os.WriteFile(p, []byte(body), 0644)
 	if _, err := Load(p); err == nil {
 		t.Error("expected error for invalid layout")
+	}
+}
+
+// TestErrorEnum_HookEvent covers the v0.10.1 enumeration sweep:
+// invalid hook event must surface every valid event name in the
+// error message so authors can self-correct without consulting docs.
+func TestErrorEnum_HookEvent(t *testing.T) {
+	tmp := t.TempDir()
+	p := filepath.Join(tmp, "skill.yaml")
+	body := `
+name: demo-skill
+version: 1.0.0
+license: MIT
+layout: flat
+agents: [claude]
+hooks:
+  - id: bad-event
+    event: not-a-real-event
+    matcher: "*"
+    script: scripts/x.sh
+`
+	if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	_, err := Load(p)
+	if err == nil {
+		t.Fatal("expected error for invalid hook event")
+	}
+	msg := err.Error()
+	for _, must := range []string{"pre-tool-use", "post-tool-use", "session-start"} {
+		if !strings.Contains(msg, must) {
+			t.Errorf("hook-event error %q missing valid event %q", msg, must)
+		}
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -283,7 +284,7 @@ func (s *Skill) Validate() error {
 			return fmt.Errorf("skill.yaml: hooks[%d]: event is required", i)
 		}
 		if !validHookEvents[h.Event] {
-			return fmt.Errorf("skill.yaml: hooks[%d]: invalid event %q", i, h.Event)
+			return fmt.Errorf("skill.yaml: hooks[%d]: invalid event %q. Valid events: %s", i, h.Event, listValidHookEvents())
 		}
 		if h.Matcher == "" {
 			return fmt.Errorf("skill.yaml: hooks[%d]: matcher is required", i)
@@ -303,6 +304,18 @@ var hookIDPattern = regexp.MustCompile(`^[a-z][a-z0-9-]*[a-z0-9]$`)
 // validHookEvents is the canonical kaijutsu event vocabulary. Mirrors
 // the list documented in SCHEMA.md and translated per agent in
 // internal/hooks/.
+// listValidHookEvents returns the validHookEvents keys sorted
+// alphabetically as a comma-joined string. Used by error messages
+// so a misspelled event name surfaces the full valid set inline.
+func listValidHookEvents() string {
+	names := make([]string, 0, len(validHookEvents))
+	for n := range validHookEvents {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	return strings.Join(names, ", ")
+}
+
 var validHookEvents = map[string]bool{
 	"pre-tool-use":          true,
 	"post-tool-use":         true,

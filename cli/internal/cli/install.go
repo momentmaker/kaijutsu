@@ -25,6 +25,7 @@ func newInstallCmd() *cobra.Command {
 	var noHooks bool
 	var noVerify bool
 	var yes bool
+	var dryRun bool
 
 	cmd := &cobra.Command{
 		Use:   "install [<skill>[@constraint]]",
@@ -85,12 +86,17 @@ recorded sha256 integrity.`,
 				noHooks:     noHooks,
 				noVerify:    noVerify,
 				yes:         yes,
+				dryRun:      dryRun,
 			}
 
 			if err := sess.installOne(name, constraint, ""); err != nil {
 				return err
 			}
 
+			if dryRun {
+				fmt.Fprintf(cmd.OutOrStdout(), "[dry-run] would update %s + %s\n", manifestPath, lockPath)
+				return nil
+			}
 			if err := m.Save(manifestPath); err != nil {
 				return err
 			}
@@ -105,6 +111,7 @@ recorded sha256 integrity.`,
 	cmd.Flags().BoolVar(&noHooks, "no-hooks", false, "skip hook registration even if the skill declares hooks")
 	cmd.Flags().BoolVar(&noVerify, "no-verify", false, "skip sigstore signature verification (skills with expected-signer would otherwise hard-fail when cosign verify fails or is unavailable)")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "non-interactive: skip confirmation prompts (e.g., for hook permissions)")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "resolve + verify but do not write skills, lockfile, or manifest. Prints planned mutation set + exits 0")
 	return cmd
 }
 
@@ -123,6 +130,7 @@ type installSession struct {
 	noHooks     bool
 	noVerify    bool
 	yes         bool
+	dryRun      bool
 }
 
 // installOne loads the named skill (locally or remotely), recurses into
@@ -167,6 +175,28 @@ func (s *installSession) installOne(name, constraint, parent string) error {
 
 	if err := s.confirmHooks(l.skill); err != nil {
 		return err
+	}
+
+	if s.dryRun {
+		suffix := ""
+		if parent != "" {
+			suffix = fmt.Sprintf(" [dep of %s]", parent)
+		}
+		fmt.Fprintf(s.cmd.OutOrStdout(), "[dry-run] would install %s@%s (%s, %s)%s\n",
+			l.skill.Name, l.skill.Version, l.source, shortRef(l.ref), suffix)
+		for _, agent := range s.m.Agents {
+			dir := paths.AgentSkillsDir(s.installRoot, agent)
+			if dir == "" {
+				continue
+			}
+			fmt.Fprintf(s.cmd.OutOrStdout(), "[dry-run]   would write %s/\n", filepath.Join(dir, l.skill.Name))
+		}
+		if !s.noHooks && len(l.skill.Hooks) > 0 {
+			fmt.Fprintf(s.cmd.OutOrStdout(), "[dry-run]   would register %d hook(s)\n", len(l.skill.Hooks))
+		}
+		s.lf.Agents = s.m.Agents
+		recordInstall(s.m, s.lf, l, constraint, parent)
+		return nil
 	}
 
 	if err := install.Install(l.dir, s.installRoot, s.m.Agents, l.skill); err != nil {

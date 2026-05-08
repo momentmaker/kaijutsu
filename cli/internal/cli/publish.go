@@ -22,6 +22,7 @@ func newPublishCmd() *cobra.Command {
 	var auto bool
 	var yes bool
 	var workdir string
+	var dryRun bool
 	cmd := &cobra.Command{
 		Use:   "publish [path]",
 		Short: "Lint a skill and (optionally) fork+PR it against the kaijutsu registry",
@@ -62,6 +63,11 @@ Requires gh on PATH + an authenticated session (run gh auth login first).`,
 				return err
 			}
 
+			if dryRun {
+				printDryRunPlan(out, abs, sk, auto, workdir)
+				return nil
+			}
+
 			if !auto {
 				printPublishInstructions(out, abs, sk)
 				return nil
@@ -73,7 +79,28 @@ Requires gh on PATH + an authenticated session (run gh auth login first).`,
 	cmd.Flags().BoolVar(&auto, "auto", false, "automate fork + clone + push + PR via gh")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "non-interactive: skip the pre-push confirmation prompt (--auto)")
 	cmd.Flags().StringVar(&workdir, "workdir", "", "directory to clone the fork into (default: temp dir; reused if it already contains a clone)")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "lint + print the planned PR title/body + exit 0 without invoking gh, git, or any network call")
 	return cmd
+}
+
+func printDryRunPlan(out io.Writer, abs string, sk *skill.Skill, auto bool, workdir string) {
+	fmt.Fprintln(out, "")
+	fmt.Fprintln(out, "[dry-run] skill is valid + would publish with this plan:")
+	fmt.Fprintln(out, "")
+	fmt.Fprintf(out, "[dry-run]   skill:   %s@%s\n", sk.Name, sk.Version)
+	fmt.Fprintf(out, "[dry-run]   source:  %s\n", abs)
+	fmt.Fprintf(out, "[dry-run]   target:  skills/community/%s/ in %s\n", sk.Name, upstreamRepo)
+	fmt.Fprintf(out, "[dry-run]   branch:  add-%s\n", sk.Name)
+	fmt.Fprintf(out, "[dry-run]   commit:  feat(skills): add %s\n", sk.Name)
+	fmt.Fprintf(out, "[dry-run]   pr:      feat(skills): add %s community skill\n", sk.Name)
+	if auto {
+		if workdir == "" {
+			fmt.Fprintln(out, "[dry-run]   workdir: (would auto-allocate temp dir)")
+		} else {
+			fmt.Fprintf(out, "[dry-run]   workdir: %s\n", workdir)
+		}
+		fmt.Fprintln(out, "[dry-run]   gh + git would NOT be invoked under --dry-run")
+	}
 }
 
 func printPublishInstructions(out io.Writer, abs string, sk *skill.Skill) {

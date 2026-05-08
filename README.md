@@ -187,6 +187,11 @@ jutsu eval skill skills/core/dream --strict --baseline-from v0.9.1
 
 See [CHANGELOG.md](./CHANGELOG.md#0100--2026-05-08) for the full feature list, Stage 2 stub limitations, and the v0.10.x deferral list.
 
+### v0.10.1 — polish
+
+- **`--dry-run` on `install`/`upgrade`/`remove`/`publish`**. Each command resolves + validates as normal but skips every filesystem, lockfile, and network mutation. Per the agent-native CLI [principle #4](https://trevinsays.com/p/10-principles-for-agent-native-clis).
+- **Error messages enumerate valid options** when rejecting an enum value (preset name, persona name, agent name, hook event). Self-correct in one retry instead of trial-and-erroring against `--help`.
+
 ## Trust model
 
 - **Core skills** (this monorepo, `skills/core/`) are signed at release time using [Sigstore](https://www.sigstore.dev/) keyless signing. The CLI verifies the signature and the GitHub identity of the signer before installing.
