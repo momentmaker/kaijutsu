@@ -121,9 +121,9 @@ Three new presets that share a structural signature: *hypothesis generation + cr
 
 Picks survived a `jutsu swarm dream --mode full --lenses all` adversarial pass on the v0.12 candidate set (7 → 3 after dream's "swarm-value" filter killed `dep-review`/`api-review` as solo-agent territory and `migrate`/`postmortem` as too-high-stakes / harm-vector concerns).
 
-- [ ] **`jutsu swarm test-gap`** — failure scenarios MISSING from existing tests. Input: code under test + existing test file. Output: ranked missing-scenario list. Different agents imagine different attacker/edge profiles. Pairs with `polish` skill: polish ensures tests pass, test-gap ensures they cover.
-- [ ] **`jutsu swarm bug-repro`** — vague bug report → ranked repro hypotheses. Input: bug description + relevant code. Output: ranked hypotheses (state, race, env, config, version) + minimal-repro steps for the top hypothesis. Hypothesis-generation + parallel-verification is multi-agent native.
-- [ ] **`jutsu swarm code-archaeology`** — explain WHY legacy code looks the way it does. Input: code path + git log. Output: ranked historical-context theories ("workaround for issue X", "matches era-Y pattern", "this might be wrong + the test that would fail doesn't exist"). Multi-perspective theory generation + evidence ranking.
+- [x] **`jutsu swarm test-gap`** — shipped v0.12.0. Surfaces failure scenarios MISSING from existing tests. `--code <path> --tests <path>` flags. Synthesizer clusters by category (edge-case / race / resource / input / integration / state) + ranks by severity + cross-reviewer corroboration.
+- [x] **`jutsu swarm bug-repro`** — shipped v0.12.0. Vague bug → ranked repro hypotheses across categories (state / race / env / input / version) + minimal-repro steps for top hypothesis. Positional bug description + optional `--files <paths>` for code context.
+- [x] **`jutsu swarm code-archaeology`** — shipped v0.12.0. Explain WHY legacy code looks the way it does. `--code <path> [--git-log <since>]`. Multi-agent generates competing historical-context theories with git-log evidence; synthesizer marks corroborated / single-source / contested.
 
 ## v0.13 — Preset SDK
 

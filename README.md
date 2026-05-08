@@ -192,6 +192,29 @@ See [CHANGELOG.md](./CHANGELOG.md#0100--2026-05-08) for the full feature list, S
 - **`--dry-run` on `install`/`upgrade`/`remove`/`publish`**. Each command resolves + validates as normal but skips every filesystem, lockfile, and network mutation. Per the agent-native CLI [principle #4](https://trevinsays.com/p/10-principles-for-agent-native-clis).
 - **Error messages enumerate valid options** when rejecting an enum value (preset name, persona name, agent name, hook event). Self-correct in one retry instead of trial-and-erroring against `--help`.
 
+### v0.12.0 — Tier A swarm presets
+
+Three new presets that share a structural signature: hypothesis generation + cross-agent ranking by evidence. Multi-agent disagreement IS the differentiator.
+
+```bash
+# Surface failure scenarios MISSING from existing tests
+jutsu swarm test-gap --code src/auth/login.go --tests src/auth/login_test.go
+
+# Vague bug → ranked repro hypotheses + minimal-repro steps
+jutsu swarm bug-repro "intermittent login failure on mobile" --files src/auth/
+
+# Explain WHY legacy code looks the way it does
+jutsu swarm code-archaeology --code cli/internal/swarm/preset.go --git-log 1y
+```
+
+- **`test-gap`** — Pair with `/polish`: polish ensures tests pass, test-gap ensures they cover.
+- **`bug-repro`** — Differs from brainstorm (generates SOLUTIONS) and pr-review (hunts BUGS in a diff). Reasons from a bug REPORT — symptoms only.
+- **`code-archaeology`** — Use BEFORE refactoring legacy code. Surfaces "why is this weird" answers faster than reading commit history manually. Theories marked corroborated / single-source / contested.
+
+Picks survived a `jutsu swarm dream` adversarial pass on 7 candidates. Killed: `dep-review` (deterministic tools win), `api-review` (commodity, IDE-native soon). Deferred: `migrate` (too high-stakes), `postmortem` (harm-vector).
+
+See [CHANGELOG.md](./CHANGELOG.md#0120--2026-05-08) for the full feature list, dream-survival framing, and v0.13+ deferral list.
+
 ### v0.11.0 — `swarm.RunPipeline` extraction + autopilot v2
 
 Two converging features. The `runSwarmPipeline` extraction (470 LOC inline → 50 LOC cobra adapter + reusable public API) closes the v0.10.1-deferred Stage 1 work; `eval preset` and `eval swarm-skill` ship real implementations. Autopilot v2 lands as a distributed core skill, replacing the user-scope v1.

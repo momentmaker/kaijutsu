@@ -115,4 +115,8 @@ func init() {
 	defaultRegistry.Register(&securityAuditPreset)
 	defaultRegistry.Register(&dreamPreset)
 	defaultRegistry.Register(&reversePreset)
+	// v0.12.0 Tier A presets
+	defaultRegistry.Register(&testGapPreset)
+	defaultRegistry.Register(&bugReproPreset)
+	defaultRegistry.Register(&codeArchaeologyPreset)
 }
