@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "total": 45,
+  "total": 46,
   "skills": [
     {
       "name": "api-and-interface-design",
@@ -18,6 +18,28 @@
         "bash": false,
         "network": false,
         "fs_write": null
+      }
+    },
+    {
+      "name": "autopilot",
+      "version": "2.0.0",
+      "license": "MIT",
+      "description": "Intent-to-PR pipeline. Multi-agent adversarial review at every artifact stage; cost-capped; reverse-drift gate. Replaces the v1 autopilot skill.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/autopilot",
+      "homepage": "https://kaijutsu.dev/skills/autopilot",
+      "author": "rubberduck \u003czendosoul@gmail.com\u003e",
+      "has_hooks": false,
+      "permissions": {
+        "bash": true,
+        "network": true,
+        "fs_write": "scoped"
       }
     },
     {

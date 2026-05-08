@@ -220,13 +220,13 @@
   <div class="controls">
     <input type="search" id="search" placeholder="Search skills by name, description, tag…" autocomplete="off">
     <div class="filter-group" id="filters">
-      <button class="filter active" data-filter="all">All (45)</button>
+      <button class="filter active" data-filter="all">All (46)</button>
       <button class="filter" data-filter="core">Core</button>
       <button class="filter" data-filter="third-party">Third-party</button>
       <button class="filter" data-filter="hooks">Hooks</button>
     </div>
   </div>
-  <p class="stats" id="stats">Showing all 45 skills.</p>
+  <p class="stats" id="stats">Showing all 46 skills.</p>
 
   <div class="grid" id="grid">
     
@@ -241,6 +241,19 @@
         
       </div>
       <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install api-and-interface-design')" title="Click to copy">jutsu install api-and-interface-design</div>
+    </article>
+    
+    <article class="card" data-source="core" data-hooks="false" data-search="autopilot Intent-to-PR pipeline. Multi-agent adversarial review at every artifact stage; cost-capped; reverse-drift gate. Replaces the v1 autopilot skill.  claude codex gemini">
+      <div class="row">
+        <h3>autopilot<span style="color:var(--muted);font-weight:normal"> 2.0.0</span></h3>
+        <span class="badge badge-core">CORE</span>
+      </div>
+      <p class="desc">Intent-to-PR pipeline. Multi-agent adversarial review at every artifact stage; cost-capped; reverse-drift gate. Replaces the v1 autopilot skill.</p>
+      <div class="row">
+        <span class="agents">claude · codex · gemini</span>
+        
+      </div>
+      <div class="card-install" onclick="navigator.clipboard.writeText('jutsu install autopilot')" title="Click to copy">jutsu install autopilot</div>
     </article>
     
     <article class="card" data-source="core" data-hooks="false" data-search="blunder-hunt Multi-pass adversarial critique. Run a skeptic review N times in fresh contexts (optionally in parallel via dispatch-parallel); deduplicate; surface only issues that survive. primitive review adversarial claude codex gemini">
