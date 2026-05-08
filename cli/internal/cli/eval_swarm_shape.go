@@ -117,19 +117,18 @@ func (a *swarmPipelineEvalAgent) Run(ctx context.Context, prompt string, budget 
 	// markdown via Result.Markdown, not via stdout. Stderr stays
 	// connected so warnings (cost, telemetry, dream-archive) surface.
 	opts := swarm.PipelineOpts{
-		ProjectRoot:    a.projectRoot,
-		Preset:         a.preset,
-		Input:          ictx,
-		Mode:           a.mode,
-		PerAgentBudget: a.budget,
-		Timeout:        a.timeout,
-		Yes:            true, // non-interactive: eval runs are always headless
-		Stdout:         io.Discard,
-		Stderr:         stderr,
-		Stdin:          strings.NewReader(""),
-		EstimateFn:     func(po swarm.PipelineOpts) error { return nil }, // unused — Estimate=false
-		RecordFindings: recordFindingsBestEffort,
-		ResolveSynthWeights: resolveSynthWeights,
+		ProjectRoot:             a.projectRoot,
+		Preset:                  a.preset,
+		Input:                   ictx,
+		Mode:                    a.mode,
+		PerAgentBudget:          a.budget,
+		Timeout:                 a.timeout,
+		Yes:                     true, // non-interactive: eval runs are always headless
+		Stdout:                  io.Discard,
+		Stderr:                  stderr,
+		Stdin:                   strings.NewReader(""),
+		RecordFindings:          recordFindingsBestEffort,
+		ResolveSynthWeights:     resolveSynthWeights,
 		ResolveDreamLensWeights: resolveDreamLensWeights,
 		ArchiveDreamSession: func(topic, cwd, body string, lensOrder []string, mode string, full bool) (string, error) {
 			fp := findings.Fingerprint(cwd)
