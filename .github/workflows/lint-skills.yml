@@ -11,6 +11,7 @@ on:
     paths:
       - 'skills/**'
       - 'schemas/**'
+      - 'cli/cmd/sitegen/**'
   # Allow manual dispatch so we can re-verify after a docs/ catalog
   # regen when the prior failing run was stuck on a stale SHA.
   workflow_dispatch:
@@ -63,8 +64,22 @@ jobs:
     name: docs/index.html + skills.json match sitegen output
     runs-on: ubuntu-latest
     needs: validate-schemas
+    # contents:write needed for the auto-regen-and-commit branch on
+    # push-to-main. PR runs only need contents:read (default), so
+    # restrict by ref below.
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          # Need the actual branch ref (not the detached HEAD that
+          # checkout uses by default) so we can push back if the
+          # auto-regen path fires.
+          ref: ${{ github.ref_name }}
+          # Use a token that can push back. The default GITHUB_TOKEN
+          # from actions/checkout works for same-repo pushes when
+          # contents:write is granted at the job level (above).
+          token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-go@v6
         with:
           go-version-file: cli/go.mod
@@ -73,10 +88,37 @@ jobs:
         working-directory: cli
         run: go run ./cmd/sitegen ..
 
-      - name: Verify no drift
+      - name: Auto-commit + push on drift (push-to-main only)
+        # Only on direct pushes to main; PR runs stay strict (drift =
+        # fail, author must regenerate locally before merge so PR
+        # diffs stay honest). workflow_dispatch also stays strict so
+        # manual re-runs can flag stale state.
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          if git diff --quiet docs/index.html docs/skills.json; then
+            echo "Catalog matches sitegen output; nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/index.html docs/skills.json
+          # [skip ci] keeps this push from triggering further workflow
+          # runs (release-jutsu, eval-skills) on what is just a
+          # mechanical catalog regen.
+          git commit -m "chore(docs): auto-regenerate sitegen catalog [skip ci]
+
+          Triggered by lint-skills.yml::catalog-drift after a push to main
+          modified skills/ or cli/cmd/sitegen/ but the author didn't
+          regenerate docs/index.html + docs/skills.json locally before
+          the merge."
+          git push origin HEAD:main
+          echo "Catalog regenerated + pushed; workflow run continues with green status."
+
+      - name: Verify no drift (strict — non-push-to-main events)
+        if: github.event_name != 'push' || github.ref != 'refs/heads/main'
         run: |
           if ! git diff --quiet docs/index.html docs/skills.json; then
-            echo "::error::docs/ catalog is out of date. Run 'go run ./cli/cmd/sitegen' from the repo root and commit the result."
+            echo "::error::docs/ catalog is out of date. Run 'go run ./cli/cmd/sitegen ..' from the cli/ dir and commit the result."
             git --no-pager diff docs/index.html docs/skills.json | head -200
             exit 1
           fi
