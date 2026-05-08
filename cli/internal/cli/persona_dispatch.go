@@ -93,11 +93,11 @@ func assemblePersonaJobs(projectRoot string, preset *swarm.Preset, ictx *swarm.I
 	for _, name := range personaNames {
 		persona, ok := resolved.Personas[name]
 		if !ok {
-			return nil, nil, fmt.Errorf("--personas: persona %q not found. Run `jutsu agent list --personas` to see available", name)
+			return nil, nil, fmt.Errorf("--personas: persona %q not found. Defined personas: %s. (Or run `jutsu agent list --personas`.)", name, listPersonas(resolved.Personas))
 		}
 		provider, ok := resolved.Providers[persona.Provider]
 		if !ok {
-			return nil, nil, fmt.Errorf("--personas %q: references provider %q which is not enabled. Add to enabled list in .kaijutsu/agents.yaml or run `jutsu agent enable %s`", name, persona.Provider, persona.Provider)
+			return nil, nil, fmt.Errorf("--personas %q: references provider %q which is not enabled. Enabled providers: %s. Add to .kaijutsu/agents.yaml or run `jutsu agent enable %s`", name, persona.Provider, listProviders(resolved.Providers), persona.Provider)
 		}
 		// Persona override application — currently just Model; future
 		// fields (per-persona timeout, header overrides) extend

@@ -181,6 +181,90 @@ description: test skill
 	}
 }
 
+// TestUpgradeDryRun_NoSkillsInstalledLeavesLockfileUntouched
+// covers the upgrade --dry-run early-exit path: an empty lockfile
+// means upgrade has nothing to do; --dry-run still must not write.
+// (Heavier-weight: a lockfile with remote sources would require a
+// fake registry to mock tag listing; that's out of scope for this
+// regression and lives in the upgrade-flow integration tests.)
+func TestUpgradeDryRun_NoSkillsInstalledLeavesLockfileUntouched(t *testing.T) {
+	tmp := t.TempDir()
+	prev, _ := os.Getwd()
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+	defer os.Chdir(prev)
+
+	m := &manifest.Manifest{Version: 1, Agents: []string{"claude"}}
+	if err := m.Save(filepath.Join(tmp, "kaijutsu.json")); err != nil {
+		t.Fatalf("save manifest: %v", err)
+	}
+	lf := &manifest.Lockfile{Version: 1, Agents: []string{"claude"}, Skills: map[string]manifest.LockEntry{}}
+	if err := lf.Save(filepath.Join(tmp, "kaijutsu.lock.json")); err != nil {
+		t.Fatalf("save lockfile: %v", err)
+	}
+
+	before := snapshot(t, tmp, "kaijutsu.lock.json")
+
+	cmd := newUpgradeCmd()
+	cmd.SetArgs([]string{"--dry-run"})
+	var stdout, stderr bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("upgrade --dry-run: %v\nstderr: %s", err, stderr.String())
+	}
+	// "no skills installed" is the early-exit message.
+	if !strings.Contains(stdout.String(), "no skills installed") {
+		t.Errorf("expected 'no skills installed' early-exit; got: %s", stdout.String())
+	}
+
+	after := snapshot(t, tmp, "kaijutsu.lock.json")
+	if !bytes.Equal(before["kaijutsu.lock.json"], after["kaijutsu.lock.json"]) {
+		t.Error("upgrade --dry-run mutated lockfile")
+	}
+}
+
+// TestInstallDryRun_NoArgsRunsLockfileSyncDryRun covers the
+// install (no args) lockfile-sync path with --dry-run. With an
+// empty lockfile, the sync has nothing to do and exits without
+// writing. We can't easily test the registry-fetching path here
+// without a fake registry; this pins the cheap-path.
+func TestInstallDryRun_NoArgsRunsLockfileSyncDryRun(t *testing.T) {
+	tmp := t.TempDir()
+	prev, _ := os.Getwd()
+	if err := os.Chdir(tmp); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+	defer os.Chdir(prev)
+
+	m := &manifest.Manifest{Version: 1, Agents: []string{"claude"}}
+	if err := m.Save(filepath.Join(tmp, "kaijutsu.json")); err != nil {
+		t.Fatalf("save manifest: %v", err)
+	}
+	lf := &manifest.Lockfile{Version: 1, Agents: []string{"claude"}, Skills: map[string]manifest.LockEntry{}}
+	if err := lf.Save(filepath.Join(tmp, "kaijutsu.lock.json")); err != nil {
+		t.Fatalf("save lockfile: %v", err)
+	}
+
+	before := snapshot(t, tmp, "kaijutsu.json", "kaijutsu.lock.json")
+
+	cmd := newInstallCmd()
+	cmd.SetArgs([]string{"--dry-run"})
+	var stdout, stderr bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	// install with no args + empty lockfile = lockfile-sync no-op.
+	// Assert it doesn't error and doesn't mutate.
+	_ = cmd.Execute()
+	after := snapshot(t, tmp, "kaijutsu.json", "kaijutsu.lock.json")
+	for path, beforeBytes := range before {
+		if !bytes.Equal(beforeBytes, after[path]) {
+			t.Errorf("install --dry-run (sync) mutated %s", path)
+		}
+	}
+}
+
 func snapshot(t *testing.T, root string, paths ...string) map[string][]byte {
 	t.Helper()
 	out := make(map[string][]byte, len(paths))

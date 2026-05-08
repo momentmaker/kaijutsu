@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -308,7 +309,20 @@ func resolveEvalAgent(name, role string, budget float64, timeout time.Duration) 
 	}
 	an := swarm.AgentName(strings.ToLower(name))
 	if !swarm.Available(an) {
-		return nil, fmt.Errorf("%s agent %q not available (install the CLI or use --%s with a different name)", role, name, role)
+		available := swarm.AvailableAgents()
+		availStrs := make([]string, len(available))
+		for i, a := range available {
+			availStrs[i] = string(a)
+		}
+		// Sort for deterministic error text (matches the
+		// listPersonas / listProviders / listValidHookEvents
+		// convention; keeps tests stable across calls).
+		sort.Strings(availStrs)
+		availMsg := "(none detected on PATH)"
+		if len(availStrs) > 0 {
+			availMsg = "available: " + strings.Join(availStrs, ", ")
+		}
+		return nil, fmt.Errorf("%s agent %q not available — %s. Pass --%s with one of those names, or install the missing CLI", role, name, availMsg, role)
 	}
 	return makeEvalAgent(an, budget, timeout), nil
 }

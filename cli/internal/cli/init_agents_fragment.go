@@ -22,7 +22,7 @@ const (
 	// READ / detection we match the version-agnostic PREFIX so that
 	// blocks written by an older jutsu get found + replaced cleanly
 	// during upgrade — not mistaken for "corrupt state."
-	agentsFragmentMarkerStart       = "<!-- kaijutsu:start name=jutsu-cli version=0.10.0 -->"
+	agentsFragmentMarkerStart       = "<!-- kaijutsu:start name=jutsu-cli version=0.10.1 -->"
 	agentsFragmentMarkerStartPrefix = "<!-- kaijutsu:start name=jutsu-cli"
 	agentsFragmentMarkerEnd         = "<!-- kaijutsu:end -->"
 )

@@ -3,7 +3,13 @@
 Spec: `docs/specs/2026-05-07-v0.10.1-polish.md`
 Branch: `v0.10.1-polish`
 
-## Stage 1: Stage 2 stub replacement + CI doc pivot
+> **Update during implementation**: Stage 1 (`runSwarmPipeline`
+> extraction + stub replacement) was **deferred to v0.11.0**. The
+> measured 470 LOC of cobra-coupled logic is too large for a
+> polish patch; v0.10.1 ships Stages 2 + 3 only. See CHANGELOG
+> `[0.10.1]` notes for the deferral rationale.
+
+## Stage 1: Stage 2 stub replacement + CI doc pivot — DEFERRED TO v0.11.0
 
 **Goal**: `eval preset` + `eval swarm-skill` invoke real `swarm.RunPipeline`. Stub stderr warning gone. CI workflow comment pivots from "deferred" to "intentional + permanent".
 
@@ -22,7 +28,7 @@ Branch: `v0.10.1-polish`
 - `cli/eval_swarm_shape_test.go` — assert `presetModeResolver.Resolve` invokes pipeline (mock).
 - Existing `swarm/*_test.go` should stay green; nothing about pre-existing behavior changes.
 
-**Status**: Not Started
+**Status**: Deferred to v0.11.0 (extraction scope exceeds polish-patch budget)
 
 ## Stage 2: `--dry-run` sweep
 
@@ -41,7 +47,7 @@ Branch: `v0.10.1-polish`
 - `cli/internal/cli/remove_test.go` — dry-run leaves skill in place.
 - `cli/internal/cli/publish_test.go` — dry-run mocks `gh` and asserts no invocation.
 
-**Status**: Not Started
+**Status**: Complete
 
 ## Stage 3: Error enumeration sweep + housekeeping
 
@@ -62,7 +68,7 @@ Branch: `v0.10.1-polish`
 - `cli/internal/cli/swarm_test.go` (or wherever appropriate) — assert "unknown preset" error contains "pr-review" and "dream".
 - `cli/internal/cli/init_agents_fragment_test.go` — `version=0.10.1` assertion already covers marker bump.
 
-**Status**: Not Started
+**Status**: Complete
 
 ---
 

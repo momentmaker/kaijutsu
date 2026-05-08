@@ -4,6 +4,24 @@ All notable changes to kaijutsu (the registry + skills) and `jutsu` (the CLI). T
 
 ## [Unreleased]
 
+## [0.10.1] — 2026-05-07
+
+Polish patch. Tier-A/B subset of the agent-native CLI audit (per [trevinsays.com/p/10-principles-for-agent-native-clis](https://trevinsays.com/p/10-principles-for-agent-native-clis)) plus the v0.10.x deferral list re-shaped: live judge dispatch in CI is dropped from the roadmap (CLI > API key — most users have paid Pro/Max/Plus subscriptions on the native CLIs; CI judge dispatch via injected `ANTHROPIC_API_KEY` would silently re-charge them via a separate billing channel). Spec: `docs/specs/2026-05-07-v0.10.1-polish.md`.
+
+### Added
+
+- **`--dry-run` on `install` / `upgrade` / `remove` / `publish`**. Each command resolves + validates as normal but skips every filesystem, lockfile, and network mutation. Dry-run output uses the `[dry-run]` line prefix; `publish --dry-run` does NOT exec `gh` or `git`. Per the agent-native CLI audit principle #4 (safe retries + explicit mutation boundaries).
+
+### Changed
+
+- **Error messages now enumerate valid options** when rejecting an enum value. v0.10.0 sites without enumeration: `resolveEvalAgent` (target/judge agent name), `personaProjections` + `personaJobs` (persona name + provider name), `skill.Validate` (hook event). All now name the valid set inline so an agent or human can self-correct in one retry instead of trial-and-erroring against `--help`. Per the agent-native CLI audit principle #3.
+- **`init_agents_fragment` marker version**: `0.10.0` → `0.10.1`. Older versions still detected via the version-agnostic prefix.
+
+### Notes
+
+- **Doc-review caught 7 findings** against the initial spec (claim-auditor-deepseek + performance-deepseek). All 7 incorporated before implementation: unsupported subscription claim softened, `eval swarm-skill` success criteria added, `publish --dry-run` verification added, manual error spot-check upgraded to 8-site touch list + 3 named regression tests, "meaningful diff" replaced with "non-byte-identical output.txt", missing `--evals` edge case noted, `runSwarmPipeline` LOC measured (470, not the initial estimate of 150).
+- **Stage 1 of the v0.10.1 plan** (replacing the v0.10 Stage 2 stubs in `eval preset` / `eval swarm-skill` with real `swarm.RunPipeline` integration) is **deferred** — `runSwarmPipeline` is 470 LOC of cobra-coupled logic, larger than fits a polish patch. Stage 1 work is moved to v0.11.0 with its own spec.
+
 ## [0.10.0] — 2026-05-08
 
 `jutsu eval` runner — port of agentskills.io / agent-skills-eval upstream to Go + kaijutsu-native swarm-shape eval extensions. Spec: `docs/specs/2026-05-08-v0.10.0-eval-runner.md`. Plan: `IMPLEMENTATION_PLAN.md` (3 stages).
