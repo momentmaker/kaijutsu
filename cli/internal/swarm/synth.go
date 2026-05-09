@@ -45,7 +45,8 @@ type SynthOpts struct {
 	Weights map[string]float64
 	// ShowWeights controls renderDisagreementTable: when true, each
 	// agent column header gains "(<weight>)". Off by default in v0.7
-	// so users adopt weights via `jutsu finding stats` first.
+	// so users adopt weights via `jutsu finding precision` first
+	// (renamed from `stats` in v0.14.0).
 	ShowWeights bool
 	// LensWeights is the v0.9 dream-only addition: keyed by lens name
 	// ("honest", "fit", etc.), value is the per-lens precision in

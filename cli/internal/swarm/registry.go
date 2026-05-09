@@ -153,6 +153,24 @@ func (r *PresetRegistry) UserSource(name string) UserPresetSource {
 	return r.userSources[name]
 }
 
+// Remove deregisters a USER preset by name. Returns true if removed,
+// false if name is unknown OR is a built-in (built-ins cannot be
+// removed — that would leave sibling tests in a half-broken state
+// since the DefaultRegistry is package-global).
+//
+// Used by tests that called RegisterUserPresets and want to clean up
+// after themselves; production code never deregisters.
+func (r *PresetRegistry) Remove(name string) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, isUser := r.userSources[name]; !isUser {
+		return false
+	}
+	delete(r.presets, name)
+	delete(r.userSources, name)
+	return true
+}
+
 // builtinNamesLocked returns the registered preset names whose
 // source is NOT user (i.e. registered via init's Register calls).
 // Caller MUST hold r.mu.

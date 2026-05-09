@@ -168,9 +168,11 @@ func TestFindingDismiss_RecordsState(t *testing.T) {
 	}
 }
 
-// TestFindingStats_BootstrapBucket verifies the < 10 actioned tuple
+// TestFindingPrecision_BootstrapBucket verifies the < 10 actioned tuple
 // renders with bootstrap weight; ≥ 10 renders with mature precision.
-func TestFindingStats_BootstrapBucket(t *testing.T) {
+// (Renamed from TestFindingStats_BootstrapBucket in v0.14.0 when the
+// `stats` cobra subcommand was renamed to `precision`.)
+func TestFindingPrecision_BootstrapBucket(t *testing.T) {
 	store, _ := setupFindingTest(t)
 	// 3 findings, 2 accepted, 1 dismissed → actioned=3 → bootstrap
 	results := []swarm.AgentResult{
@@ -187,7 +189,7 @@ func TestFindingStats_BootstrapBucket(t *testing.T) {
 	_ = findings.SetAction(store, 3, "dismissed", "")
 	store.Close()
 
-	out := runCmd(t, "finding", "stats", "--codebase", "fp1")
+	out := runCmd(t, "finding", "precision", "--codebase", "fp1")
 	if !strings.Contains(out, "bootstrap") {
 		t.Errorf("expected bootstrap weight label; got:\n%s", out)
 	}

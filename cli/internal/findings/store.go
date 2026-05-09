@@ -75,7 +75,7 @@ func Open(path string) (*Store, error) {
 	// start of the next dispatch).
 	// _busy_timeout=5000ms covers the rare overlap when two `jutsu`
 	// processes touch the DB simultaneously (e.g. a long-running swarm
-	// alongside `jutsu finding stats`).
+	// alongside `jutsu finding precision` or `stats`).
 	dsn := fmt.Sprintf("file:%s?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(ON)", path)
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {

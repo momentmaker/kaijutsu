@@ -136,19 +136,24 @@ Configurable swarm orchestration. Users compose their own swarm shapes via `swar
 - [x] **Built-in shadowing = hard error** — user preset named `pr-review` rejected at load time per spec Decision #2.
 - [x] **Yaml parse failure = zero-impact** — broken swarm.yaml never blocks built-in subcommands.
 
-## v0.13.x — Read-only persona browse
+## v0.14 — Persona browse + preset usage tracking + landing page
 
-80% of persona-sharing benefit at 5% of full-SDK effort (per dream's status-quo lens). Defer the persona-authoring SDK until user data validates demand.
+Read-only persona discovery + ghost-town-watch data + landing-page rebuild. 80% of persona-sharing benefit at 5% of full-SDK effort. Closes the v0.13 dream's "are users actually authoring presets, or are built-ins dominating?" gap.
 
-- [ ] **`jutsu agent persona browse`** — list curated built-ins + community examples. Output is paste-into-`agents.yaml` ready. No install pipeline.
+- [x] **`jutsu agent persona browse`** — list curated built-ins + community examples. Output is paste-into-`agents.yaml` ready. No install pipeline.
+- [x] **`jutsu finding stats`** — preset usage counts over a time window; source filter derives built-in vs user from the live swarm registry. (v0.7's precision report renamed to `jutsu finding precision`.)
+- [x] **`kaijutsu.dev` landing page rebuild** — dream-locked direction: cross-vendor portability moat, single-agent failure-mode lead, multi-agent disagreement primitive, cost-per-bug-found framing, demoted catalog. Drops "pre-alpha" from user-facing copy.
+
+## v0.14.x — Maybe persona test + new
+
 - [ ] **`jutsu agent persona test <name>`** — dry-run validation. Sends a fixed test prompt through the persona; shows the synthesis. Validates lens BEFORE committing to a real swarm run.
-- [ ] **`jutsu agent persona new <name>`** — interactive wizard scaffolding into `agents.yaml`. Pure ergonomics; no design risk.
+- [ ] **`jutsu agent persona new <name>`** — interactive wizard scaffolding into `agents.yaml`. Pure ergonomics; no design risk. Conditional on browse usage data showing demand.
 
-## v0.14+ — Maybe Persona SDK
+## v0.15+ — Maybe Persona SDK
 
 Conditional on:
 1. **A/B evidence** that cross-corpus diversity (claude+gemini+deepseek with same system_prompt) outperforms multi-persona-on-one-provider. Dream flagged this premise as untested + possibly self-confirming bias from RLHF-aligned reviewers.
-2. **User data** showing persona authoring (not routing) is the bottleneck. v0.13 Preset SDK addresses routing first; ship Persona SDK only if v0.13 surface usage shows authoring demand.
+2. **User data** showing persona authoring (not routing) is the bottleneck. v0.14 `finding stats` provides the data: ship Persona SDK only if user presets dominate vs built-ins over a meaningful sample window.
 3. **Behavioral lint** infrastructure (not token-only regex) for catching self-defeating user prompts. Token-only lint = false safety per dream's gaps+adversary cross-lens consensus.
 
 If those hold, scope:
