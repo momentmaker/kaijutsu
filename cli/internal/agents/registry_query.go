@@ -29,18 +29,24 @@ type BrowseRow struct {
 }
 
 // BrowsePersonas returns the resolved persona set with source tags
-// + filtered by BrowseFilters. Source attribution rule:
+// + filtered by BrowseFilters.
+//
+// IMPORTANT: shadowing/collision resolution happens upstream in
+// `agents.Resolve` (which produces the `Resolved` arg passed in).
+// BrowsePersonas itself does NOT resolve collisions — it just
+// LABELS each resolved persona with its highest-precedence source.
+//
+// Source attribution rule (highest precedence first; mirrors
+// `agents.Resolve` overlay order: built-ins → home → project):
 //
 //   - if name in project.Personas → source = "user:project"
 //   - else if name in global.Personas → source = "user:home"
 //   - else (came from BuiltinPersonas) → source = "built-in"
 //
-// Multi-config collision is handled by the same rule (project shadows
-// home shadows built-in) — matches `agents.Resolve` semantics.
-//
-// Built-in shadow case (user redefines a built-in name) — user wins;
-// source surfaces as "user:project" or "user:home" so the user knows
-// the built-in was overridden.
+// Built-in shadow case (user agents.yaml redefines a built-in name):
+// `Resolve` already replaced the built-in with the user version;
+// BrowsePersonas labels with `user:project` or `user:home` so the
+// caller can see the override happened.
 //
 // Returns empty slice if nothing matches; never returns nil.
 // Sorted alphabetically by name for stable output.
@@ -73,14 +79,19 @@ func BrowsePersonas(resolved *Resolved, global *GlobalConfig, project *ProjectCo
 
 // personaSource returns the source tag for a persona name. Project
 // wins over home, home wins over built-in (matches Resolve order).
+//
+// Nil-entry rule: Resolve skips nil persona entries (`foo: ~` in yaml)
+// when overlaying user layers, so personaSource must too — otherwise a
+// nil project entry would mislabel a built-in or home persona as
+// "user:project". Mirrors `Resolve` lines 145-159.
 func personaSource(name string, global *GlobalConfig, project *ProjectConfig) string {
 	if project != nil {
-		if _, ok := project.Personas[name]; ok {
+		if p, ok := project.Personas[name]; ok && p != nil {
 			return "user:project"
 		}
 	}
 	if global != nil {
-		if _, ok := global.Personas[name]; ok {
+		if p, ok := global.Personas[name]; ok && p != nil {
 			return "user:home"
 		}
 	}

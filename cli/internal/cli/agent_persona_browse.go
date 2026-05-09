@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"sort"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
@@ -161,7 +160,15 @@ func renderPersonasJSON(out io.Writer, rows []agents.BrowseRow) error {
 // renderPersonasYaml emits a paste-into-agents.yaml-ready block.
 // Top-level `personas:` map keyed by name; sub-keys mirror
 // agents.yaml schema (provider, system_prompt, tags, model).
-// Round-trips through agents.LoadGlobalConfig.
+//
+// IMPORTANT: this output is a FRAGMENT (just the `personas:`
+// subtree), not a standalone agents.yaml. Users paste this into
+// an existing agents.yaml that already has `version:` + `providers:`
+// blocks. Tests that round-trip through agents.LoadGlobalConfig
+// must wrap the output with those required fields. Real-world
+// usage flow: user runs `jutsu agent persona browse --yaml`,
+// pastes the output into the `personas:` section of their existing
+// `~/.kaijutsu/agents.yaml`.
 func renderPersonasYaml(out io.Writer, rows []agents.BrowseRow) error {
 	type personaYaml struct {
 		Provider     string   `yaml:"provider"`
@@ -174,11 +181,7 @@ func renderPersonasYaml(out io.Writer, rows []agents.BrowseRow) error {
 	}{
 		Personas: make(map[string]personaYaml, len(rows)),
 	}
-	// Stable iteration so yaml output is deterministic for diff /
-	// copy-paste workflows.
-	names := make([]string, 0, len(rows))
 	for _, r := range rows {
-		names = append(names, r.Name)
 		wrapper.Personas[r.Name] = personaYaml{
 			Provider:     r.Provider,
 			SystemPrompt: r.SystemPrompt,
@@ -186,7 +189,8 @@ func renderPersonasYaml(out io.Writer, rows []agents.BrowseRow) error {
 			Tags:         r.Tags,
 		}
 	}
-	sort.Strings(names)
+	// yaml.v3 sorts map[string]T keys alphabetically, so output is
+	// deterministic across runs (verified by RenderPersonasYaml_Deterministic).
 	enc := yaml.NewEncoder(out)
 	enc.SetIndent(2)
 	defer enc.Close()

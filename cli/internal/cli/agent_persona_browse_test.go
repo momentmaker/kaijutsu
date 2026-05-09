@@ -31,6 +31,7 @@ func TestAgentPersonaBrowse_HelpListsFlags(t *testing.T) {
 
 func TestAgentPersonaBrowse_PipeRendersJSON(t *testing.T) {
 	tmp := t.TempDir()
+	t.Setenv("HOME", tmp) // isolate from user's real ~/.kaijutsu/agents.yaml
 	prev, _ := os.Getwd()
 	if err := os.Chdir(tmp); err != nil {
 		t.Fatal(err)
@@ -57,6 +58,7 @@ func TestAgentPersonaBrowse_PipeRendersJSON(t *testing.T) {
 
 func TestAgentPersonaBrowse_JSONHasFullSystemPrompt(t *testing.T) {
 	tmp := t.TempDir()
+	t.Setenv("HOME", tmp)
 	prev, _ := os.Getwd()
 	if err := os.Chdir(tmp); err != nil {
 		t.Fatal(err)
@@ -84,6 +86,7 @@ func TestAgentPersonaBrowse_JSONHasFullSystemPrompt(t *testing.T) {
 
 func TestAgentPersonaBrowse_YamlFlagRendersPasteReadyFormat(t *testing.T) {
 	tmp := t.TempDir()
+	t.Setenv("HOME", tmp)
 	prev, _ := os.Getwd()
 	if err := os.Chdir(tmp); err != nil {
 		t.Fatal(err)
