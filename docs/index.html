@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>kaijutsu — open arts for AI coding agents</title>
-  <meta name="description" content="Multi-model adversarial review, local-first. The same swarm.yaml runs on Claude, Codex, Gemini, and DeepSeek.">
-  <meta property="og:title" content="kaijutsu — Open arts for AI coding agents.">
-  <meta property="og:description" content="Multi-model adversarial review, local-first. The same swarm.yaml runs on Claude, Codex, Gemini, and DeepSeek.">
+  <meta name="description" content="MIT-licensed registry of skills &#43; a multi-model review CLI. Compose pipelines once; run them on Claude, Codex, Gemini, DeepSeek — or any provider you add to agents.yaml.">
+  <meta property="og:title" content="kaijutsu — Open arts for AI agents">
+  <meta property="og:description" content="MIT-licensed registry of skills &#43; a multi-model review CLI. Compose pipelines once; run them on Claude, Codex, Gemini, DeepSeek — or any provider you add to agents.yaml.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://kaijutsu.dev">
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
@@ -14,20 +14,87 @@
   <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
-  <meta name="theme-color" content="#1A1A1A">
+  <meta name="theme-color" content="#100D09" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+  <script>
+    
+
+    (function () {
+      try {
+        var t = localStorage.getItem("kaijutsu-theme");
+        if (t === "light" || t === "dark") {
+          document.documentElement.setAttribute("data-theme", t);
+        }
+      } catch (e) {   }
+    })();
+  </script>
   <style>
+     
     :root {
       --ink: #1A1A1A;
       --ink-soft: #2E2E2E;
       --paper: #F5EDE0;
       --bg: #FFFFFF;
+      --bg-soft: #FAF6EE;
       --muted: #6B6B6B;
       --border: #ECE5D6;
       --mint: #3DDC97;
       --mint-dark: #2BB37C;
       --rust: #C18450;
+      --rust-soft: #C18450;
       --code-bg: #1A1A1A;
       --code-fg: #F5EDE0;
+      --diff-add: #3DDC97;
+      --diff-rem: #E0A574;
+
+       
+      --space-xs: 0.25rem;
+      --space-sm: 0.5rem;
+      --space-md: 1rem;
+      --space-lg: 1.25rem;
+      --space-xl: 1.75rem;
+      --space-2xl: 2.25rem;
+
+      --content-width: 760px;
+      --transition-colors: color 0.25s ease, background-color 0.25s ease, border-color 0.25s ease;
+    }
+     
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --ink: #F5EDE0;
+        --ink-soft: #DCD4C4;
+        --paper: #221D17;
+        --bg: #100D09;
+        --bg-soft: #1A1612;
+        --muted: #8A8278;
+        --border: #2C2620;
+        --mint: #3DDC97;
+        --mint-dark: #5BE3A8;
+        --rust: #E0A574;
+        --rust-soft: #C18450;
+        --code-bg: #050402;
+        --code-fg: #F5EDE0;
+        --diff-add: #3DDC97;
+        --diff-rem: #E0A574;
+      }
+    }
+     
+    :root[data-theme="dark"] {
+      --ink: #F5EDE0;
+      --ink-soft: #DCD4C4;
+      --paper: #221D17;
+      --bg: #100D09;
+      --bg-soft: #1A1612;
+      --muted: #8A8278;
+      --border: #2C2620;
+      --mint: #3DDC97;
+      --mint-dark: #5BE3A8;
+      --rust: #E0A574;
+      --rust-soft: #C18450;
+      --code-bg: #050402;
+      --code-fg: #F5EDE0;
+      --diff-add: #3DDC97;
+      --diff-rem: #E0A574;
     }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
@@ -38,7 +105,35 @@
       color: var(--ink);
       line-height: 1.6;
       -webkit-font-smoothing: antialiased;
+      transition: var(--transition-colors);
     }
+    section, header, footer, .demo-card, .trust-card, .wrapper-defense, .callout, .objection, .install-box, .card, .filter, pre, .topnav {
+      transition: var(--transition-colors);
+    }
+
+     
+    .theme-toggle {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 50;
+      width: 36px;
+      height: 36px;
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      color: var(--ink-soft);
+      border-radius: 50%;
+      padding: 0;
+      font-size: 17px;
+      line-height: 1;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition-colors), transform 0.15s;
+    }
+    .theme-toggle:hover { color: var(--mint-dark); border-color: var(--mint); transform: translateY(-1px); }
+    .theme-toggle:focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; }
     a { color: var(--mint-dark); text-decoration: none; }
     a:hover { text-decoration: underline; }
     code, pre, kbd, samp { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; }
@@ -53,12 +148,14 @@
       margin: 16px 0;
     }
     pre code { color: inherit; }
-    .container { max-width: 1000px; margin: 0 auto; padding: 0 20px; }
+    .container { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+    .container > * { max-width: var(--content-width); }
+    .container > .grid, .container > .demo-grid, .container > .trust-grid, .container > .catalog-controls { max-width: none; }
 
      
     .hero {
       text-align: center;
-      padding: 64px 20px 56px;
+      padding: var(--space-2xl) 20px var(--space-xl);
       background: linear-gradient(180deg, rgba(61, 220, 151, 0.10), transparent 80%);
     }
     .hero-mascot {
@@ -89,21 +186,25 @@
       max-width: 58ch;
     }
     .hero .tagline {
+      list-style: none;
+      padding: 0;
+      margin: 0 auto var(--space-xl);
       font-size: 13px;
       color: var(--muted);
-      margin: 0 auto 32px;
       max-width: 60ch;
       letter-spacing: 0.01em;
     }
-    .hero .tagline .kanji-inline {
+    .hero .tagline li { margin: 4px 0; }
+    .hero .tagline li:first-child {
       color: var(--rust);
       font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+      font-size: 14px;
     }
     .install-box {
       display: inline-flex;
       gap: 10px;
       align-items: center;
-      background: var(--ink);
+      background: var(--code-bg);
       color: var(--code-fg);
       padding: 12px 16px;
       border-radius: 10px;
@@ -116,7 +217,7 @@
     .install-box code { color: var(--mint); }
     .install-box .copy-hint {
       background: var(--mint);
-      color: var(--ink);
+      color: #1A1A1A;
       border: none;
       padding: 4px 10px;
       border-radius: 4px;
@@ -139,15 +240,15 @@
     .quick-links a:hover { color: var(--ink); text-decoration: underline; }
 
      
-    section { padding: 64px 0 8px; }
-    section:first-of-type { padding-top: 48px; }
+    section.container { padding: var(--space-2xl) 20px; }
+    section.container:first-of-type { padding-top: var(--space-xl); }
     section h2 {
       font-size: clamp(22px, 2.6vw, 28px);
-      margin: 0 0 14px;
+      margin: 0 0 var(--space-md);
       letter-spacing: -0.01em;
     }
-    section h3 { font-size: 17px; margin: 22px 0 8px; }
-    section p { margin: 12px 0; max-width: 68ch; }
+    section h3 { font-size: 17px; margin: var(--space-lg) 0 var(--space-sm); }
+    section p { margin: var(--space-md) 0; max-width: 68ch; }
     section ul { max-width: 68ch; }
     section li { margin-bottom: 6px; }
 
@@ -163,7 +264,7 @@
       border: 1px solid var(--border);
       border-radius: 10px;
       padding: 18px 20px;
-      background: #fff;
+      background: var(--bg-soft);
     }
     .demo-card.disagree { border-color: var(--mint); }
     .demo-card .label {
@@ -176,11 +277,64 @@
     }
     .demo-card.disagree .label { color: var(--mint-dark); }
     .demo-card .body { font-size: 14px; line-height: 1.6; color: var(--ink-soft); }
+    .demo-card .body.code {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: var(--code-bg);
+      color: var(--code-fg);
+      padding: 12px 14px;
+      border-radius: 6px;
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+    .demo-card .body.code .add { color: var(--diff-add); }
+    .demo-card .body.code .rem { color: var(--diff-rem); }
     .demo-caption { font-size: 13px; color: var(--muted); margin-top: 6px; }
 
      
+    .prompt-card {
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--mint);
+      border-radius: 0 10px 10px 0;
+      padding: 14px 18px;
+      margin: var(--space-md) 0;
+      max-width: 68ch;
+    }
+    .prompt-card .label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--mint-dark);
+      margin-bottom: 6px;
+    }
+    .prompt-card .prompt-body {
+      font-size: 15px;
+      color: var(--ink);
+      font-style: italic;
+      line-height: 1.5;
+    }
+    .agent-does {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin: var(--space-md) 0 var(--space-xs);
+    }
+    .manual-note {
+      font-size: 13px;
+      color: var(--muted);
+      font-style: italic;
+      margin: var(--space-md) 0 var(--space-sm);
+      max-width: 68ch;
+    }
+
+     
     .callout {
-      background: #fff;
+      background: var(--bg-soft);
       border-left: 3px solid var(--mint);
       padding: 16px 20px;
       margin: 20px 0;
@@ -222,12 +376,12 @@
       border: 1px solid var(--border);
       border-radius: 10px;
       padding: 16px 18px;
-      background: #fff;
+      background: var(--bg-soft);
     }
     .trust-card h3 { margin: 0 0 6px; font-size: 15px; }
     .trust-card p { font-size: 14px; color: var(--ink-soft); margin: 0; }
     .wrapper-defense {
-      background: #fff;
+      background: var(--bg-soft);
       border: 1px solid var(--border);
       border-radius: 10px;
       padding: 20px 22px;
@@ -250,7 +404,7 @@
       border: 1px solid var(--border);
       border-radius: 8px;
       font-size: 14px;
-      background: #fff;
+      background: var(--bg-soft);
     }
     .catalog-controls input[type="search"]:focus {
       outline: none;
@@ -262,7 +416,7 @@
       padding: 8px 14px;
       border: 1px solid var(--border);
       border-radius: 999px;
-      background: #fff;
+      background: var(--bg-soft);
       font-size: 13px;
       cursor: pointer;
       color: var(--ink-soft);
@@ -287,7 +441,7 @@
       border: 1px solid var(--border);
       border-radius: 10px;
       padding: 16px 18px;
-      background: #fff;
+      background: var(--bg-soft);
       display: flex;
       flex-direction: column;
       gap: 10px;
@@ -351,25 +505,57 @@
     }
 
     footer {
-      margin-top: 56px;
-      padding: 32px 20px 40px;
+      margin-top: var(--space-2xl);
+      padding: var(--space-xl) 20px var(--space-2xl);
       text-align: center;
       color: var(--muted);
       font-size: 13px;
       background: var(--paper);
+      border-top: 1px solid var(--border);
     }
     footer p { margin: 6px 0; }
     footer a { color: var(--ink-soft); }
+    .etymology {
+      max-width: 640px;
+      margin: 0 auto var(--space-md);
+      font-size: 13px;
+    }
+    .etymology summary {
+      cursor: pointer;
+      color: var(--rust);
+      font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+      font-size: 14px;
+      letter-spacing: 0.02em;
+      list-style: none;
+      padding: 6px 0;
+      text-align: center;
+    }
+    .etymology summary::-webkit-details-marker { display: none; }
+    .etymology summary::before { content: "術 "; opacity: 0.55; }
+    .etymology summary:hover { color: var(--rust-soft); }
+    .etymology[open] summary { margin-bottom: var(--space-sm); }
+    .etymology dl { margin: 0 auto; padding: 0 var(--space-md); text-align: left; max-width: 560px; }
+    .etymology dt {
+      font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+      color: var(--rust);
+      margin-top: var(--space-sm);
+      font-size: 13px;
+    }
+    .etymology dd { margin: 4px 0 0; padding: 0; color: var(--ink-soft); line-height: 1.55; }
   </style>
 </head>
 <body id="top">
 
+<button class="theme-toggle" id="theme-toggle" type="button" aria-label="Cycle color theme: auto, light, dark"><span aria-hidden="true">◐</span></button>
+
 <header class="hero">
   <img class="hero-mascot" src="/web-app-manifest-192x192.png" alt="kaijutsu chibi monster mascot">
   <div class="hero-kanji" aria-hidden="true">術</div>
-  <h1>Open arts for AI coding agents.</h1>
-  <p class="subcopy">Multi-model adversarial review, local-first. The same swarm.yaml runs on Claude, Codex, Gemini, and DeepSeek.</p>
-  <p class="tagline">kai (開) &#43; jutsu (術) — open &#43; skill. Sometimes kaiju (怪獣) — monster. Always kaizen (改善) — improvement.</p>
+  <h1>Open arts for AI agents</h1>
+  <p class="subcopy">MIT-licensed registry of skills &#43; a multi-model review CLI. Compose pipelines once; run them on Claude, Codex, Gemini, DeepSeek — or any provider you add to agents.yaml.</p>
+  <ul class="tagline">
+    <li>開 &#43; 術 — open &#43; skill.</li><li>Agent-first: your AI coding agent installs and runs jutsu.</li><li>Local-first. No telemetry. No registry lock-in.</li>
+  </ul>
   <div class="install-box" onclick="navigator.clipboard.writeText('curl -fsSL https:\/\/kaijutsu.dev\/install.sh | sh')" title="Click to copy">
     <code>curl -fsSL https://kaijutsu.dev/install.sh | sh</code>
     <span class="copy-hint">copy</span>
@@ -388,29 +574,57 @@
 
 <section id="failure-demo" class="container">
   <h2>One agent says yes. Three say no.</h2>
-  <p>Single-agent review is sycophancy by default. Same prompt, same model, run twice — you usually get the same &#34;looks good.&#34; Adversarial review needs structural disagreement, not just rerolls.</p>
+  <p>Single-agent review is sycophancy by default. Same prompt, same model, run twice — you usually get the same &#34;LGTM.&#34; Adversarial review needs structural disagreement, not rerolls.</p>
   <div class="demo-grid">
     <div class="demo-card">
-      <div class="label">Single-agent (Claude only)</div>
-      <div class="body">Reviewed the v0.13.0 final pr-review pre-fix. &#34;LGTM — clean rename, well-scoped, tests look comprehensive.&#34;</div>
+      <div class="label">Single-agent — Claude only</div>
+      <div class="body">“LGTM. Clean rename, well-scoped. Tests look comprehensive.”</div>
     </div>
     <div class="demo-card disagree">
-      <div class="label">kaijutsu swarm (claude &#43; gemini &#43; deepseek)</div>
-      <div class="body">DeepSeek (paranoid-security persona) caught validateUserPresetEntry dropping Mode/Personas/ConfidenceFloor at parse time. Claude and Gemini both green-lit. The bug was real. We fixed it (commit 83476ef).</div>
+      <div class="label">kaijutsu swarm — claude &#43; gemini &#43; deepseek</div>
+      <div class="body code">deepseek (paranoid-security): validateUserPresetEntry drops Mode/Personas/ConfidenceFloor at parse. User configs silently lose fields.
+
+  func validateUserPresetEntry(e UserPreset) (Preset, error) {
+      return Preset{
+          Name: e.Name,
+          Base: e.Base,
+-         // Mode/Personas/ConfidenceFloor dropped
+&#43;         Mode: e.Mode,
+&#43;         Personas: e.Personas,
+&#43;         ConfidenceFloor: e.ConfidenceFloor,
+      }, nil
+  }</div>
     </div>
   </div>
-  <p class="demo-caption"><a href="https://github.com/momentmaker/kaijutsu/commit/83476ef">Full disagreement-table run →</a></p>
-  <p>kaijutsu fans the same diff out across multiple models, surfaces where they agree, and flags exactly where they don&#39;t. The disagreement table is the artifact you actually read.</p>
+  <p class="demo-caption"><a href="https://github.com/momentmaker/kaijutsu/commit/83476ef">Full disagreement-table run → commit 83476ef</a></p>
+  <p>kaijutsu fans the same diff across multiple models, shows where they agree, and flags exactly where they don&#39;t. The disagreement table is the artifact you read.</p>
 </section>
 
 <section id="quickstart" class="container">
-  <h2>Quickstart</h2>
-  <p>Install:</p>
+  <h2>Quickstart — agent-first</h2>
+  <p>kaijutsu is agent-first: jutsu is meant to be invoked BY your AI coding agent on your behalf. The first time, point your agent at kaijutsu.dev — after that, jutsu init writes a fragment into AGENTS.md / CLAUDE.md so future agent sessions already know what the tool is.</p>
+
+  <h3>1. One-time setup (cold start)</h3>
+  <p>Paste the kaijutsu URL to your coding agent (Claude Code / Codex / Gemini CLI), or run the install yourself. Either way, jutsu init drops the persistent context fragment.</p>
+  <div class="prompt-card">
+    <div class="label">You say to your agent:</div>
+    <div class="prompt-body">“Set up kaijutsu from https://kaijutsu.dev in this repo. Run jutsu init. Then install the pr-review skill. Tell me which API keys I still need to export.”</div>
+  </div>
+  <p class="agent-does">Agent runs:</p>
   <pre><code>curl -fsSL https://kaijutsu.dev/install.sh | sh
-jutsu init                    # detects active agents, writes .kaijutsu/</code></pre>
-  <p>Run a swarm pr-review on the current branch:</p>
-  <pre><code>jutsu swarm pr-review --diff-from-branch main</code></pre>
-  <p>Partial output:</p>
+jutsu init                              # detects active agents, writes .kaijutsu/ &#43; AGENTS.md fragment
+jutsu install pr-review                 # add the pr-review skill
+jutsu agent doctor                      # verify provider env vars &#43; reachability</code></pre>
+
+  <h3>2. After setup</h3>
+  <p>Future agent sessions read the AGENTS.md fragment and already know what jutsu does — no URL re-paste needed.</p>
+  <div class="prompt-card">
+    <div class="label">You say to your agent:</div>
+    <div class="prompt-body">“Run a multi-agent pr-review on my current branch and post as a PR comment.”</div>
+  </div>
+  <p class="agent-does">Agent runs:</p>
+  <pre><code>jutsu swarm pr-review --diff-from-branch main --post-comment</code></pre>
+  <p class="agent-does">What you get back:</p>
   <pre><code>claude     │ ✓ │ ✗ │ ✓
 gemini     │ ✓ │ ✓ │ ✗
 deepseek   │ ✗ │ ✓ │ ✓
@@ -419,6 +633,8 @@ deepseek   │ ✗ │ ✓ │ ✓
            issue      auth.go:42               token expiry uses &lt; not &lt;=
            issue      handlers/user.go:118     missing rate-limit on /verify
            minor      schema.sql:9             index name shadows reserved word</code></pre>
+
+  <p class="manual-note">Prefer to type it yourself? Every command above works in a normal terminal — jutsu doesn&#39;t care who&#39;s typing.</p>
   <a class="more-link" href="https://github.com/momentmaker/kaijutsu/blob/main/README.md#quickstart">Full quickstart guide →</a>
 </section>
 
@@ -445,29 +661,33 @@ presets:
 
 <section id="cost" class="container">
   <h2>Cost per bug found</h2>
-  <p>Multi-agent review costs more per call than a single-agent run. The framing the spreadsheet wants is cost per bug actually caught and confirmed real, not cost per call.</p>
-  <p class="demo-caption">Real numbers from the v0.14.0 stage-2 doc-review run on the landing-page content spec (this page&#39;s spec).</p>
+  <p>Multi-agent review costs more per call than a single-agent run. The framing that matters is cost per bug actually caught and confirmed real, not cost per call.</p>
+  <p class="demo-caption">Receipt from a real run. Reproducible: same prompt &#43; same providers &#43; cold cache should land within ±20% (vendor pricing drifts; rate limits / context refresh affect timing).</p>
   <table class="cost-table">
     <thead><tr><th>Metric</th><th>Value</th></tr></thead>
     <tbody>
     
-      <tr><td>Models in pool</td><td class="value">deepseek &#43; gemini (2 personas)</td></tr>
+      <tr><td>Run</td><td class="value">doc-review on the v0.14 landing-page content spec</td></tr>
+    
+      <tr><td>Personas</td><td class="value">claim-auditor-deepseek &#43; architecture-purist-gemini</td></tr>
+    
+      <tr><td>Providers</td><td class="value">deepseek-chat (HTTP) &#43; gemini-2.5-pro (CLI)</td></tr>
+    
+      <tr><td>Cache state</td><td class="value">cold (run-id 20260509T155131Z)</td></tr>
     
       <tr><td>Total API cost</td><td class="value">$0.05</td></tr>
     
       <tr><td>Wall time</td><td class="value">4m31s</td></tr>
     
-      <tr><td>Findings emitted</td><td class="value">10</td></tr>
+      <tr><td>Findings</td><td class="value">10 (4 issue, 4 minor, 2 info)</td></tr>
     
-      <tr><td>Issues fixed in spec</td><td class="value">6</td></tr>
-    
-      <tr><td>Cost per fixed issue</td><td class="value">~$0.008</td></tr>
+      <tr><td>Cost per real issue caught</td><td class="value">~$0.008 (4 issue / $0.03 attributable)</td></tr>
     
     </tbody>
   </table>
   <div class="objection">
-    <div class="q">But isn&#39;t this 3x more expensive than a single-agent run?</div>
-    <div>Yes — and that&#39;s the point. Three models with different priors disagree about different things. The cost difference is what buys you the disagreement.</div>
+    <div class="q">Isn&#39;t this ~3x a single-agent run?</div>
+    <div>Yes — that&#39;s what you&#39;re buying. Three models with different priors disagree about different things. The cost difference is the disagreement. If your codebase doesn&#39;t need disagreement, run jutsu swarm pr-review with --personas default-claude only.</div>
   </div>
 </section>
 
@@ -477,23 +697,28 @@ presets:
   <div class="trust-grid">
   
     <div class="trust-card">
-      <h3>Skill provenance</h3>
-      <p>Core skills (skills/core/*) are sigstore-signed at release. jutsu install verifies the signature before unpacking. Community skills are pinned to a tagged commit &#43; SHA in kaijutsu.lock.json; tampering breaks the lockfile.</p>
+      <h3>MIT-licensed, end to end</h3>
+      <p>kaijutsu CLI, every core skill, the registry index — all MIT. No CLA, no rug-pull license clause, no &#34;open core&#34; tier. Fork it. The LICENSE file in every skill is part of the integrity check.</p>
     </div>
   
     <div class="trust-card">
-      <h3>Permission gates</h3>
-      <p>jutsu install parses each skill&#39;s permissions: manifest before write. Bash, network, fs-write are explicit; jutsu install prompts on first use of a sensitive permission and records the decision.</p>
+      <h3>Skill provenance</h3>
+      <p>Core skills (skills/core/*) are sigstore-signed at release. jutsu install verifies the signature before unpacking. Community skills are pinned to a tagged commit &#43; SHA &#43; sha256 integrity in kaijutsu.lock.json; tampering breaks the lockfile.</p>
+    </div>
+  
+    <div class="trust-card">
+      <h3>Permission gates &#43; supply-chain</h3>
+      <p>Skills can request bash, network, fs-write. jutsu install parses each skill&#39;s permissions: manifest before write and prompts on first sensitive use. Skills are arbitrary code that runs in your agent loop — pin to SHA, audit the diff, do not auto-update.</p>
     </div>
   
     <div class="trust-card">
       <h3>Local data stays local</h3>
-      <p>~/.kaijutsu/findings.db (the quality fingerprinting store) is mode 0600, never leaves disk, never syncs anywhere. The cli/internal/cli/finding.go package is import-list-restricted from net, net/http, net/url — enforced as a build-time test.</p>
+      <p>~/.kaijutsu/findings.db is mode 0600, never leaves disk, never syncs. The cli/internal/cli/finding.go package is import-list-restricted from net, net/http, net/url — enforced as a build-time test.</p>
     </div>
   
     <div class="trust-card">
       <h3>Receipts, not rhetoric</h3>
-      <p>Every kaijutsu release links to the actual jutsu swarm pr-review run that reviewed itself. (Self-review is necessary, not sufficient — but it&#39;s a falsifiable receipt, not a marketing badge.)</p>
+      <p>Every kaijutsu release links to the actual jutsu swarm pr-review that reviewed it. Self-review is necessary, not sufficient — but it&#39;s a falsifiable receipt, not a marketing badge.</p>
     </div>
   
   </div>
@@ -1147,7 +1372,15 @@ presets:
 </main>
 
 <footer>
-  <p>kaijutsu is MIT-licensed. The mascot eats unrecoverable shell commands.</p>
+  <details class="etymology">
+    <summary>kaijutsu — three readings</summary>
+    <dl>
+      <dt>kai (開) + jutsu (術)</dt><dd>open + skill — the primary etymology. MIT-licensed registry of agent skills, install on any provider, no lock-in.</dd>
+      <dt>kaiju (怪獣) + jutsu</dt><dd>monster + arts — the chibi mascot, the playful edge. The monster eats unrecoverable shell commands.</dd>
+      <dt>kaizen (改善) + jutsu</dt><dd>continuous improvement + arts — adversarial review, per-(provider, persona, preset) precision tracking, dream lens-blindspots, polish loops.</dd>
+    </dl>
+  </details>
+  <p>kaijutsu is MIT-licensed. <a href="https://github.com/momentmaker/kaijutsu/blob/main/LICENSE">LICENSE</a>.</p>
   <p>Generated from <a href="https://github.com/momentmaker/kaijutsu/tree/main/skills/core">skills/core/</a> + <a href="https://github.com/momentmaker/kaijutsu/blob/main/registry/index.json">registry/index.json</a>. <a href="/skills.json">JSON catalog</a>.</p>
 </footer>
 
@@ -1186,6 +1419,44 @@ presets:
     }
     render();
   });
+
+   
+  (function () {
+    const btn = document.getElementById('theme-toggle');
+    if (!btn) return;
+    const root = document.documentElement;
+    function read() {
+      try { return localStorage.getItem('kaijutsu-theme') || 'auto'; } catch (e) { return 'auto'; }
+    }
+    const glyph = { auto: '◐', light: '○', dark: '●' };
+    const labels = {
+      auto:  'Theme: auto (follow system) — click for light',
+      light: 'Theme: light — click for dark',
+      dark:  'Theme: dark — click for auto'
+    };
+    function paint(state) {
+      const span = btn.querySelector('span');
+      if (span) span.textContent = glyph[state] || '◐';
+      btn.title = labels[state] || labels.auto;
+      btn.setAttribute('aria-label', 'Theme: ' + state + ' (click to cycle)');
+    }
+    function apply(state) {
+      if (state === 'auto') {
+        root.removeAttribute('data-theme');
+        try { localStorage.removeItem('kaijutsu-theme'); } catch (e) {}
+      } else {
+        root.setAttribute('data-theme', state);
+        try { localStorage.setItem('kaijutsu-theme', state); } catch (e) {}
+      }
+      paint(state);
+    }
+    paint(read());
+    btn.addEventListener('click', () => {
+      const cur = read();
+      const next = cur === 'auto' ? 'light' : cur === 'light' ? 'dark' : 'auto';
+      apply(next);
+    });
+  })();
 </script>
 
 </body>

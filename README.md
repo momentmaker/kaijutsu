@@ -5,8 +5,13 @@
 <h1 align="center">kaijutsu</h1>
 
 <p align="center">
-  <strong>Open skills for AI coding agents.</strong><br>
-  One source of truth — Claude, Codex, Gemini, all from the same registry.
+  <strong>Open arts for AI agents.</strong><br>
+  MIT-licensed registry of skills + a multi-model review CLI.<br>
+  Compose pipelines once; run them on Claude, Codex, Gemini, DeepSeek — or any provider you add to <code>agents.yaml</code>.
+</p>
+
+<p align="center">
+  <em>kai (開) + jutsu (術) — open + skill. Agent-first. Local-first. No telemetry. No registry lock-in.</em>
 </p>
 
 <p align="center">
@@ -23,7 +28,7 @@
 
 ---
 
-> **Status: alpha.** The `jutsu` CLI works end-to-end (init / install / list / remove / upgrade / lint / search / info / publish / agent / swarm / finding). 26 core skills currently ship across task-oriented (decide, journal, polish, unstuck, scope-check, session-retro, agent-doctor, pr-review, readme-update, doc-review, brainstorm, refactor-plan, security-audit, spec-driven-development, planning-and-task-breakdown, security-and-hardening, code-simplification, incremental-implementation), composable primitives (blunder-hunt, lie-to-them, convergence-detect, deslop, dispatch-parallel, multi-model-synth, project-memory), and a hooks bundle (dcg). v0.6 ships multi-provider swarm (driver abstraction + agents.yaml + personas); v0.7 adds quality fingerprinting (`jutsu finding *` + confidence-weighted synthesizer) — see below. Install paths, skill schema, and command surface are stable for v0.x. The public skill catalog at [kaijutsu.dev](https://kaijutsu.dev) is still maturing — see [`ROADMAP.md`](./ROADMAP.md). Security model: [`SECURITY.md`](./SECURITY.md).
+> **Status: alpha (v0.14.0).** The `jutsu` CLI works end-to-end (init / install / list / remove / upgrade / lint / search / info / publish / agent / swarm / finding / skill). 24 first-party skills (18 core + 6 community), plus 22 vendored third-party catalog entries — 46 in the public catalog at [kaijutsu.dev](https://kaijutsu.dev). v0.6 driver abstraction (cli / cli-compat / http / mcp). v0.7 quality fingerprinting (`jutsu finding precision` + confidence-weighted synthesizer). v0.13 Preset SDK (`swarm.yaml` per project / per user). v0.14 persona browse + preset-usage stats + landing-page rebuild — see below. Install paths, skill schema, command surface stable for v0.x. Security model: [`SECURITY.md`](./SECURITY.md).
 
 ## Why
 
@@ -32,6 +37,35 @@ Skills (markdown + scripts that extend AI coding agents) are exploding across Cl
 **kaijutsu** is an MIT-licensed, agent-agnostic registry and CLI for AI agent skills. The CLI is named `jutsu`. One author manifest, two install paths (`.claude/skills/` for Claude, `.agents/skills/` for Codex + Gemini), three agents covered.
 
 ## Quickstart
+
+### Agent-first (recommended)
+
+`jutsu` is meant to be invoked BY your AI coding agent on your behalf. Cold-start once, then `jutsu init` writes a fragment into `AGENTS.md` / `CLAUDE.md` so future agent sessions already know the tool.
+
+**1. One-time setup.** Paste the URL to your coding agent (Claude Code / Codex CLI / Gemini CLI):
+
+> "Set up kaijutsu from https://kaijutsu.dev in this repo. Run `jutsu init`. Install the `pr-review` skill. Tell me which API keys I still need to export."
+
+The agent runs:
+
+```bash
+curl -fsSL https://kaijutsu.dev/install.sh | sh
+jutsu init                # detects active agents, writes .kaijutsu/ + AGENTS.md fragment
+jutsu install pr-review   # add pr-review skill
+jutsu agent doctor        # verify provider env vars + reachability
+```
+
+**2. After setup.** Future sessions read the AGENTS.md fragment automatically:
+
+> "Run a multi-agent pr-review on my current branch and post as a PR comment."
+
+The agent runs:
+
+```bash
+jutsu swarm pr-review --diff-from-branch main --post-comment
+```
+
+### Manual (if you prefer to type it yourself)
 
 ```bash
 # Install jutsu
@@ -193,7 +227,7 @@ See [CHANGELOG.md](./CHANGELOG.md#0100--2026-05-08) for the full feature list, S
 - **`--dry-run` on `install`/`upgrade`/`remove`/`publish`**. Each command resolves + validates as normal but skips every filesystem, lockfile, and network mutation. Per the agent-native CLI [principle #4](https://trevinsays.com/p/10-principles-for-agent-native-clis).
 - **Error messages enumerate valid options** when rejecting an enum value (preset name, persona name, agent name, hook event). Self-correct in one retry instead of trial-and-erroring against `--help`.
 
-### v0.14.0 — Persona browse + preset usage tracking
+### v0.14.0 — Persona browse + preset usage tracking + landing page rebuild
 
 ```bash
 # Read-only persona discovery (built-in + user:home + user:project, with provenance)
@@ -210,6 +244,8 @@ jutsu finding stats --source user --json                     # user presets only
 ```
 
 The v0.7 precision report previously at `jutsu finding stats` was renamed to `jutsu finding precision` to free the `stats` name for usage counts. Source attribution for `stats --by preset` derives from the LIVE swarm registry at query time — a preset that's been unregistered since its findings were recorded surfaces as `source=unknown`.
+
+[`kaijutsu.dev`](https://kaijutsu.dev) was rebuilt around the dream-locked direction (87-finding 4-persona dream pass): cross-vendor portability as the durable moat, agent-first framing, single-agent failure-mode demo with a real bug receipt, cost-per-bug-found numbers from a live run, supply-chain trust call-out, dark-mode toggle. ADR: [`docs/decisions/2026-05-09-landing-page-direction.md`](./docs/decisions/2026-05-09-landing-page-direction.md).
 
 See [CHANGELOG.md](./CHANGELOG.md#0140--2026-05-09) for the full feature list and the v0.13 → v0.14 dream-locked decision rationale.
 
