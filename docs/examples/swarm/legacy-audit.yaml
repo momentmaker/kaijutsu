@@ -1,0 +1,104 @@
+# legacy-audit — example v0.13.0 swarm.yaml entry.
+#
+# Pattern: blends code-archaeology's "WHY does this look this way"
+# theory framing with security-audit's "what could break" lens.
+# Single-preset composition; no auxiliary input plumbing per spec
+# Decision #3.
+#
+# Use when joining a project + staring at code that's been there
+# for years + suspect bug-shaped patterns may be hiding behind
+# era-specific style. The synthesizer marks theories as
+# corroborated / single-source / contested (mirrors
+# code-archaeology's provenance markers) but adds a security-
+# concerns column for theories that imply present-day bug surface.
+#
+# To use:
+#   1. Copy to .kaijutsu/swarm.yaml.
+#   2. Run `jutsu swarm validate`.
+#   3. `jutsu swarm legacy-audit path/to/some/legacy.go`
+#      (substitute paths; the example below uses placeholders)
+#
+# Note: this preset does NOT auto-fetch git history (custom flag
+# plumbing is not yaml-configurable in v0.13). For git-log
+# evidence, use the built-in `code-archaeology --git-log <since>`
+# preset instead.
+
+- name: legacy-audit
+  description: code-archaeology + security-audit composed lens (3 personas)
+  inputKind: files
+  defaultPrompt: |
+    Read the legacy code below. Generate competing theories
+    explaining BOTH why the code looks the way it does AND what
+    present-day risks the patterns might imply.
+
+    For each finding, emit a JSON object:
+      severity:    blocker | issue | minor | info
+      file:        relative path
+      line_range:  "42" or "42-58" or "0"
+      summary:     "[<CATEGORY>] one-line theory + risk"
+      reasoning:   2-4 sentences: historical theory (why it looks
+                   this way) + present-day risk (what this pattern
+                   could break today) + evidence (cite specific
+                   code structure or comments)
+      confidence:  0.0-1.0
+
+    Categories:
+      workaround: response to past bug; check if bug still exists
+      era-pattern: idiomatic style of past era
+      perf-opt: optimization for past hardware/scale
+      security-mitigation: response to past vulnerability;
+                           check if threat is still relevant
+      abandoned-migration: half-old half-new state
+      accidental-complexity: no clear historical reason
+
+    Severity here means "trust this finding":
+      blocker: load-bearing finding that MUST be verified before
+               touching this code
+      issue:   strong evidence; investigate before refactoring
+      minor:   plausible; lower priority
+      info:    speculative; only useful if other reviewers agree
+
+    Skip pure-style nits. Skip findings without evidence.
+
+    LEGACY-CODE:
+    %s
+  synthesizer: |
+    Three reviewers each generated legacy-code theories. Cluster
+    by category + provenance.
+
+    Output format:
+
+    ## Legacy-audit findings (ranked)
+
+    | # | severity | category | provenance | summary |
+    |---|---|---|---|---|
+
+    Provenance values:
+      corroborated: 2+ reviewers cite INDEPENDENT evidence
+      single-source: only one reviewer surfaced this
+      contested: reviewers cite EVIDENCE POINTING DIFFERENT WAYS
+
+    Rank by:
+      1. severity (blocker > issue > minor > info)
+      2. provenance (corroborated > single-source > contested)
+      3. mean confidence
+
+    Then per-finding bodies for top 5:
+
+    ### 1. <summary>
+    - reasoning: <synth>
+    - evidence: <verbatim citation from strongest reviewer>
+    - reviewers: <list>
+
+    For "contested" entries, list conflicting evidence side-by-side
+    so the user can investigate.
+
+    PER-AGENT FINDINGS:
+    %s
+  severityVocab: [blocker, issue, minor, info]
+  mode: quick
+  personas:
+    - architecture-purist-gemini
+    - paranoid-security-claude
+    - claim-auditor-claude
+  confidenceFloor: 0.30

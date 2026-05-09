@@ -126,7 +126,7 @@ func TestWriteAgentsFragment_UpgradesAcrossVersions(t *testing.T) {
 	if strings.Contains(body, "version=0.5.0") {
 		t.Error("old version marker not replaced — upgrade path broken")
 	}
-	if !strings.Contains(body, "version=0.12.0") {
+	if !strings.Contains(body, "version=0.13.0") {
 		t.Error("new version marker missing")
 	}
 	if strings.Contains(body, "old body from v0.5.0") {

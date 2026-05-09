@@ -4,6 +4,51 @@ All notable changes to kaijutsu (the registry + skills) and `jutsu` (the CLI). T
 
 ## [Unreleased]
 
+## [0.13.0] — 2026-05-08
+
+Preset SDK — users compose their own swarm presets via `.kaijutsu/swarm.yaml` (per-project) and `~/.kaijutsu/swarm.yaml` (per-user). Each entry becomes a `jutsu swarm <name>` cobra subcommand at root construction. Spec: `docs/specs/2026-05-08-v0.13.0-preset-sdk.md`.
+
+The original v0.13 plan was Persona SDK first; a `jutsu swarm dream --mode full --lenses all` adversarial pass on that plan surfaced 3-agent consensus that real user pain is **lens routing, not lens authoring**. Authoring SDK reordered to v0.14+ pending user data + cross-corpus diversity A/B evidence. v0.13.x will ship read-only persona browse (`jutsu agent persona browse`) for 80% of the sharing benefit at 5% of the full-SDK effort.
+
+### Added
+
+- **`jutsu swarm <user-name>`** subcommands generated dynamically from `.kaijutsu/swarm.yaml` (project, primary) and `~/.kaijutsu/swarm.yaml` (user, optional). Project entries shadow home entries with the same name. Help text tags user-defined presets with `[user:project]` or `[user:home]` so they're distinguishable from built-ins at a glance.
+- **`jutsu swarm validate [path]`** — schema-validates a swarm.yaml file. Default path `.kaijutsu/swarm.yaml` in cwd; arg overrides. Surfaces field-citation errors before users hit them at command time.
+- **`schemas/swarm.schema.json`** — JSON Schema for swarm.yaml. Validates name pattern, inputKind enum (diff/files/prompt), defaultPrompt + synthesizer with exactly-one `%s` slot each, severityVocab predefined-string-set, mode enum, personas[], confidenceFloor 0.0-1.0. Compiles under AJV in `lint-skills.yml::validate-schemas`. Embedded into the binary via `//go:embed` for runtime access; `swarm.SchemaJSON()` exposes the bytes.
+- **3 reference example yamls** at `docs/examples/swarm/`:
+  - `concise-pr-review.yaml` — tighter pr-review with 2 personas + top-3-findings synthesizer (no disagreement-table block).
+  - `deep-test-gap.yaml` — extended missing-test-scenarios with 4 personas in `--mode full` for round-robin debate.
+  - `legacy-audit.yaml` — code-archaeology + security-audit composed lens; single-preset composition; 3 personas.
+- **`swarm.LoadUserPresets(projectRoot, homeDir)`** Go API — exported loader with explicit dir injection (no global-state reads of `os.UserHomeDir()` inside the function). Returns `map[string]*UserPreset`, validation warnings, fatal load errors.
+- **`swarm.PresetRegistry.RegisterUserPresets(map) (registered, collisions)`** — adds user presets to the registry. Returns the slice of NAMES that registered cleanly + a slice of collision errors. Collision-error wording differentiates built-in collision from user-vs-user collision.
+- **`swarm.DefaultRegistry()`** accessor — exported so the cli pkg can register user presets at root cmd construction.
+
+### Changed
+
+- **`init_agents_fragment` marker version**: `0.12.0` → `0.13.0`. Older versions still detected via the version-agnostic prefix.
+- **`swarm.PresetRegistry`** now tracks a parallel `userSources` map alongside `presets`. `UserSource(name)` returns provenance for help-text rendering; `""` for built-ins.
+
+### Notes
+
+- **Spec Decision #2 (built-in shadow = hard error)**: a user preset named `pr-review` is rejected at validation. No silent override — built-in names are the contract. Users with custom variants pick a different name (e.g. `concise-pr-review` instead).
+- **Spec Decision #3 (no custom auxiliary input plumbing)**: v0.13 swarm.yaml composes the 3 existing InputKinds (diff / files / prompt). User yaml CANNOT define new flag types like the built-in `test-gap`'s `--tests` or `code-archaeology`'s `--git-log`. If a custom auxiliary input is genuinely needed, that's a Go-coded preset PR, not a yaml entry. Keeps the schema small + the trust surface tight.
+- **Spec Decision #6 (intra-file duplicates reject the whole file)**: two entries with the same `name:` in one yaml file → entire file rejected with citation. The OTHER yaml file (project vs home) loads independently.
+- **Trust model**: no registry, no signing, no `jutsu install <preset>`. Local-file-only, symmetric with `agents.yaml`. Sharing happens via copy-paste or `git` of the file.
+- **Dream-survival framing recap**: 3-agent consensus that the original Persona-SDK-first plan was solving the wrong problem (authoring overload, not routing pain). Reversed v0.13 ordering. Lens-blindspot warnings tracked: cross-corpus diversity premise possibly self-confirming under RLHF convergence (v0.12.x A/B benchmark commitment); status-quo bias possibly inflating "built-ins cover 90%" signal; model-shared adversary archetypes (sigstore proves provenance not safety) — all carry forward to v0.14+ Persona SDK gate decision.
+- **31 new tests** across `cli/internal/swarm` + `cli/internal/cli`: load (project-shadows-home, home-only, project-only, missing-files-no-error, malformed-yaml-fatal, intra-file-duplicate, invalid-entry-skipped, slot-count-rejection × 2), registry (built-in-shadow-rejected, valid-registers, partial-failure-preserves-valid, sync-test), validate cmd (clean / collision / missing-file / field-citation / default-path), cobra wiring (registers-from-valid-yaml, source-tag-project, source-tag-home, broken-yaml-doesnt-break-root, builtin-shadow-surfaces, flag-set-per-InputKind × 3, end-to-end-RunE-lookup, help-differentiates-user-from-builtin, invalid-InputKind-stub-errors, builtins-survive-registration × 4 subcases).
+
+### Deferred to v0.13.x
+
+- **`jutsu agent persona browse`** — read-only browse of curated built-ins + community examples. Paste-into-`agents.yaml` ready. No install pipeline. 80% of sharing benefit at 5% of the full-SDK effort. Validates persona-routing demand before committing to full Persona SDK.
+
+### Deferred to v0.14+
+
+- **Persona SDK** (cross-agent personas with `providers: []` field, persona authoring wizard `jutsu agent persona new/test/lint`). Conditional on (a) user data showing authoring is the bottleneck, (b) cross-corpus diversity A/B evidence (v0.12.x benchmark commitment), (c) behavioral lint infrastructure for self-defeating prompts.
+- **Persona-as-skill installation**: explicitly NOT shipping. Dream pass on the Persona-SDK plan flagged as category error (behavior shaping vs capability tool).
+- **Custom `debate` template per user preset.** v0.13 uses `genericDebateTemplate` for user presets; per-preset debate prompts are a v0.14+ candidate.
+- **Custom InputKind plumbing** — user yaml defining new flag types. v0.13 = compose, not extend.
+- **Sharing / marketplace / preset registry**: no `jutsu install <preset>`. Symmetric with how `agents.yaml` is shared today.
+
 ## [0.12.0] — 2026-05-08
 
 Tier A swarm presets — three new presets that share a structural signature: **hypothesis generation + cross-agent ranking by evidence**. Multi-agent disagreement IS the differentiator (single-agent produces the obvious answer + misses adversarial angles).

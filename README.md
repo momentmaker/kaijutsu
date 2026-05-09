@@ -192,6 +192,33 @@ See [CHANGELOG.md](./CHANGELOG.md#0100--2026-05-08) for the full feature list, S
 - **`--dry-run` on `install`/`upgrade`/`remove`/`publish`**. Each command resolves + validates as normal but skips every filesystem, lockfile, and network mutation. Per the agent-native CLI [principle #4](https://trevinsays.com/p/10-principles-for-agent-native-clis).
 - **Error messages enumerate valid options** when rejecting an enum value (preset name, persona name, agent name, hook event). Self-correct in one retry instead of trial-and-erroring against `--help`.
 
+### v0.13.0 — Preset SDK (swarm.yaml)
+
+Compose your own swarm presets via `.kaijutsu/swarm.yaml` (project) or `~/.kaijutsu/swarm.yaml` (user). Each entry becomes a `jutsu swarm <name>` subcommand at root construction.
+
+```bash
+# Validate before runtime
+jutsu swarm validate .kaijutsu/swarm.yaml
+
+# Use the preset like any built-in
+jutsu swarm my-tight-review --diff-from-branch main
+
+# Help text tags user presets
+jutsu swarm --help
+#   pr-review          Multi-agent pull request review
+#   ...
+#   my-tight-review    tighter pr-review (2 personas, top-3 findings only) [user:project]
+```
+
+3 reference examples ship at `docs/examples/swarm/`:
+- `concise-pr-review.yaml` — tighter pr-review (2 personas, top-3 findings, no disagreement-table block).
+- `deep-test-gap.yaml` — extended missing-test-scenarios with attacker lens (4 personas, `--mode full`).
+- `legacy-audit.yaml` — code-archaeology + security-audit composed lens for legacy code.
+
+Trust model: local-file-only, symmetric with `agents.yaml`. No registry, no signing, no `jutsu install <preset>`. Sharing = copy-paste or `git` of the yaml file. Built-in shadowing is rejected at validation (`pr-review` cannot be redefined; pick a unique name).
+
+See [CHANGELOG.md](./CHANGELOG.md#0130--2026-05-08) for the full feature list, dream-survival framing for the v0.13 Preset-SDK-before-Persona-SDK ordering, and v0.14+ deferral list.
+
 ### v0.12.0 — Tier A swarm presets
 
 Three new presets that share a structural signature: hypothesis generation + cross-agent ranking by evidence. Multi-agent disagreement IS the differentiator.

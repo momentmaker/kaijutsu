@@ -83,11 +83,11 @@ func newUserPresetSubcommand(name string, up *swarm.UserPreset) *cobra.Command {
 
 	switch up.InputKind {
 	case swarm.InputDiff:
-		return newUserPresetDiffCmd(name, short)
+		return newUserPresetDiffCmd(name, short, up)
 	case swarm.InputFiles:
-		return newUserPresetFilesCmd(name, short)
+		return newUserPresetFilesCmd(name, short, up)
 	case swarm.InputPrompt:
-		return newUserPresetPromptCmd(name, short)
+		return newUserPresetPromptCmd(name, short, up)
 	default:
 		// Should be unreachable — LoadUserPresets validates InputKind.
 		// Defense-in-depth: emit a stub that errors on invocation.
@@ -102,7 +102,9 @@ func newUserPresetSubcommand(name string, up *swarm.UserPreset) *cobra.Command {
 }
 
 // newUserPresetDiffCmd mirrors pr-review's flag wiring for InputDiff.
-func newUserPresetDiffCmd(name, short string) *cobra.Command {
+// yaml-set Mode / Personas / ConfidenceFloor become DEFAULT flag
+// values; CLI flags override per-invocation.
+func newUserPresetDiffCmd(name, short string, up *swarm.UserPreset) *cobra.Command {
 	var (
 		flags          commonSwarmFlags
 		pr             int
@@ -137,12 +139,13 @@ func newUserPresetDiffCmd(name, short string) *cobra.Command {
 	cmd.Flags().IntVar(&pr, "pr", 0, "PR number (default: detect from current branch)")
 	cmd.Flags().StringVar(&diffFromBranch, "diff-from-branch", "", "review the local branch vs base ref instead of a PR (e.g. origin/main)")
 	bindCommonFlags(cmd, &flags, true) // user presets get --post-comment by default
+	applyUserPresetDefaults(cmd, &flags, up)
 	return cmd
 }
 
 // newUserPresetFilesCmd mirrors doc-review's positional-paths wiring
-// for InputFiles.
-func newUserPresetFilesCmd(name, short string) *cobra.Command {
+// for InputFiles. yaml defaults applied via applyUserPresetDefaults.
+func newUserPresetFilesCmd(name, short string, up *swarm.UserPreset) *cobra.Command {
 	var flags commonSwarmFlags
 	cmd := &cobra.Command{
 		Use:   name + " <path>...",
@@ -174,12 +177,13 @@ func newUserPresetFilesCmd(name, short string) *cobra.Command {
 		},
 	}
 	bindCommonFlags(cmd, &flags, false)
+	applyUserPresetDefaults(cmd, &flags, up)
 	return cmd
 }
 
 // newUserPresetPromptCmd mirrors brainstorm's positional-prompt
-// wiring for InputPrompt.
-func newUserPresetPromptCmd(name, short string) *cobra.Command {
+// wiring for InputPrompt. yaml defaults applied.
+func newUserPresetPromptCmd(name, short string, up *swarm.UserPreset) *cobra.Command {
 	var flags commonSwarmFlags
 	cmd := &cobra.Command{
 		Use:   name + " <prompt>",
@@ -212,5 +216,45 @@ func newUserPresetPromptCmd(name, short string) *cobra.Command {
 		},
 	}
 	bindCommonFlags(cmd, &flags, false)
+	applyUserPresetDefaults(cmd, &flags, up)
 	return cmd
+}
+
+// applyUserPresetDefaults overrides the default values of the
+// shared swarm flags (--mode, --personas, --confidence-threshold)
+// with the yaml-set values from the user preset. Per-invocation
+// flag overrides still win — applyUserPresetDefaults runs at
+// cobra-construction time, BEFORE any flag parsing, so it just
+// sets DefValue/initial value. Cobra will overlay user-supplied
+// CLI args on top.
+//
+// Without this, the flag defaults from bindCommonFlags ("quick",
+// nil, 0.0) silently override the yaml's defaults — the v0.13
+// pr-review-caught blocker.
+func applyUserPresetDefaults(cmd *cobra.Command, flags *commonSwarmFlags, up *swarm.UserPreset) {
+	if up == nil {
+		return
+	}
+	if up.Mode != "" {
+		flags.mode = up.Mode
+		if f := cmd.Flags().Lookup("mode"); f != nil {
+			f.DefValue = up.Mode
+			_ = f.Value.Set(up.Mode)
+		}
+	}
+	if len(up.Personas) > 0 {
+		flags.personas = up.Personas
+		if f := cmd.Flags().Lookup("personas"); f != nil {
+			_ = f.Value.Set(strings.Join(up.Personas, ","))
+			f.DefValue = strings.Join(up.Personas, ",")
+		}
+	}
+	if up.ConfidenceFloor > 0 {
+		flags.confidenceFloor = up.ConfidenceFloor
+		// confidenceFloor isn't bound as a cobra flag in the shared
+		// flag set (only some presets like reverse expose
+		// --confidence-threshold). The flags struct value above is
+		// what runSwarmPipeline reads, so setting flags.confidenceFloor
+		// is sufficient.
+	}
 }

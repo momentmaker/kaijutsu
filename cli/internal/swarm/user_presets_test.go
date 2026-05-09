@@ -69,6 +69,19 @@ func TestLoadUserPresets_ProjectShadowsHome(t *testing.T) {
 	} else if !strings.HasPrefix(p.DefaultPrompt, "review ") {
 		t.Errorf("my-tight-review.DefaultPrompt should start with 'review '; got %q", p.DefaultPrompt)
 	}
+	// Field round-trip: yaml-set values for Mode / Personas /
+	// ConfidenceFloor must populate the UserPreset (not silently drop).
+	// Final-pr-review pass caught these missing.
+	p := presets["my-tight-review"]
+	if p.Mode != "quick" {
+		t.Errorf("Mode = %q, want quick", p.Mode)
+	}
+	if len(p.Personas) != 1 || p.Personas[0] != "paranoid-security-claude" {
+		t.Errorf("Personas = %v, want [paranoid-security-claude]", p.Personas)
+	}
+	if p.ConfidenceFloor != 0.55 {
+		t.Errorf("ConfidenceFloor = %v, want 0.55", p.ConfidenceFloor)
+	}
 	// my-personal-quick-audit only in home.
 	if p, ok := presets["my-personal-quick-audit"]; !ok {
 		t.Fatal("my-personal-quick-audit missing")
@@ -313,5 +326,85 @@ func TestBuiltinPresetNames_StaysInSyncWithRegistryInit(t *testing.T) {
 		if !builtinPresetNames[name] {
 			t.Errorf("defaultRegistry has built-in %q but builtinPresetNames doesn't list it; user_presets.go::builtinPresetNames is out of sync", name)
 		}
+	}
+}
+
+// TestLoadUserPresets_StrictYamlRejectsUnknownFields pins the
+// contract from final pr-review: typos in yaml field names surface
+// as parse errors instead of silently mapping to zero-value.
+func TestLoadUserPresets_StrictYamlRejectsUnknownFields(t *testing.T) {
+	tmp := t.TempDir()
+	homeDir := filepath.Join(tmp, "home")
+	projectRoot := filepath.Join(tmp, "project")
+	typoYaml := `
+- name: my-typo
+  description: oops
+  inputKind: prompt
+  defaultPrompt: "%s"
+  synthesizer: "%s"
+  severityVocab: [issue]
+  confidencFloor: 0.5
+`
+	writeYaml(t, filepath.Join(projectRoot, ".kaijutsu", "swarm.yaml"), typoYaml)
+
+	_, _, err := LoadUserPresets(projectRoot, homeDir)
+	if err == nil {
+		t.Fatal("expected fatal parse error for unknown field 'confidencFloor'")
+	}
+	if !strings.Contains(err.Error(), "confidencFloor") {
+		t.Errorf("error should name the typo field; got %v", err)
+	}
+}
+
+// TestCountFormatSlot_HandlesEscapedPercent pins the v0.13 final-
+// pr-review fix: `%%s` is an escaped literal (renders as `%s` in
+// the output) and must NOT count toward the substitution-slot
+// total.
+func TestCountFormatSlot_HandlesEscapedPercent(t *testing.T) {
+	cases := []struct {
+		in   string
+		want int
+	}{
+		{"plain %s", 1},
+		{"escaped %%s only", 0},
+		{"mix %%s and %s", 1},
+		{"two real %s and %s", 2},
+		{"empty string", 0},
+		{"escaped at end %%s", 0},
+	}
+	for _, tc := range cases {
+		if got := countFormatSlot(tc.in); got != tc.want {
+			t.Errorf("countFormatSlot(%q) = %d, want %d", tc.in, got, tc.want)
+		}
+	}
+}
+
+// TestLoadUserPresets_AcceptsEscapedPercentInPrompt pins the
+// behavior change: a user prompt that wants to embed a literal
+// `%s` in the rendered prompt uses `%%s` and the validator no
+// longer trips on the slot count.
+func TestLoadUserPresets_AcceptsEscapedPercentInPrompt(t *testing.T) {
+	tmp := t.TempDir()
+	homeDir := filepath.Join(tmp, "home")
+	projectRoot := filepath.Join(tmp, "project")
+	escapedYaml := `
+- name: literal-percent-s
+  description: prompt with literal %s embed
+  inputKind: prompt
+  defaultPrompt: "use %%s in your output. body: %s"
+  synthesizer: "%s"
+  severityVocab: [issue]
+`
+	writeYaml(t, filepath.Join(projectRoot, ".kaijutsu", "swarm.yaml"), escapedYaml)
+
+	presets, warnings, err := LoadUserPresets(projectRoot, homeDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(warnings) != 0 {
+		t.Errorf("escaped %%s should not produce warnings; got %v", warnings)
+	}
+	if _, ok := presets["literal-percent-s"]; !ok {
+		t.Error("preset with escaped percent-s should load successfully")
 	}
 }

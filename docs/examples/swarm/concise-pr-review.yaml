@@ -1,0 +1,72 @@
+# concise-pr-review — example v0.13.0 swarm.yaml entry.
+#
+# Pattern: a tighter pr-review variant for fast iteration on small
+# diffs. Drops the disagreement-table block from pr-review's
+# built-in synthesizer; emits a top-3-findings-only summary. Uses
+# 2 personas (paranoid-security-claude + claim-auditor-claude)
+# instead of the auto-detect 3 — covers the most-load-bearing
+# lenses at lower cost.
+#
+# To use:
+#   1. Copy this content to .kaijutsu/swarm.yaml in your project root.
+#   2. Edit the prompts to your taste (the defaultPrompt + synthesizer
+#      below are minimal placeholders — replace with your own framing).
+#   3. Run `jutsu swarm validate` to check schema + name-collision.
+#   4. Run `jutsu swarm concise-pr-review --diff-from-branch main`.
+#
+# Severity vocab matches pr-review built-in. Confidence floor 0.55
+# matches pr-review default — bug-hunting wants high-confidence
+# only.
+
+- name: concise-pr-review
+  description: tighter pr-review (2 personas, top-3 findings only)
+  inputKind: diff
+  defaultPrompt: |
+    You are reviewing a pull request diff for bugs, security issues,
+    and design problems. Return ONLY a JSON array of findings.
+
+    Schema for each finding:
+      severity:    blocker | issue | minor | info
+      file:        relative path
+      line_range:  "42" or "42-58"
+      summary:     one-line description
+      reasoning:   1-3 sentences explaining the bug + impact under
+                   realistic load
+      confidence:  0.0-1.0
+
+    DO NOT flag:
+      - Style nits or formatting
+      - Things the diff doesn't actually change
+
+    DO flag:
+      - Race conditions, resource leaks, off-by-one
+      - Error-path regressions
+      - Security issues (input validation, auth, secrets)
+      - Architecture / API contract violations
+
+    DIFF:
+    %s
+  synthesizer: |
+    Three reviewers each produced findings on the same diff. Cluster
+    by file:line proximity (multiple reviewers naming the same
+    underlying issue with different words → one cluster).
+
+    Output ONLY the top 3 highest-severity / highest-corroboration
+    clusters as a markdown table:
+
+    ## Top findings
+
+    | # | severity | file:line | summary | reviewers |
+    |---|---|---|---|---|
+    | 1 | blocker | path.go:42 | <summary> | 3/3 |
+
+    Then a short "## Notes" section (max 3 lines) with anything
+    cross-cutting. NO disagreement-table block; users wanting full
+    coverage run pr-review built-in instead.
+
+    PER-AGENT FINDINGS:
+    %s
+  severityVocab: [blocker, issue, minor, info]
+  mode: quick
+  personas: [paranoid-security-claude, claim-auditor-claude]
+  confidenceFloor: 0.55

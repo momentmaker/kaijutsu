@@ -35,12 +35,21 @@ const (
 	SourceHome    UserPresetSource = "user:home"    // ~/.kaijutsu/swarm.yaml
 )
 
-// UserPreset wraps a built-in Preset value with its provenance.
-// Stored in the registry the same way built-ins are; the Source
-// field is consumed only by help-text rendering.
+// UserPreset wraps a built-in Preset value with its provenance +
+// dispatch-time defaults that aren't fields on Preset itself.
+//
+// Mode / Personas / ConfidenceFloor are flag values on
+// commonSwarmFlags / PipelineOpts at dispatch time, NOT preset-
+// baked fields. The cobra layer reads UserPreset.{Mode,Personas,
+// ConfidenceFloor} when constructing the subcommand and uses
+// them as the DEFAULT flag values (overridable per-invocation
+// via --mode / --personas / --confidence-threshold flags).
 type UserPreset struct {
 	Preset
-	Source UserPresetSource
+	Source          UserPresetSource
+	Mode            string   // "quick" | "full"; default flag value for --mode
+	Personas        []string // default flag value for --personas
+	ConfidenceFloor float64  // default flag value for --confidence-threshold
 }
 
 // builtinPresetNames is the set of names a user preset MUST NOT
@@ -156,8 +165,15 @@ func loadUserPresetsFile(path string, source UserPresetSource) (map[string]*User
 		return nil, nil, fmt.Errorf("read: %w", err)
 	}
 
+	// Strict decoder: yaml.v3's KnownFields(true) rejects unknown
+	// keys so typos like `inputkind:` (vs `inputKind:`) or
+	// `confidencFloor:` (vs `confidenceFloor:`) surface as parse
+	// errors instead of silently mapping to zero-value. Matches
+	// the schema's `additionalProperties: false` contract.
 	var entries []userPresetYAML
-	if err := yaml.Unmarshal(data, &entries); err != nil {
+	dec := yaml.NewDecoder(strings.NewReader(string(data)))
+	dec.KnownFields(true)
+	if err := dec.Decode(&entries); err != nil {
 		return nil, nil, fmt.Errorf("parse yaml: %w", err)
 	}
 
@@ -221,13 +237,13 @@ func validateUserPresetEntry(e userPresetYAML, source UserPresetSource) (*UserPr
 	if strings.TrimSpace(e.DefaultPrompt) == "" {
 		return nil, errors.New("defaultPrompt is required")
 	}
-	if c := strings.Count(e.DefaultPrompt, "%s"); c != 1 {
+	if c := countFormatSlot(e.DefaultPrompt); c != 1 {
 		return nil, fmt.Errorf("defaultPrompt has %d %%s slot(s); must have exactly 1 (input substituted at dispatch time)", c)
 	}
 	if strings.TrimSpace(e.Synthesizer) == "" {
 		return nil, errors.New("synthesizer is required")
 	}
-	if c := strings.Count(e.Synthesizer, "%s"); c != 1 {
+	if c := countFormatSlot(e.Synthesizer); c != 1 {
 		return nil, fmt.Errorf("synthesizer has %d %%s slot(s); must have exactly 1 (per-agent findings substituted at synthesis time)", c)
 	}
 	if len(e.SeverityVocab) == 0 {
@@ -263,7 +279,26 @@ func validateUserPresetEntry(e userPresetYAML, source UserPresetSource) (*UserPr
 		// in v0.13 (deferred to v0.14+ per spec Out-of-scope).
 		Debate: genericDebateTemplate,
 	}
-	return &UserPreset{Preset: preset, Source: source}, nil
+	return &UserPreset{
+		Preset:          preset,
+		Source:          source,
+		Mode:            mode,
+		Personas:        e.Personas,
+		ConfidenceFloor: e.ConfidenceFloor,
+	}, nil
+}
+
+// countFormatSlot counts unescaped `%s` occurrences. Treats `%%s`
+// as an escaped literal (the user wants `%s` to appear in the
+// rendered prompt as text, not be substituted), so `%%s` does NOT
+// count toward the slot total. Used by validation to enforce the
+// "exactly one substitution slot" contract from spec Decision #4.
+//
+// Implementation: strip every `%%` first (yields the verbatim
+// percent literal), then count `%s` in the residue.
+func countFormatSlot(s string) int {
+	stripped := strings.ReplaceAll(s, "%%", "")
+	return strings.Count(stripped, "%s")
 }
 
 func builtinPresetNamesList() []string {
