@@ -318,7 +318,7 @@ const htmlTemplate = `<!DOCTYPE html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>kaijutsu — cross-vendor agentic CI for codebases</title>
+  <title>kaijutsu — open arts for AI coding agents</title>
   <meta name="description" content="{{.Landing.Hero.SubCopy}}">
   <meta property="og:title" content="kaijutsu — {{.Landing.Hero.Headline}}">
   <meta property="og:description" content="{{.Landing.Hero.SubCopy}}">
@@ -333,11 +333,11 @@ const htmlTemplate = `<!DOCTYPE html>
   <style>
     :root {
       --ink: #1A1A1A;
-      --ink-soft: #2A2A2A;
+      --ink-soft: #2E2E2E;
       --paper: #F5EDE0;
-      --bg: #FAF8F4;
-      --muted: #5C5C5C;
-      --border: #E0DAC9;
+      --bg: #FFFFFF;
+      --muted: #6B6B6B;
+      --border: #ECE5D6;
       --mint: #3DDC97;
       --mint-dark: #2BB37C;
       --rust: #C18450;
@@ -345,7 +345,7 @@ const htmlTemplate = `<!DOCTYPE html>
       --code-fg: #F5EDE0;
     }
     * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; scroll-padding-top: 64px; }
+    html { scroll-behavior: smooth; }
     body {
       margin: 0;
       font-family: ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", sans-serif;
@@ -354,8 +354,8 @@ const htmlTemplate = `<!DOCTYPE html>
       line-height: 1.6;
       -webkit-font-smoothing: antialiased;
     }
-    a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 3px; }
-    a:hover { text-decoration-color: var(--mint); color: var(--mint-dark); }
+    a { color: var(--mint-dark); text-decoration: none; }
+    a:hover { text-decoration: underline; }
     code, pre, kbd, samp { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; }
     pre {
       background: var(--code-bg);
@@ -368,76 +368,51 @@ const htmlTemplate = `<!DOCTYPE html>
       margin: 16px 0;
     }
     pre code { color: inherit; }
-    .container { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+    .container { max-width: 1000px; margin: 0 auto; padding: 0 20px; }
 
-    /* sticky nav */
-    .topnav {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      background: rgba(250, 248, 244, 0.92);
-      backdrop-filter: saturate(140%) blur(8px);
-      border-bottom: 1px solid var(--border);
-      font-size: 14px;
-    }
-    .topnav-inner {
-      display: flex;
-      align-items: center;
-      gap: 18px;
-      padding: 12px 20px;
-      max-width: 1080px;
-      margin: 0 auto;
-    }
-    .topnav-brand { font-weight: 600; letter-spacing: 0.02em; text-decoration: none; color: var(--ink); }
-    .topnav-brand:hover { color: var(--mint-dark); }
-    .topnav-links { display: flex; gap: 14px; flex-wrap: wrap; margin-left: auto; }
-    .topnav-links a { color: var(--muted); text-decoration: none; }
-    .topnav-links a:hover { color: var(--ink); }
-    @media (max-width: 720px) { .topnav-links { display: none; } }
-
-    /* hero */
+    /* hero — soft mint gradient anchors the page; carries the "open + monster + improvement" trinity */
     .hero {
       text-align: center;
-      padding: 56px 20px 48px;
-      background:
-        radial-gradient(ellipse at center top, rgba(193, 132, 80, 0.06), transparent 60%),
-        var(--paper);
-      border-bottom: 1px solid var(--border);
-      position: relative;
+      padding: 64px 20px 56px;
+      background: linear-gradient(180deg, rgba(61, 220, 151, 0.10), transparent 80%);
     }
     .hero-mascot {
       width: 120px;
       height: 120px;
-      margin: 0 auto 12px;
+      margin: 0 auto 4px;
       display: block;
     }
     .hero-kanji {
-      font-size: 24px;
+      font-size: 22px;
       color: var(--rust);
-      opacity: 0.55;
-      margin-top: -8px;
-      letter-spacing: 0.05em;
+      opacity: 0.6;
+      letter-spacing: 0.08em;
+      font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
     }
     .hero h1 {
-      font-size: clamp(28px, 4.5vw, 48px);
-      margin: 16px auto 12px;
+      font-size: clamp(30px, 4.8vw, 52px);
+      margin: 14px auto 14px;
       letter-spacing: -0.02em;
-      line-height: 1.15;
-      max-width: 18ch;
+      line-height: 1.12;
+      max-width: 20ch;
       font-weight: 700;
     }
     .hero .subcopy {
       font-size: clamp(15px, 1.6vw, 18px);
       color: var(--ink-soft);
-      margin: 0 auto 8px;
-      max-width: 56ch;
+      margin: 0 auto 14px;
+      max-width: 58ch;
     }
     .hero .tagline {
-      font-size: 14px;
+      font-size: 13px;
       color: var(--muted);
-      margin: 0 auto 28px;
-      max-width: 56ch;
-      font-style: italic;
+      margin: 0 auto 32px;
+      max-width: 60ch;
+      letter-spacing: 0.01em;
+    }
+    .hero .tagline .kanji-inline {
+      color: var(--rust);
+      font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
     }
     .install-box {
       display: inline-flex;
@@ -478,17 +453,17 @@ const htmlTemplate = `<!DOCTYPE html>
     .quick-links a { color: var(--muted); text-decoration: none; }
     .quick-links a:hover { color: var(--ink); text-decoration: underline; }
 
-    /* sections */
-    section { padding: 56px 0; border-bottom: 1px solid var(--border); }
-    section:last-of-type { border-bottom: none; }
+    /* sections — visual rhythm via spacing, no hard borders */
+    section { padding: 64px 0 8px; }
+    section:first-of-type { padding-top: 48px; }
     section h2 {
-      font-size: clamp(22px, 3vw, 30px);
+      font-size: clamp(22px, 2.6vw, 28px);
       margin: 0 0 14px;
       letter-spacing: -0.01em;
     }
-    section h3 { font-size: 18px; margin: 24px 0 8px; }
-    section p { margin: 12px 0; max-width: 70ch; }
-    section ul { max-width: 70ch; }
+    section h3 { font-size: 17px; margin: 22px 0 8px; }
+    section p { margin: 12px 0; max-width: 68ch; }
+    section ul { max-width: 68ch; }
     section li { margin-bottom: 6px; }
 
     /* failure demo */
@@ -691,11 +666,11 @@ const htmlTemplate = `<!DOCTYPE html>
     }
 
     footer {
+      margin-top: 56px;
       padding: 32px 20px 40px;
       text-align: center;
       color: var(--muted);
       font-size: 13px;
-      border-top: 1px solid var(--border);
       background: var(--paper);
     }
     footer p { margin: 6px 0; }
@@ -703,21 +678,6 @@ const htmlTemplate = `<!DOCTYPE html>
   </style>
 </head>
 <body id="top">
-
-<nav class="topnav">
-  <div class="topnav-inner">
-    <a class="topnav-brand" href="#top">kaijutsu</a>
-    <div class="topnav-links">
-      <a href="#failure-demo">demo</a>
-      <a href="#quickstart">quickstart</a>
-      <a href="#portability">portability</a>
-      <a href="#cost">cost</a>
-      <a href="#trust">trust</a>
-      <a href="#catalog">catalog</a>
-      <a href="https://github.com/momentmaker/kaijutsu">github</a>
-    </div>
-  </div>
-</nav>
 
 <header class="hero">
   <img class="hero-mascot" src="/web-app-manifest-192x192.png" alt="kaijutsu chibi monster mascot">

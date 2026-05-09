@@ -1,9 +1,9 @@
 {
   "version": 1,
   "hero": {
-    "headline": "Cross-vendor agentic CI for codebases.",
-    "sub_copy": "Compose review pipelines once. Run them across Claude, Codex, Gemini, and DeepSeek from one config.",
-    "tagline": "One CLI. One swarm.yaml. Multi-model adversarial reviews that disagree on purpose.",
+    "headline": "Open arts for AI coding agents.",
+    "sub_copy": "Multi-model adversarial review, local-first. The same swarm.yaml runs on Claude, Codex, Gemini, and DeepSeek.",
+    "tagline": "kai (開) + jutsu (術) — open + skill. Sometimes kaiju (怪獣) — monster. Always kaizen (改善) — improvement.",
     "install_oneliner": "curl -fsSL https://kaijutsu.dev/install.sh | sh"
   },
   "failure_demo": {
@@ -23,11 +23,11 @@
     "more_link": "https://github.com/momentmaker/kaijutsu/blob/main/README.md#quickstart"
   },
   "portability": {
-    "intro": "The swarm.yaml you write today is consumed by jutsu, which dispatches across Claude Code, Codex CLI, Gemini CLI, DeepSeek-via-HTTP, and whatever ships next. v0.6's driver abstraction handles the wire format per vendor; v0.13's Preset SDK lets you compose your own pipelines. Vendor lock-in stays a vendor problem.",
+    "intro": "Write a swarm.yaml once. jutsu dispatches it across Claude Code, Codex CLI, Gemini CLI, DeepSeek-via-HTTP, and whatever vendor ships next. v0.6's driver abstraction handles the wire format per vendor; v0.13's Preset SDK lets you compose your own pipelines. Vendor lock-in stays a vendor problem.",
     "snippet_yaml": "# .kaijutsu/swarm.yaml — composable, portable, version-controlled\nversion: 1\npresets:\n  - name: tight-pr-review\n    base: pr-review\n    personas:\n      - default-claude\n      - paranoid-security-claude\n      - default-gemini\n    mode: full\n    confidence_floor: 0.7",
     "snippet_run": "jutsu swarm tight-pr-review --diff-from-branch main",
     "callout_title": "Why this matters",
-    "callout_body": "Multi-agent review is becoming a vendor commodity — Cursor, Zed, GitHub, every IDE will ship native versions by 2027. Cross-vendor portability is the part that doesn't commodify. Your pipeline is yours, regardless of which vendor wins."
+    "callout_body": "Vendor IDEs will ship native multi-agent review by 2027. Cross-vendor portability is the part that doesn't commodify. Your pipeline is yours, regardless of which vendor wins."
   },
   "cost": {
     "intro": "Multi-agent review costs more per call than a single-agent run. The framing the spreadsheet wants is cost per bug actually caught and confirmed real, not cost per call.",
