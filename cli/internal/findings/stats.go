@@ -32,9 +32,9 @@ const (
 //
 //   - By:           group-by axis; required (default StatsByPreset).
 //   - Since:        only count rows with created_at >= now-Since.
-//                   Zero = all-time. Negative = error at parse time
-//                   (CLI parser rejects), so this layer trusts the
-//                   value.
+//                   Zero = all-time. Negative = error (rejected by
+//                   Stats so a programmatic caller misuse fails fast
+//                   rather than silently behaving as all-time).
 //   - CodebaseFP:   if non-empty AND !AllCodebases, restrict to rows
 //                   from this codebase.
 //   - AllCodebases: bypass codebase filter entirely.
@@ -67,6 +67,9 @@ type StatsRow struct {
 func Stats(s *Store, opts StatsOpts) ([]StatsRow, error) {
 	if s == nil || s.db == nil {
 		return nil, errors.New("findings: nil store")
+	}
+	if opts.Since < 0 {
+		return nil, fmt.Errorf("findings: stats Since must be >= 0 (got %v); use 0 for all-time", opts.Since)
 	}
 	col, err := statsByColumn(opts.By)
 	if err != nil {

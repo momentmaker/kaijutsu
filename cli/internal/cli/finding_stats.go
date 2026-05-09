@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
@@ -80,6 +81,12 @@ Output auto-flips to JSON when stdout is piped; force with --json.`,
 			}
 			if err := validateSourceFilter(sourceFilter); err != nil {
 				return err
+			}
+			// Source filter is preset-only (built-in vs user makes no
+			// sense for personas / providers). Reject up-front so a
+			// silent zero-effect combo can't surprise the user.
+			if sourceFilter != "all" && byEnum != findings.StatsByPreset {
+				return fmt.Errorf("--source %q is only valid with --by preset (got --by %s)", sourceFilter, byEnum)
 			}
 
 			store, err := openFindingsStore(cmd)
@@ -221,7 +228,7 @@ func renderStatsTable(out io.Writer, rows []statsRow, by findings.StatsBy, since
 		header = append(header, "source")
 	}
 	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(tw, joinTab(header))
+	fmt.Fprintln(tw, strings.Join(header, "\t"))
 	for _, r := range rows {
 		if by == findings.StatsByPreset {
 			fmt.Fprintf(tw, "%s\t%d\t%s\n", r.Group, r.Count, r.Source)
@@ -239,15 +246,4 @@ func renderStatsTable(out io.Writer, rows []statsRow, by findings.StatsBy, since
 		window = "all-time"
 	}
 	fmt.Fprintf(out, "\n%d row(s) — window=%s, scope=%s\n", len(rows), window, scope)
-}
-
-func joinTab(parts []string) string {
-	if len(parts) == 0 {
-		return ""
-	}
-	out := parts[0]
-	for _, p := range parts[1:] {
-		out += "\t" + p
-	}
-	return out
 }

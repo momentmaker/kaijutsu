@@ -129,6 +129,21 @@ func TestFindingStats_BadSourceRejected(t *testing.T) {
 	}
 }
 
+func TestFindingStats_SourceWithNonPresetByRejected(t *testing.T) {
+	cmd := newFindingStatsCmd()
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	cmd.SetErr(&buf)
+	cmd.SetArgs([]string{"--by", "persona", "--source", "built-in"})
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected error: --source is preset-only")
+	}
+	if !strings.Contains(err.Error(), "--source") || !strings.Contains(err.Error(), "preset") {
+		t.Errorf("error should explain the preset-only constraint; got: %v", err)
+	}
+}
+
 func TestFindingStats_BadSinceRejected(t *testing.T) {
 	cmd := newFindingStatsCmd()
 	var buf bytes.Buffer
@@ -235,5 +250,3 @@ func TestParseStatsByFlag_AcceptsValid(t *testing.T) {
 	}
 }
 
-// pinFindingsType keeps the package import compile-time linked.
-var _ = findings.StatsByPreset

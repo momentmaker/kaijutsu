@@ -153,14 +153,17 @@ func (r *PresetRegistry) UserSource(name string) UserPresetSource {
 	return r.userSources[name]
 }
 
-// Remove deregisters a preset by name. Returns true if removed,
-// false if not present. Used by tests that mutate DefaultRegistry
-// to keep it pristine for sibling tests; production code uses
-// RegisterUserPresets only.
+// Remove deregisters a USER preset by name. Returns true if removed,
+// false if name is unknown OR is a built-in (built-ins cannot be
+// removed — that would leave sibling tests in a half-broken state
+// since the DefaultRegistry is package-global).
+//
+// Used by tests that called RegisterUserPresets and want to clean up
+// after themselves; production code never deregisters.
 func (r *PresetRegistry) Remove(name string) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if _, ok := r.presets[name]; !ok {
+	if _, isUser := r.userSources[name]; !isUser {
 		return false
 	}
 	delete(r.presets, name)
