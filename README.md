@@ -120,7 +120,7 @@ Seven swarm presets (`pr-review`, `doc-review`, `brainstorm`, `refactor-plan`, `
 - `jutsu swarm dream "<topic>"` — pre-implementation interrogation across 4-8 cognitive lenses (v0.8)
 - `jutsu swarm reverse --spec <path> --diff <range>` — spec-vs-impl drift detector (v0.9)
 
-Three artifact-producing skills (`spec-driven-development`, `planning-and-task-breakdown`, `decide`) call `jutsu swarm doc-review` as their final review pass instead of inventing their own — a single shared QA gate replaces three ad-hoc mechanisms. See [`IMPLEMENTATION_PLAN_PHASE2.md`](./IMPLEMENTATION_PLAN_PHASE2.md) for the design.
+Three artifact-producing skills (`spec-driven-development`, `planning-and-task-breakdown`, `decide`) call `jutsu swarm doc-review` as their final review pass instead of inventing their own — a single shared QA gate replaces three ad-hoc mechanisms.
 
 Full release notes + design rationale per version: [CHANGELOG.md](./CHANGELOG.md). Roadmap + deferred work: [ROADMAP.md](./ROADMAP.md).
 
