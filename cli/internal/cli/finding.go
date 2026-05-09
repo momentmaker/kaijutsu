@@ -54,6 +54,7 @@ network calls.`,
 		newFindingListCmd(),
 		newFindingAcceptCmd(),
 		newFindingDismissCmd(),
+		newFindingPrecisionCmd(),
 		newFindingStatsCmd(),
 		newFindingClearCmd(),
 		newFindingExportCmd(),
@@ -261,17 +262,25 @@ when batch-actioning across repos from a single shell session).`, action),
 
 // --- stats ---
 
-func newFindingStatsCmd() *cobra.Command {
+// newFindingPrecisionCmd renders the per-(provider, persona, preset)
+// precision/weight report (v0.7 quality fingerprinting). v0.13 and
+// earlier called this `jutsu finding stats`; v0.14 renamed to
+// `precision` so that `stats` could host preset usage tracking
+// without overloading semantics.
+func newFindingPrecisionCmd() *cobra.Command {
 	var (
 		allCodebases  bool
 		codebaseOverr string
 	)
 	cmd := &cobra.Command{
-		Use:   "stats",
-		Short: "Per-(provider, persona, preset) precision report for current codebase",
+		Use:   "precision",
+		Short: "Per-(provider, persona, preset) precision/weight report for current codebase",
 		Long: `Renders a precision table from accept/dismiss history.
 Tuples with fewer than 10 actioned findings show as "(insufficient
-data, default weight: 0.7)" — matching the v0.7 bootstrap state.`,
+data, default weight: 0.7)" — matching the v0.7 bootstrap state.
+
+Renamed from "stats" in v0.14.0; "stats" now reports preset usage
+counts (run frequency) over a time window.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			store, err := openFindingsStore(cmd)
 			if err != nil {
@@ -287,16 +296,16 @@ data, default weight: 0.7)" — matching the v0.7 bootstrap state.`,
 			if err != nil {
 				return err
 			}
-			renderStats(cmd.OutOrStdout(), stats, fp, allCodebases)
+			renderPrecision(cmd.OutOrStdout(), stats, fp, allCodebases)
 			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&allCodebases, "all-codebases", false, "stats across every recorded codebase")
+	cmd.Flags().BoolVar(&allCodebases, "all-codebases", false, "report across every recorded codebase")
 	cmd.Flags().StringVar(&codebaseOverr, "codebase", "", "override codebase fingerprint")
 	return cmd
 }
 
-func renderStats(out io.Writer, stats []findings.TupleStats, fp string, allCodebases bool) {
+func renderPrecision(out io.Writer, stats []findings.TupleStats, fp string, allCodebases bool) {
 	if !allCodebases {
 		fmt.Fprintf(out, "current codebase fp: %s\n\n", fp)
 	}

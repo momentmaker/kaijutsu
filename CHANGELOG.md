@@ -4,6 +4,31 @@ All notable changes to kaijutsu (the registry + skills) and `jutsu` (the CLI). T
 
 ## [Unreleased]
 
+## [0.14.0] — 2026-05-09
+
+Persona browse + preset usage tracking + landing page rebuild. Three small surfaces that together close the v0.13 dream's "ghost-town watch" gap (data on whether built-ins dominate vs user presets) and rebuild the kaijutsu.dev landing page around the dream-locked direction (cross-vendor portability as the durable moat). Spec: `docs/specs/2026-05-09-v0.14.0-persona-browse-and-preset-usage.md`.
+
+### Added
+
+- **`jutsu agent persona browse`** — read-only persona discovery cobra subcommand. Lists every resolved persona (built-in + user:home + user:project) with a `source` provenance tag. Filters: `--tag`, `--provider`, `--source` (single-value, AND combine). Output: aligned TTY table (truncates `system_prompt` to 60 runes), JSON when stdout is piped, paste-into-`agents.yaml`-ready yaml block via `--yaml`. `--json` and `--yaml` are mutually exclusive.
+- **`jutsu finding stats`** — preset usage tracking via the local findings.db. Counts findings rows over a `--since` window grouped by `--by preset|persona|provider`. Source filter `--source built-in|user|all` (preset-only) derives source from the LIVE swarm registry at query time. Default window 90d; pass `--since ""` for all-time. TTY = aligned table; pipe = JSON.
+- **`agents.BrowsePersonas(resolved, global, project, filters)` + `agents.BrowseRow` + `agents.BrowseFilters`** — Go API for the persona browse surface; pure function over a resolved registry.
+- **`findings.Stats(store, opts)` + `findings.StatsRow` + `findings.StatsBy` + `findings.StatsOpts`** — Go API for preset usage counts. Pure data; source resolution lives in the cli layer to avoid pulling the swarm registry import into findings/.
+- **`findings.ParseSinceDuration(string)`** — shorthand parser for `<N>d` / `<N>w` / `<N>mo` / `<N>y`; falls through to `time.ParseDuration` for sub-day grain. Empty string = all-time; zero / negative = error.
+- **`swarm.PresetRegistry.Remove(name)`** — small registry deregistration method to support test cleanup after `RegisterUserPresets`.
+
+### Changed
+
+- **`jutsu finding stats` renamed to `jutsu finding precision`** — the v0.7 precision/weight report is now `precision`; the `stats` command name is repurposed for preset usage counts. Existing scripts referencing `jutsu finding stats` for precision data must update.
+- **`init_agents_fragment` marker version**: `0.13.0` → `0.14.0`. Older versions still detected via the version-agnostic prefix.
+- **Landing page (`docs/index.html`)** — rebuilt around dream-locked direction: lead with single-agent failure-mode, multi-agent disagreement as primitive, cross-vendor portability framing, cost-per-bug-found, mascot at hero, demoted skill catalog. (Lands in Stage 3 of v0.14.0.)
+
+### Notes
+
+- **Persona browse design rationale**: 80% of persona-sharing benefit at 5% of the full-SDK effort. Validates persona-routing demand before committing to v0.14+ Persona SDK. Browse is read-only by design — no `jutsu agent persona test` or `new` in this release.
+- **Preset usage tracking design rationale**: closes the v0.13 risk-table "ghost-town watch" gap. If real findings.db data over 90 days shows ~zero user-preset rows, that's the signal that authoring isn't the bottleneck — informs whether to ship v0.14+ Persona SDK at all.
+- **Source resolution at stats query time**: derived from the LIVE swarm registry, not stored in findings.db. A preset that's been unregistered since its findings were recorded surfaces as `source=unknown`. Distinguishing user:project vs user:home is impossible without a schema migration; v0.14 collapses both under `user`. Finer grain is a v0.14.x candidate via new column + migration.
+
 ## [0.13.0] — 2026-05-08
 
 Preset SDK — users compose their own swarm presets via `.kaijutsu/swarm.yaml` (per-project) and `~/.kaijutsu/swarm.yaml` (per-user). Each entry becomes a `jutsu swarm <name>` cobra subcommand at root construction. Spec: `docs/specs/2026-05-08-v0.13.0-preset-sdk.md`.

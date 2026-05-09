@@ -216,7 +216,7 @@ func (t TupleStats) Precision() float64 {
 }
 
 // StatsByTuple returns one row per (provider, persona, preset) tuple
-// for the given codebase. The caller (e.g. renderStats in finding.go)
+// for the given codebase. The caller (e.g. renderPrecision in finding.go)
 // is responsible for ordering — the SQL has no ORDER BY because the
 // CLI sort puts bootstrap-state tuples below mature ones, which is
 // post-aggregation logic the DB doesn't have visibility into.

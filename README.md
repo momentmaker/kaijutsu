@@ -126,7 +126,8 @@ jutsu swarm pr-review --personas paranoid-security-claude,default-gemini
 jutsu finding list --pending          # what's actionable
 jutsu finding accept 5 --reason "real auth bug"
 jutsu finding dismiss 12 --reason "stylistic nit"
-jutsu finding stats                   # per-(provider, persona, preset) precision
+jutsu finding precision               # per-(provider, persona, preset) precision (renamed from `stats` in v0.14)
+jutsu finding stats                   # v0.14 preset usage counts (last 90 days, group by preset)
 jutsu swarm pr-review --personas ... --show-weights   # opt-in: see weights in disagreement table
 ```
 
@@ -191,6 +192,26 @@ See [CHANGELOG.md](./CHANGELOG.md#0100--2026-05-08) for the full feature list, S
 
 - **`--dry-run` on `install`/`upgrade`/`remove`/`publish`**. Each command resolves + validates as normal but skips every filesystem, lockfile, and network mutation. Per the agent-native CLI [principle #4](https://trevinsays.com/p/10-principles-for-agent-native-clis).
 - **Error messages enumerate valid options** when rejecting an enum value (preset name, persona name, agent name, hook event). Self-correct in one retry instead of trial-and-erroring against `--help`.
+
+### v0.14.0 — Persona browse + preset usage tracking
+
+```bash
+# Read-only persona discovery (built-in + user:home + user:project, with provenance)
+jutsu agent persona browse                                  # aligned table
+jutsu agent persona browse --tag security                   # filter
+jutsu agent persona browse --provider gemini                # filter
+jutsu agent persona browse --json | jq .                    # pipe → JSON
+jutsu agent persona browse --yaml > /tmp/persona.yaml       # paste-into-agents.yaml-ready
+
+# Preset usage counts ("ghost-town watch" — built-ins vs user presets)
+jutsu finding stats                                          # 90-day preset count
+jutsu finding stats --since 7d --by persona                  # weekly persona count
+jutsu finding stats --source user --json                     # user presets only, machine-readable
+```
+
+The v0.7 precision report previously at `jutsu finding stats` was renamed to `jutsu finding precision` to free the `stats` name for usage counts. Source attribution for `stats --by preset` derives from the LIVE swarm registry at query time — a preset that's been unregistered since its findings were recorded surfaces as `source=unknown`.
+
+See [CHANGELOG.md](./CHANGELOG.md#0140--2026-05-09) for the full feature list and the v0.13 → v0.14 dream-locked decision rationale.
 
 ### v0.13.0 — Preset SDK (swarm.yaml)
 
