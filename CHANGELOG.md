@@ -21,7 +21,10 @@ Persona browse + preset usage tracking + landing page rebuild. Three small surfa
 
 - **`jutsu finding stats` renamed to `jutsu finding precision`** — the v0.7 precision/weight report is now `precision`; the `stats` command name is repurposed for preset usage counts. Existing scripts referencing `jutsu finding stats` for precision data must update.
 - **`init_agents_fragment` marker version**: `0.13.0` → `0.14.0`. Older versions still detected via the version-agnostic prefix.
-- **Landing page (`docs/index.html`)** — rebuilt around dream-locked direction: lead with single-agent failure-mode, multi-agent disagreement as primitive, cross-vendor portability framing, cost-per-bug-found, mascot at hero, demoted skill catalog. (Lands in Stage 3 of v0.14.0.)
+- **Landing page (`docs/index.html`)** — rebuilt around dream-locked direction. Locked sections (in order): hero → single-agent failure-mode demo → quickstart → cross-vendor portability → cost per bug found → trust model → skill catalog → contributing → footer. Sticky desktop nav with section anchors. Charcoal/paper/ink primary palette; mint #3DDC97 demoted to accent only. Mascot at 120px hero placement (down from 160px). "pre-alpha" framing dropped from user-visible copy. NO "reviewed by N LLMs" badge — replaced with concrete cynical-read-defense paragraph.
+- **`docs/landing-content.json`** — hand-edited content schema for the landing page. Hero copy, failure-demo body, quickstart snippets, cost numbers, trust parts, contributing intro all live in JSON; sitegen consumes them. Editing copy = JSON edit, not Go rebuild. Architecture-purist concern from doc-review (issue findings #2 + #3) addressed.
+- **`docs/decisions/2026-05-09-landing-page-direction.md`** ADR — distills the dream pass's 14 locked-direction points into an implementation-time checklist. Source of truth for objective acceptance criteria; subjective items intentionally human-judgment per the ADR's acceptance section.
+- **`docs/specs/2026-05-09-landing-page-content.md`** — content spec with concrete copy, visual decisions, sitegen extension contract, and the doc-review triage table (claim-auditor-deepseek + architecture-purist-gemini ran on the spec; 4 issues fixed, 4 minors triaged, 2 info skipped with rationale).
 
 ### Notes
 

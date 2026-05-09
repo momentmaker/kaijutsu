@@ -3,100 +3,284 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>kaijutsu — open skills for AI coding agents</title>
-  <meta name="description" content="MIT-licensed, agent-agnostic registry and CLI for AI coding agent skills. One source of truth for Claude, Codex, and Gemini.">
+  <title>kaijutsu — cross-vendor agentic CI for codebases</title>
+  <meta name="description" content="Compose review pipelines once. Run them across Claude, Codex, Gemini, and DeepSeek from one config.">
+  <meta property="og:title" content="kaijutsu — Cross-vendor agentic CI for codebases.">
+  <meta property="og:description" content="Compose review pipelines once. Run them across Claude, Codex, Gemini, and DeepSeek from one config.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://kaijutsu.dev">
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
-  <meta name="theme-color" content="#3DDC97">
+  <meta name="theme-color" content="#1A1A1A">
   <style>
     :root {
+      --ink: #1A1A1A;
+      --ink-soft: #2A2A2A;
+      --paper: #F5EDE0;
+      --bg: #FAF8F4;
+      --muted: #5C5C5C;
+      --border: #E0DAC9;
       --mint: #3DDC97;
       --mint-dark: #2BB37C;
       --rust: #C18450;
-      --ink: #1A1A1A;
-      --paper: #F5EDE0;
-      --bg: #FFFFFF;
-      --border: #E5E5E5;
-      --muted: #6B6B6B;
+      --code-bg: #1A1A1A;
+      --code-fg: #F5EDE0;
     }
     * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 64px; }
     body {
       margin: 0;
       font-family: ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", sans-serif;
       background: var(--bg);
       color: var(--ink);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 3px; }
+    a:hover { text-decoration-color: var(--mint); color: var(--mint-dark); }
+    code, pre, kbd, samp { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; }
+    pre {
+      background: var(--code-bg);
+      color: var(--code-fg);
+      padding: 16px 18px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 13px;
       line-height: 1.55;
+      margin: 16px 0;
     }
-    a { color: var(--mint-dark); text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    .container { max-width: 1080px; margin: 0 auto; padding: 32px 20px; }
-    header {
+    pre code { color: inherit; }
+    .container { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+
+     
+    .topnav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(250, 248, 244, 0.92);
+      backdrop-filter: saturate(140%) blur(8px);
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+    .topnav-inner {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 12px 20px;
+      max-width: 1080px;
+      margin: 0 auto;
+    }
+    .topnav-brand { font-weight: 600; letter-spacing: 0.02em; text-decoration: none; color: var(--ink); }
+    .topnav-brand:hover { color: var(--mint-dark); }
+    .topnav-links { display: flex; gap: 14px; flex-wrap: wrap; margin-left: auto; }
+    .topnav-links a { color: var(--muted); text-decoration: none; }
+    .topnav-links a:hover { color: var(--ink); }
+    @media (max-width: 720px) { .topnav-links { display: none; } }
+
+     
+    .hero {
       text-align: center;
-      padding: 48px 20px 32px;
-      background: linear-gradient(180deg, rgba(61, 220, 151, 0.08), transparent);
+      padding: 56px 20px 48px;
+      background:
+        radial-gradient(ellipse at center top, rgba(193, 132, 80, 0.06), transparent 60%),
+        var(--paper);
+      border-bottom: 1px solid var(--border);
+      position: relative;
     }
-    header img { width: 160px; height: 160px; }
-    h1 {
-      font-size: clamp(32px, 5vw, 56px);
-      margin: 16px 0 8px;
+    .hero-mascot {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 12px;
+      display: block;
+    }
+    .hero-kanji {
+      font-size: 24px;
+      color: var(--rust);
+      opacity: 0.55;
+      margin-top: -8px;
+      letter-spacing: 0.05em;
+    }
+    .hero h1 {
+      font-size: clamp(28px, 4.5vw, 48px);
+      margin: 16px auto 12px;
       letter-spacing: -0.02em;
+      line-height: 1.15;
+      max-width: 18ch;
+      font-weight: 700;
     }
-    .tagline {
-      font-size: 18px;
+    .hero .subcopy {
+      font-size: clamp(15px, 1.6vw, 18px);
+      color: var(--ink-soft);
+      margin: 0 auto 8px;
+      max-width: 56ch;
+    }
+    .hero .tagline {
+      font-size: 14px;
       color: var(--muted);
-      margin: 0 auto 24px;
-      max-width: 680px;
+      margin: 0 auto 28px;
+      max-width: 56ch;
+      font-style: italic;
     }
-    .install {
+    .install-box {
       display: inline-flex;
-      gap: 8px;
+      gap: 10px;
       align-items: center;
       background: var(--ink);
-      color: #fff;
-      padding: 10px 16px;
-      border-radius: 8px;
-      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      color: var(--code-fg);
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-family: ui-monospace, monospace;
       font-size: 14px;
       cursor: pointer;
-      user-select: text;
+      max-width: 100%;
+      overflow-x: auto;
     }
-    .install code { color: var(--mint); }
-    .install button {
+    .install-box code { color: var(--mint); }
+    .install-box .copy-hint {
       background: var(--mint);
       color: var(--ink);
       border: none;
-      padding: 6px 12px;
+      padding: 4px 10px;
       border-radius: 4px;
       font-weight: 600;
-      cursor: pointer;
-      font-size: 12px;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      flex-shrink: 0;
     }
     .quick-links {
-      margin-top: 16px;
-      font-size: 14px;
+      margin-top: 18px;
+      font-size: 13px;
       color: var(--muted);
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      flex-wrap: wrap;
     }
-    .quick-links a { margin: 0 6px; }
-    .controls {
+    .quick-links a { color: var(--muted); text-decoration: none; }
+    .quick-links a:hover { color: var(--ink); text-decoration: underline; }
+
+     
+    section { padding: 56px 0; border-bottom: 1px solid var(--border); }
+    section:last-of-type { border-bottom: none; }
+    section h2 {
+      font-size: clamp(22px, 3vw, 30px);
+      margin: 0 0 14px;
+      letter-spacing: -0.01em;
+    }
+    section h3 { font-size: 18px; margin: 24px 0 8px; }
+    section p { margin: 12px 0; max-width: 70ch; }
+    section ul { max-width: 70ch; }
+    section li { margin-bottom: 6px; }
+
+     
+    .demo-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 24px 0 12px;
+    }
+    @media (max-width: 768px) { .demo-grid { grid-template-columns: 1fr; } }
+    .demo-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 20px;
+      background: #fff;
+    }
+    .demo-card.disagree { border-color: var(--mint); }
+    .demo-card .label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .demo-card.disagree .label { color: var(--mint-dark); }
+    .demo-card .body { font-size: 14px; line-height: 1.6; color: var(--ink-soft); }
+    .demo-caption { font-size: 13px; color: var(--muted); margin-top: 6px; }
+
+     
+    .callout {
+      background: #fff;
+      border-left: 3px solid var(--mint);
+      padding: 16px 20px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+    .callout strong { color: var(--ink); }
+
+     
+    .cost-table {
+      border-collapse: collapse;
+      width: 100%;
+      max-width: 600px;
+      margin: 16px 0;
+      font-size: 14px;
+    }
+    .cost-table th, .cost-table td {
+      text-align: left;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .cost-table th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .cost-table td.value { font-family: ui-monospace, monospace; }
+    .objection {
+      background: var(--paper);
+      padding: 16px 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    .objection .q { font-weight: 600; margin-bottom: 8px; }
+
+     
+    .trust-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin: 20px 0 28px;
+    }
+    .trust-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 18px;
+      background: #fff;
+    }
+    .trust-card h3 { margin: 0 0 6px; font-size: 15px; }
+    .trust-card p { font-size: 14px; color: var(--ink-soft); margin: 0; }
+    .wrapper-defense {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 22px;
+      margin-top: 16px;
+    }
+    .wrapper-defense h3 { margin-top: 0; }
+    .wrapper-defense .pair { display: grid; grid-template-columns: max-content 1fr; gap: 8px 16px; margin-top: 12px; }
+    .wrapper-defense .pair dt { font-weight: 600; color: var(--rust); }
+
+     
+    .catalog-controls {
       display: flex;
       gap: 12px;
       flex-wrap: wrap;
-      margin-bottom: 24px;
+      margin-bottom: 18px;
     }
-    .controls input[type="search"] {
+    .catalog-controls input[type="search"] {
       flex: 1 1 280px;
       padding: 10px 14px;
       border: 1px solid var(--border);
       border-radius: 8px;
-      font-size: 15px;
+      font-size: 14px;
+      background: #fff;
     }
-    .controls input[type="search"]:focus {
+    .catalog-controls input[type="search"]:focus {
       outline: none;
       border-color: var(--mint);
-      box-shadow: 0 0 0 3px rgba(61, 220, 151, 0.2);
+      box-shadow: 0 0 0 3px rgba(61, 220, 151, 0.18);
     }
     .filter-group { display: flex; gap: 6px; flex-wrap: wrap; }
     .filter {
@@ -106,7 +290,9 @@
       background: #fff;
       font-size: 13px;
       cursor: pointer;
+      color: var(--ink-soft);
     }
+    .filter:hover { border-color: var(--mint); }
     .filter.active {
       background: var(--ink);
       color: #fff;
@@ -119,13 +305,13 @@
     }
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 14px;
     }
     .card {
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 18px 20px;
+      border-radius: 10px;
+      padding: 16px 18px;
       background: #fff;
       display: flex;
       flex-direction: column;
@@ -138,14 +324,11 @@
     }
     .card h3 {
       margin: 0;
-      font-size: 18px;
+      font-size: 16px;
       font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      line-height: 1.3;
     }
-    .card .desc {
-      font-size: 14px;
-      color: #333;
-      flex: 1;
-    }
+    .card .desc { font-size: 13px; color: var(--ink-soft); flex: 1; }
     .card .row {
       display: flex;
       justify-content: space-between;
@@ -154,17 +337,16 @@
       font-size: 12px;
       color: var(--muted);
     }
-    .card .row h3 { line-height: 1.25; }
-    .card .row .badge { margin-top: 4px; }
     .badge {
       display: inline-block;
       padding: 2px 8px;
       border-radius: 999px;
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 600;
-      letter-spacing: 0.02em;
+      letter-spacing: 0.04em;
       white-space: nowrap;
       flex-shrink: 0;
+      text-transform: uppercase;
     }
     .badge-core { background: rgba(61, 220, 151, 0.15); color: var(--mint-dark); }
     .badge-third { background: rgba(193, 132, 80, 0.15); color: var(--rust); }
@@ -172,53 +354,218 @@
     .agents { color: var(--muted); }
     .card-install {
       font-family: ui-monospace, monospace;
-      font-size: 12px;
+      font-size: 11px;
       background: var(--paper);
       padding: 6px 10px;
       border-radius: 6px;
       cursor: pointer;
       user-select: all;
+      color: var(--ink);
     }
+    .empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+      font-style: italic;
+    }
+    .more-link {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
     footer {
-      margin: 64px auto 32px;
-      padding: 24px 20px;
+      padding: 32px 20px 40px;
       text-align: center;
       color: var(--muted);
       font-size: 13px;
       border-top: 1px solid var(--border);
+      background: var(--paper);
     }
-    footer a { color: var(--ink); }
-    .empty {
-      text-align: center;
-      padding: 48px 20px;
-      color: var(--muted);
-      font-style: italic;
-    }
+    footer p { margin: 6px 0; }
+    footer a { color: var(--ink-soft); }
   </style>
 </head>
-<body>
+<body id="top">
 
-<header>
-  <img src="/web-app-manifest-192x192.png" alt="kaijutsu mascot">
-  <h1>kaijutsu</h1>
-  <p class="tagline">Open skills for AI coding agents. Install once, run on Claude Code, Codex, Gemini — all from the same registry.</p>
-  <div class="install" onclick="navigator.clipboard.writeText('curl -fsSL https://kaijutsu.dev/install.sh | sh')" title="Click to copy">
+<nav class="topnav">
+  <div class="topnav-inner">
+    <a class="topnav-brand" href="#top">kaijutsu</a>
+    <div class="topnav-links">
+      <a href="#failure-demo">demo</a>
+      <a href="#quickstart">quickstart</a>
+      <a href="#portability">portability</a>
+      <a href="#cost">cost</a>
+      <a href="#trust">trust</a>
+      <a href="#catalog">catalog</a>
+      <a href="https://github.com/momentmaker/kaijutsu">github</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <img class="hero-mascot" src="/web-app-manifest-192x192.png" alt="kaijutsu chibi monster mascot">
+  <div class="hero-kanji" aria-hidden="true">術</div>
+  <h1>Cross-vendor agentic CI for codebases.</h1>
+  <p class="subcopy">Compose review pipelines once. Run them across Claude, Codex, Gemini, and DeepSeek from one config.</p>
+  <p class="tagline">One CLI. One swarm.yaml. Multi-model adversarial reviews that disagree on purpose.</p>
+  <div class="install-box" onclick="navigator.clipboard.writeText('curl -fsSL https:\/\/kaijutsu.dev\/install.sh | sh')" title="Click to copy">
     <code>curl -fsSL https://kaijutsu.dev/install.sh | sh</code>
-    <button>Copy</button>
+    <span class="copy-hint">copy</span>
   </div>
   <div class="quick-links">
-    <a href="https://github.com/momentmaker/kaijutsu">GitHub</a> ·
-    <a href="https://github.com/momentmaker/kaijutsu/blob/main/README.md">README</a> ·
-    <a href="https://github.com/momentmaker/kaijutsu/blob/main/SCHEMA.md">Schema</a> ·
-    <a href="https://github.com/momentmaker/kaijutsu/blob/main/ROADMAP.md">Roadmap</a> ·
-    <a href="https://github.com/momentmaker/kaijutsu/blob/main/SECURITY.md">Security</a> ·
+    <a href="https://github.com/momentmaker/kaijutsu">GitHub</a>
+    <a href="https://github.com/momentmaker/kaijutsu/blob/main/README.md">README</a>
+    <a href="https://github.com/momentmaker/kaijutsu/blob/main/SCHEMA.md">Schema</a>
+    <a href="https://github.com/momentmaker/kaijutsu/blob/main/ROADMAP.md">Roadmap</a>
+    <a href="https://github.com/momentmaker/kaijutsu/blob/main/SECURITY.md">Security</a>
     <a href="/skills.json">skills.json</a>
   </div>
 </header>
 
-<main class="container">
-  <div class="controls">
-    <input type="search" id="search" placeholder="Search skills by name, description, tag…" autocomplete="off">
+<main>
+
+<section id="failure-demo" class="container">
+  <h2>One agent says yes. Three say no.</h2>
+  <p>Single-agent review is sycophancy by default. Same prompt, same model, run twice — you usually get the same &#34;looks good.&#34; Adversarial review needs structural disagreement, not just rerolls.</p>
+  <div class="demo-grid">
+    <div class="demo-card">
+      <div class="label">Single-agent (Claude only)</div>
+      <div class="body">Reviewed the v0.13.0 final pr-review pre-fix. &#34;LGTM — clean rename, well-scoped, tests look comprehensive.&#34;</div>
+    </div>
+    <div class="demo-card disagree">
+      <div class="label">kaijutsu swarm (claude &#43; gemini &#43; deepseek)</div>
+      <div class="body">DeepSeek (paranoid-security persona) caught validateUserPresetEntry dropping Mode/Personas/ConfidenceFloor at parse time. Claude and Gemini both green-lit. The bug was real. We fixed it (commit 83476ef).</div>
+    </div>
+  </div>
+  <p class="demo-caption"><a href="https://github.com/momentmaker/kaijutsu/commit/83476ef">Full disagreement-table run →</a></p>
+  <p>kaijutsu fans the same diff out across multiple models, surfaces where they agree, and flags exactly where they don&#39;t. The disagreement table is the artifact you actually read.</p>
+</section>
+
+<section id="quickstart" class="container">
+  <h2>Quickstart</h2>
+  <p>Install:</p>
+  <pre><code>curl -fsSL https://kaijutsu.dev/install.sh | sh
+jutsu init                    # detects active agents, writes .kaijutsu/</code></pre>
+  <p>Run a swarm pr-review on the current branch:</p>
+  <pre><code>jutsu swarm pr-review --diff-from-branch main</code></pre>
+  <p>Partial output:</p>
+  <pre><code>claude     │ ✓ │ ✗ │ ✓
+gemini     │ ✓ │ ✓ │ ✗
+deepseek   │ ✗ │ ✓ │ ✓
+
+           severity   file:line                summary
+           issue      auth.go:42               token expiry uses &lt; not &lt;=
+           issue      handlers/user.go:118     missing rate-limit on /verify
+           minor      schema.sql:9             index name shadows reserved word</code></pre>
+  <a class="more-link" href="https://github.com/momentmaker/kaijutsu/blob/main/README.md#quickstart">Full quickstart guide →</a>
+</section>
+
+<section id="portability" class="container">
+  <h2>One config. Every vendor.</h2>
+  <p>The swarm.yaml you write today is consumed by jutsu, which dispatches across Claude Code, Codex CLI, Gemini CLI, DeepSeek-via-HTTP, and whatever ships next. v0.6&#39;s driver abstraction handles the wire format per vendor; v0.13&#39;s Preset SDK lets you compose your own pipelines. Vendor lock-in stays a vendor problem.</p>
+  <pre><code># .kaijutsu/swarm.yaml — composable, portable, version-controlled
+version: 1
+presets:
+  - name: tight-pr-review
+    base: pr-review
+    personas:
+      - default-claude
+      - paranoid-security-claude
+      - default-gemini
+    mode: full
+    confidence_floor: 0.7</code></pre>
+  <pre><code>jutsu swarm tight-pr-review --diff-from-branch main</code></pre>
+  <div class="callout">
+    <strong>Why this matters</strong>
+    <p>Multi-agent review is becoming a vendor commodity — Cursor, Zed, GitHub, every IDE will ship native versions by 2027. Cross-vendor portability is the part that doesn&#39;t commodify. Your pipeline is yours, regardless of which vendor wins.</p>
+  </div>
+</section>
+
+<section id="cost" class="container">
+  <h2>Cost per bug found</h2>
+  <p>Multi-agent review costs more per call than a single-agent run. The framing the spreadsheet wants is cost per bug actually caught and confirmed real, not cost per call.</p>
+  <p class="demo-caption">Real numbers from the v0.14.0 stage-2 doc-review run on the landing-page content spec (this page&#39;s spec).</p>
+  <table class="cost-table">
+    <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+    <tbody>
+    
+      <tr><td>Models in pool</td><td class="value">deepseek &#43; gemini (2 personas)</td></tr>
+    
+      <tr><td>Total API cost</td><td class="value">$0.05</td></tr>
+    
+      <tr><td>Wall time</td><td class="value">4m31s</td></tr>
+    
+      <tr><td>Findings emitted</td><td class="value">10</td></tr>
+    
+      <tr><td>Issues fixed in spec</td><td class="value">6</td></tr>
+    
+      <tr><td>Cost per fixed issue</td><td class="value">~$0.008</td></tr>
+    
+    </tbody>
+  </table>
+  <div class="objection">
+    <div class="q">But isn&#39;t this 3x more expensive than a single-agent run?</div>
+    <div>Yes — and that&#39;s the point. Three models with different priors disagree about different things. The cost difference is what buys you the disagreement.</div>
+  </div>
+</section>
+
+<section id="trust" class="container">
+  <h2>Trust model</h2>
+  <p>kaijutsu's trust surface has four parts:</p>
+  <div class="trust-grid">
+  
+    <div class="trust-card">
+      <h3>Skill provenance</h3>
+      <p>Core skills (skills/core/*) are sigstore-signed at release. jutsu install verifies the signature before unpacking. Community skills are pinned to a tagged commit &#43; SHA in kaijutsu.lock.json; tampering breaks the lockfile.</p>
+    </div>
+  
+    <div class="trust-card">
+      <h3>Permission gates</h3>
+      <p>jutsu install parses each skill&#39;s permissions: manifest before write. Bash, network, fs-write are explicit; jutsu install prompts on first use of a sensitive permission and records the decision.</p>
+    </div>
+  
+    <div class="trust-card">
+      <h3>Local data stays local</h3>
+      <p>~/.kaijutsu/findings.db (the quality fingerprinting store) is mode 0600, never leaves disk, never syncs anywhere. The cli/internal/cli/finding.go package is import-list-restricted from net, net/http, net/url — enforced as a build-time test.</p>
+    </div>
+  
+    <div class="trust-card">
+      <h3>Receipts, not rhetoric</h3>
+      <p>Every kaijutsu release links to the actual jutsu swarm pr-review run that reviewed itself. (Self-review is necessary, not sufficient — but it&#39;s a falsifiable receipt, not a marketing badge.)</p>
+    </div>
+  
+  </div>
+  <div class="wrapper-defense">
+    <h3>Isn&#39;t this just a wrapper around OpenAI/Anthropic APIs?</h3>
+    <p>The honest answer: it has wrapper parts and non-wrapper parts.</p>
+    <dl class="pair">
+      <dt>Wrapper:</dt><dd>Per-vendor driver shims (cli/http/cli-compat/mcp). Intentionally thin — vendor APIs change, and we want the change surface small.</dd>
+      <dt>Not wrapper:</dt><dd>
+        <ul style="margin: 0; padding-left: 18px;">
+        
+          <li>Cross-vendor portability layer — same swarm.yaml runs across vendors with different wire formats and auth.</li>
+        
+          <li>findings.db quality fingerprinting — per-(provider, persona, preset, codebase) precision math derived from your accept/dismiss history. The synthesizer weights each agent&#39;s vote by observed precision. No vendor offers this.</li>
+        
+          <li>Preset SDK — compose your own swarm shapes; project &#43; home overlay; built-ins shadowed at registration.</li>
+        
+          <li>Dream lens-blindspot warnings — jutsu swarm dream --mode full --lenses all runs the 8-lens matrix and flags where lens consensus may be RLHF-convergence rather than actual signal.</li>
+        
+          <li>agents.yaml driver abstraction — provider catalog with overlay &#43; override semantics; vendor switch is a config edit.</li>
+        
+        </ul>
+      </dd>
+    </dl>
+  </div>
+</section>
+
+<section id="catalog" class="container">
+  <h2>Skill catalog</h2>
+  <p>Browseable list of every skill kaijutsu ships, plus vendored third-party catalogs. Filter by source, search by name or tag.</p>
+  <div class="catalog-controls">
+    <input type="search" id="search" placeholder="Search skills by name, description, tag…" autocomplete="off" aria-label="Search skills">
     <div class="filter-group" id="filters">
       <button class="filter active" data-filter="all">All (46)</button>
       <button class="filter" data-filter="core">Core</button>
@@ -227,7 +574,6 @@
     </div>
   </div>
   <p class="stats" id="stats">Showing all 46 skills.</p>
-
   <div class="grid" id="grid">
     
     <article class="card" data-source="third-party" data-hooks="false" data-search="api-and-interface-design Third-party skill from github.com/addyosmani/agent-skills; install via `jutsu install api-and-interface-design`.  claude codex gemini">
@@ -830,10 +1176,18 @@
     
   </div>
   <p class="empty" id="empty" style="display:none">No skills match your filters.</p>
+</section>
+
+<section id="contributing" class="container">
+  <h2>Contributing</h2>
+  <p>Skills &#43; tools live at github.com/momentmaker/kaijutsu. Read CONTRIBUTING.md for skill authoring &#43; PR conventions.</p>
+  <p>Want to add a skill? jutsu skill new &lt;name&gt; scaffolds a flat-layout skill directory. jutsu lint &lt;path&gt; validates schema &#43; license &#43; permission manifest. Run jutsu publish to open a PR against skills/community/.</p>
+</section>
+
 </main>
 
 <footer>
-  <p>kaijutsu is MIT-licensed. The mascot, monster eats unrecoverable shell commands.</p>
+  <p>kaijutsu is MIT-licensed. The mascot eats unrecoverable shell commands.</p>
   <p>Generated from <a href="https://github.com/momentmaker/kaijutsu/tree/main/skills/core">skills/core/</a> + <a href="https://github.com/momentmaker/kaijutsu/blob/main/registry/index.json">registry/index.json</a>. <a href="/skills.json">JSON catalog</a>.</p>
 </footer>
 

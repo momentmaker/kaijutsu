@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "hero": {
+    "headline": "Cross-vendor agentic CI for codebases.",
+    "sub_copy": "Compose review pipelines once. Run them across Claude, Codex, Gemini, and DeepSeek from one config.",
+    "tagline": "One CLI. One swarm.yaml. Multi-model adversarial reviews that disagree on purpose.",
+    "install_oneliner": "curl -fsSL https://kaijutsu.dev/install.sh | sh"
+  },
+  "failure_demo": {
+    "intro": "Single-agent review is sycophancy by default. Same prompt, same model, run twice — you usually get the same \"looks good.\" Adversarial review needs structural disagreement, not just rerolls.",
+    "outro": "kaijutsu fans the same diff out across multiple models, surfaces where they agree, and flags exactly where they don't. The disagreement table is the artifact you actually read.",
+    "left_caption": "Single-agent (Claude only)",
+    "left_body": "Reviewed the v0.13.0 final pr-review pre-fix. \"LGTM — clean rename, well-scoped, tests look comprehensive.\"",
+    "right_caption": "kaijutsu swarm (claude + gemini + deepseek)",
+    "right_body": "DeepSeek (paranoid-security persona) caught validateUserPresetEntry dropping Mode/Personas/ConfidenceFloor at parse time. Claude and Gemini both green-lit. The bug was real. We fixed it (commit 83476ef).",
+    "artifact_link": "https://github.com/momentmaker/kaijutsu/commit/83476ef",
+    "artifact_label": "Full disagreement-table run →"
+  },
+  "quickstart": {
+    "snippet_install": "curl -fsSL https://kaijutsu.dev/install.sh | sh\njutsu init                    # detects active agents, writes .kaijutsu/",
+    "snippet_run": "jutsu swarm pr-review --diff-from-branch main",
+    "snippet_output": "claude     │ ✓ │ ✗ │ ✓\ngemini     │ ✓ │ ✓ │ ✗\ndeepseek   │ ✗ │ ✓ │ ✓\n\n           severity   file:line                summary\n           issue      auth.go:42               token expiry uses < not <=\n           issue      handlers/user.go:118     missing rate-limit on /verify\n           minor      schema.sql:9             index name shadows reserved word",
+    "more_link": "https://github.com/momentmaker/kaijutsu/blob/main/README.md#quickstart"
+  },
+  "portability": {
+    "intro": "The swarm.yaml you write today is consumed by jutsu, which dispatches across Claude Code, Codex CLI, Gemini CLI, DeepSeek-via-HTTP, and whatever ships next. v0.6's driver abstraction handles the wire format per vendor; v0.13's Preset SDK lets you compose your own pipelines. Vendor lock-in stays a vendor problem.",
+    "snippet_yaml": "# .kaijutsu/swarm.yaml — composable, portable, version-controlled\nversion: 1\npresets:\n  - name: tight-pr-review\n    base: pr-review\n    personas:\n      - default-claude\n      - paranoid-security-claude\n      - default-gemini\n    mode: full\n    confidence_floor: 0.7",
+    "snippet_run": "jutsu swarm tight-pr-review --diff-from-branch main",
+    "callout_title": "Why this matters",
+    "callout_body": "Multi-agent review is becoming a vendor commodity — Cursor, Zed, GitHub, every IDE will ship native versions by 2027. Cross-vendor portability is the part that doesn't commodify. Your pipeline is yours, regardless of which vendor wins."
+  },
+  "cost": {
+    "intro": "Multi-agent review costs more per call than a single-agent run. The framing the spreadsheet wants is cost per bug actually caught and confirmed real, not cost per call.",
+    "table_caption": "Real numbers from the v0.14.0 stage-2 doc-review run on the landing-page content spec (this page's spec).",
+    "rows": [
+      {"metric": "Models in pool", "value": "deepseek + gemini (2 personas)"},
+      {"metric": "Total API cost", "value": "$0.05"},
+      {"metric": "Wall time", "value": "4m31s"},
+      {"metric": "Findings emitted", "value": "10"},
+      {"metric": "Issues fixed in spec", "value": "6"},
+      {"metric": "Cost per fixed issue", "value": "~$0.008"}
+    ],
+    "objection_title": "But isn't this 3x more expensive than a single-agent run?",
+    "objection_body": "Yes — and that's the point. Three models with different priors disagree about different things. The cost difference is what buys you the disagreement."
+  },
+  "trust": {
+    "parts": [
+      {
+        "title": "Skill provenance",
+        "body": "Core skills (skills/core/*) are sigstore-signed at release. jutsu install verifies the signature before unpacking. Community skills are pinned to a tagged commit + SHA in kaijutsu.lock.json; tampering breaks the lockfile."
+      },
+      {
+        "title": "Permission gates",
+        "body": "jutsu install parses each skill's permissions: manifest before write. Bash, network, fs-write are explicit; jutsu install prompts on first use of a sensitive permission and records the decision."
+      },
+      {
+        "title": "Local data stays local",
+        "body": "~/.kaijutsu/findings.db (the quality fingerprinting store) is mode 0600, never leaves disk, never syncs anywhere. The cli/internal/cli/finding.go package is import-list-restricted from net, net/http, net/url — enforced as a build-time test."
+      },
+      {
+        "title": "Receipts, not rhetoric",
+        "body": "Every kaijutsu release links to the actual jutsu swarm pr-review run that reviewed itself. (Self-review is necessary, not sufficient — but it's a falsifiable receipt, not a marketing badge.)"
+      }
+    ],
+    "wrapper_title": "Isn't this just a wrapper around OpenAI/Anthropic APIs?",
+    "wrapper_intro": "The honest answer: it has wrapper parts and non-wrapper parts.",
+    "wrapper_inside": "Per-vendor driver shims (cli/http/cli-compat/mcp). Intentionally thin — vendor APIs change, and we want the change surface small.",
+    "wrapper_outside": [
+      "Cross-vendor portability layer — same swarm.yaml runs across vendors with different wire formats and auth.",
+      "findings.db quality fingerprinting — per-(provider, persona, preset, codebase) precision math derived from your accept/dismiss history. The synthesizer weights each agent's vote by observed precision. No vendor offers this.",
+      "Preset SDK — compose your own swarm shapes; project + home overlay; built-ins shadowed at registration.",
+      "Dream lens-blindspot warnings — jutsu swarm dream --mode full --lenses all runs the 8-lens matrix and flags where lens consensus may be RLHF-convergence rather than actual signal.",
+      "agents.yaml driver abstraction — provider catalog with overlay + override semantics; vendor switch is a config edit."
+    ]
+  },
+  "contributing": {
+    "intro": "Skills + tools live at github.com/momentmaker/kaijutsu. Read CONTRIBUTING.md for skill authoring + PR conventions.",
+    "body": "Want to add a skill? jutsu skill new <name> scaffolds a flat-layout skill directory. jutsu lint <path> validates schema + license + permission manifest. Run jutsu publish to open a PR against skills/community/."
+  }
+}

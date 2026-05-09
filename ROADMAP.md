@@ -142,7 +142,7 @@ Read-only persona discovery + ghost-town-watch data + landing-page rebuild. 80% 
 
 - [x] **`jutsu agent persona browse`** — list curated built-ins + community examples. Output is paste-into-`agents.yaml` ready. No install pipeline.
 - [x] **`jutsu finding stats`** — preset usage counts over a time window; source filter derives built-in vs user from the live swarm registry. (v0.7's precision report renamed to `jutsu finding precision`.)
-- [ ] **`kaijutsu.dev` landing page rebuild** — dream-locked direction: cross-vendor portability moat, single-agent failure-mode lead, multi-agent disagreement primitive, cost-per-bug-found framing, demoted catalog. Drops "pre-alpha" from user-facing copy.
+- [x] **`kaijutsu.dev` landing page rebuild** — dream-locked direction: cross-vendor portability moat, single-agent failure-mode lead, multi-agent disagreement primitive, cost-per-bug-found framing, demoted catalog. Drops "pre-alpha" from user-facing copy.
 
 ## v0.14.x — Maybe persona test + new
 

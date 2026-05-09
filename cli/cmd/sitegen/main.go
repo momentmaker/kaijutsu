@@ -4,6 +4,11 @@
 //   docs/skills.json — machine-readable catalog for downstream tools
 //   docs/index.html  — human-facing catalog page served at kaijutsu.dev
 //
+// The landing page (hero, failure-mode demo, quickstart, etc.) is
+// generated from docs/landing-content.json — a hand-edited content
+// file, mirroring the skills.json data-vs-code separation pattern.
+// Editing copy is a JSON edit, not a Go rebuild.
+//
 // Run from the repo root:
 //
 //   go run ./cli/cmd/sitegen
@@ -32,8 +37,8 @@ type catalogEntry struct {
 	Description string   `json:"description"`
 	Agents      []string `json:"agents,omitempty"`
 	Tags        []string `json:"tags,omitempty"`
-	Source      string   `json:"source"`     // "core" | "third-party"
-	Repo        string   `json:"repo"`       // momentmaker/kaijutsu OR addyosmani/agent-skills etc.
+	Source      string   `json:"source"` // "core" | "third-party"
+	Repo        string   `json:"repo"`   // momentmaker/kaijutsu OR addyosmani/agent-skills etc.
 	Path        string   `json:"path,omitempty"`
 	Homepage    string   `json:"homepage,omitempty"`
 	Upstream    string   `json:"upstream,omitempty"`
@@ -44,6 +49,94 @@ type catalogEntry struct {
 		Network bool        `json:"network"`
 		FsWrite interface{} `json:"fs_write"`
 	} `json:"permissions"`
+}
+
+// LandingContent is the v0.14.0 hand-edited content schema for the
+// kaijutsu.dev landing page. Lives in docs/landing-content.json so a
+// copy edit is a JSON edit, not a Go rebuild.
+//
+// Spec: docs/specs/2026-05-09-landing-page-content.md
+// ADR:  docs/decisions/2026-05-09-landing-page-direction.md
+type LandingContent struct {
+	Version      int               `json:"version"`
+	Hero         landingHero       `json:"hero"`
+	FailureDemo  landingFailure    `json:"failure_demo"`
+	Quickstart   landingQuickstart `json:"quickstart"`
+	Portability  landingPortable   `json:"portability"`
+	Cost         landingCost       `json:"cost"`
+	Trust        landingTrust      `json:"trust"`
+	Contributing landingContrib    `json:"contributing"`
+}
+
+type landingHero struct {
+	Headline        string `json:"headline"`
+	SubCopy         string `json:"sub_copy"`
+	Tagline         string `json:"tagline"`
+	InstallOneliner string `json:"install_oneliner"`
+}
+
+type landingFailure struct {
+	Intro         string `json:"intro"`
+	Outro         string `json:"outro"`
+	LeftCaption   string `json:"left_caption"`
+	LeftBody      string `json:"left_body"`
+	RightCaption  string `json:"right_caption"`
+	RightBody     string `json:"right_body"`
+	ArtifactLink  string `json:"artifact_link"`
+	ArtifactLabel string `json:"artifact_label"`
+}
+
+type landingQuickstart struct {
+	SnippetInstall string `json:"snippet_install"`
+	SnippetRun     string `json:"snippet_run"`
+	SnippetOutput  string `json:"snippet_output"`
+	MoreLink       string `json:"more_link"`
+}
+
+type landingPortable struct {
+	Intro        string `json:"intro"`
+	SnippetYaml  string `json:"snippet_yaml"`
+	SnippetRun   string `json:"snippet_run"`
+	CalloutTitle string `json:"callout_title"`
+	CalloutBody  string `json:"callout_body"`
+}
+
+type landingCost struct {
+	Intro          string      `json:"intro"`
+	TableCaption   string      `json:"table_caption"`
+	Rows           []landingKV `json:"rows"`
+	ObjectionTitle string      `json:"objection_title"`
+	ObjectionBody  string      `json:"objection_body"`
+}
+
+type landingKV struct {
+	Metric string `json:"metric"`
+	Value  string `json:"value"`
+}
+
+type landingTrust struct {
+	Parts          []landingTrustPart `json:"parts"`
+	WrapperTitle   string             `json:"wrapper_title"`
+	WrapperIntro   string             `json:"wrapper_intro"`
+	WrapperInside  string             `json:"wrapper_inside"`
+	WrapperOutside []string           `json:"wrapper_outside"`
+}
+
+type landingTrustPart struct {
+	Title string `json:"title"`
+	Body  string `json:"body"`
+}
+
+type landingContrib struct {
+	Intro string `json:"intro"`
+	Body  string `json:"body"`
+}
+
+// pageData is the union shape the HTML template consumes: catalog
+// fields (Skills, Total) plus the landing content blocks.
+type pageData struct {
+	*catalog
+	Landing LandingContent
 }
 
 type catalog struct {
@@ -76,11 +169,32 @@ func run(repoRoot string) error {
 	if err := writeJSON(filepath.Join(repoRoot, "docs", "skills.json"), cat); err != nil {
 		return err
 	}
-	if err := writeHTML(filepath.Join(repoRoot, "docs", "index.html"), cat); err != nil {
+	landing, err := loadLandingContent(filepath.Join(repoRoot, "docs", "landing-content.json"))
+	if err != nil {
+		return fmt.Errorf("load landing-content.json: %w", err)
+	}
+	page := &pageData{catalog: cat, Landing: landing}
+	if err := writeHTML(filepath.Join(repoRoot, "docs", "index.html"), page); err != nil {
 		return err
 	}
 	fmt.Printf("sitegen: %d skills written to docs/skills.json + docs/index.html\n", cat.Total)
 	return nil
+}
+
+// loadLandingContent reads docs/landing-content.json. Hard-fails on
+// missing or malformed file — a missing landing-content.json would
+// otherwise silently render an empty hero, which is worse than a
+// fast CI fail.
+func loadLandingContent(path string) (LandingContent, error) {
+	var lc LandingContent
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return lc, err
+	}
+	if err := json.Unmarshal(data, &lc); err != nil {
+		return lc, fmt.Errorf("parse %s: %w", path, err)
+	}
+	return lc, nil
 }
 
 func buildCatalog(repoRoot string) (*catalog, error) {
@@ -183,9 +297,9 @@ func writeJSON(path string, cat *catalog) error {
 	return os.WriteFile(path, data, 0644)
 }
 
-func writeHTML(path string, cat *catalog) error {
+func writeHTML(path string, page *pageData) error {
 	tmpl, err := template.New("page").Funcs(template.FuncMap{
-		"join": strings.Join,
+		"join":  strings.Join,
 		"upper": strings.ToUpper,
 	}).Parse(htmlTemplate)
 	if err != nil {
@@ -196,7 +310,7 @@ func writeHTML(path string, cat *catalog) error {
 		return err
 	}
 	defer f.Close()
-	return tmpl.Execute(f, cat)
+	return tmpl.Execute(f, page)
 }
 
 const htmlTemplate = `<!DOCTYPE html>
@@ -204,100 +318,284 @@ const htmlTemplate = `<!DOCTYPE html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>kaijutsu — open skills for AI coding agents</title>
-  <meta name="description" content="MIT-licensed, agent-agnostic registry and CLI for AI coding agent skills. One source of truth for Claude, Codex, and Gemini.">
+  <title>kaijutsu — cross-vendor agentic CI for codebases</title>
+  <meta name="description" content="{{.Landing.Hero.SubCopy}}">
+  <meta property="og:title" content="kaijutsu — {{.Landing.Hero.Headline}}">
+  <meta property="og:description" content="{{.Landing.Hero.SubCopy}}">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://kaijutsu.dev">
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
-  <meta name="theme-color" content="#3DDC97">
+  <meta name="theme-color" content="#1A1A1A">
   <style>
     :root {
+      --ink: #1A1A1A;
+      --ink-soft: #2A2A2A;
+      --paper: #F5EDE0;
+      --bg: #FAF8F4;
+      --muted: #5C5C5C;
+      --border: #E0DAC9;
       --mint: #3DDC97;
       --mint-dark: #2BB37C;
       --rust: #C18450;
-      --ink: #1A1A1A;
-      --paper: #F5EDE0;
-      --bg: #FFFFFF;
-      --border: #E5E5E5;
-      --muted: #6B6B6B;
+      --code-bg: #1A1A1A;
+      --code-fg: #F5EDE0;
     }
     * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 64px; }
     body {
       margin: 0;
       font-family: ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", sans-serif;
       background: var(--bg);
       color: var(--ink);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--border); text-underline-offset: 3px; }
+    a:hover { text-decoration-color: var(--mint); color: var(--mint-dark); }
+    code, pre, kbd, samp { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; }
+    pre {
+      background: var(--code-bg);
+      color: var(--code-fg);
+      padding: 16px 18px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 13px;
       line-height: 1.55;
+      margin: 16px 0;
     }
-    a { color: var(--mint-dark); text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    .container { max-width: 1080px; margin: 0 auto; padding: 32px 20px; }
-    header {
+    pre code { color: inherit; }
+    .container { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+
+    /* sticky nav */
+    .topnav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(250, 248, 244, 0.92);
+      backdrop-filter: saturate(140%) blur(8px);
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+    .topnav-inner {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 12px 20px;
+      max-width: 1080px;
+      margin: 0 auto;
+    }
+    .topnav-brand { font-weight: 600; letter-spacing: 0.02em; text-decoration: none; color: var(--ink); }
+    .topnav-brand:hover { color: var(--mint-dark); }
+    .topnav-links { display: flex; gap: 14px; flex-wrap: wrap; margin-left: auto; }
+    .topnav-links a { color: var(--muted); text-decoration: none; }
+    .topnav-links a:hover { color: var(--ink); }
+    @media (max-width: 720px) { .topnav-links { display: none; } }
+
+    /* hero */
+    .hero {
       text-align: center;
-      padding: 48px 20px 32px;
-      background: linear-gradient(180deg, rgba(61, 220, 151, 0.08), transparent);
+      padding: 56px 20px 48px;
+      background:
+        radial-gradient(ellipse at center top, rgba(193, 132, 80, 0.06), transparent 60%),
+        var(--paper);
+      border-bottom: 1px solid var(--border);
+      position: relative;
     }
-    header img { width: 160px; height: 160px; }
-    h1 {
-      font-size: clamp(32px, 5vw, 56px);
-      margin: 16px 0 8px;
+    .hero-mascot {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 12px;
+      display: block;
+    }
+    .hero-kanji {
+      font-size: 24px;
+      color: var(--rust);
+      opacity: 0.55;
+      margin-top: -8px;
+      letter-spacing: 0.05em;
+    }
+    .hero h1 {
+      font-size: clamp(28px, 4.5vw, 48px);
+      margin: 16px auto 12px;
       letter-spacing: -0.02em;
+      line-height: 1.15;
+      max-width: 18ch;
+      font-weight: 700;
     }
-    .tagline {
-      font-size: 18px;
+    .hero .subcopy {
+      font-size: clamp(15px, 1.6vw, 18px);
+      color: var(--ink-soft);
+      margin: 0 auto 8px;
+      max-width: 56ch;
+    }
+    .hero .tagline {
+      font-size: 14px;
       color: var(--muted);
-      margin: 0 auto 24px;
-      max-width: 680px;
+      margin: 0 auto 28px;
+      max-width: 56ch;
+      font-style: italic;
     }
-    .install {
+    .install-box {
       display: inline-flex;
-      gap: 8px;
+      gap: 10px;
       align-items: center;
       background: var(--ink);
-      color: #fff;
-      padding: 10px 16px;
-      border-radius: 8px;
-      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      color: var(--code-fg);
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-family: ui-monospace, monospace;
       font-size: 14px;
       cursor: pointer;
-      user-select: text;
+      max-width: 100%;
+      overflow-x: auto;
     }
-    .install code { color: var(--mint); }
-    .install button {
+    .install-box code { color: var(--mint); }
+    .install-box .copy-hint {
       background: var(--mint);
       color: var(--ink);
       border: none;
-      padding: 6px 12px;
+      padding: 4px 10px;
       border-radius: 4px;
       font-weight: 600;
-      cursor: pointer;
-      font-size: 12px;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      flex-shrink: 0;
     }
     .quick-links {
-      margin-top: 16px;
-      font-size: 14px;
+      margin-top: 18px;
+      font-size: 13px;
       color: var(--muted);
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      flex-wrap: wrap;
     }
-    .quick-links a { margin: 0 6px; }
-    .controls {
+    .quick-links a { color: var(--muted); text-decoration: none; }
+    .quick-links a:hover { color: var(--ink); text-decoration: underline; }
+
+    /* sections */
+    section { padding: 56px 0; border-bottom: 1px solid var(--border); }
+    section:last-of-type { border-bottom: none; }
+    section h2 {
+      font-size: clamp(22px, 3vw, 30px);
+      margin: 0 0 14px;
+      letter-spacing: -0.01em;
+    }
+    section h3 { font-size: 18px; margin: 24px 0 8px; }
+    section p { margin: 12px 0; max-width: 70ch; }
+    section ul { max-width: 70ch; }
+    section li { margin-bottom: 6px; }
+
+    /* failure demo */
+    .demo-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 24px 0 12px;
+    }
+    @media (max-width: 768px) { .demo-grid { grid-template-columns: 1fr; } }
+    .demo-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 20px;
+      background: #fff;
+    }
+    .demo-card.disagree { border-color: var(--mint); }
+    .demo-card .label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .demo-card.disagree .label { color: var(--mint-dark); }
+    .demo-card .body { font-size: 14px; line-height: 1.6; color: var(--ink-soft); }
+    .demo-caption { font-size: 13px; color: var(--muted); margin-top: 6px; }
+
+    /* portability callout */
+    .callout {
+      background: #fff;
+      border-left: 3px solid var(--mint);
+      padding: 16px 20px;
+      margin: 20px 0;
+      border-radius: 0 8px 8px 0;
+    }
+    .callout strong { color: var(--ink); }
+
+    /* cost table */
+    .cost-table {
+      border-collapse: collapse;
+      width: 100%;
+      max-width: 600px;
+      margin: 16px 0;
+      font-size: 14px;
+    }
+    .cost-table th, .cost-table td {
+      text-align: left;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .cost-table th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .cost-table td.value { font-family: ui-monospace, monospace; }
+    .objection {
+      background: var(--paper);
+      padding: 16px 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    .objection .q { font-weight: 600; margin-bottom: 8px; }
+
+    /* trust parts */
+    .trust-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin: 20px 0 28px;
+    }
+    .trust-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 18px;
+      background: #fff;
+    }
+    .trust-card h3 { margin: 0 0 6px; font-size: 15px; }
+    .trust-card p { font-size: 14px; color: var(--ink-soft); margin: 0; }
+    .wrapper-defense {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 22px;
+      margin-top: 16px;
+    }
+    .wrapper-defense h3 { margin-top: 0; }
+    .wrapper-defense .pair { display: grid; grid-template-columns: max-content 1fr; gap: 8px 16px; margin-top: 12px; }
+    .wrapper-defense .pair dt { font-weight: 600; color: var(--rust); }
+
+    /* catalog */
+    .catalog-controls {
       display: flex;
       gap: 12px;
       flex-wrap: wrap;
-      margin-bottom: 24px;
+      margin-bottom: 18px;
     }
-    .controls input[type="search"] {
+    .catalog-controls input[type="search"] {
       flex: 1 1 280px;
       padding: 10px 14px;
       border: 1px solid var(--border);
       border-radius: 8px;
-      font-size: 15px;
+      font-size: 14px;
+      background: #fff;
     }
-    .controls input[type="search"]:focus {
+    .catalog-controls input[type="search"]:focus {
       outline: none;
       border-color: var(--mint);
-      box-shadow: 0 0 0 3px rgba(61, 220, 151, 0.2);
+      box-shadow: 0 0 0 3px rgba(61, 220, 151, 0.18);
     }
     .filter-group { display: flex; gap: 6px; flex-wrap: wrap; }
     .filter {
@@ -307,7 +605,9 @@ const htmlTemplate = `<!DOCTYPE html>
       background: #fff;
       font-size: 13px;
       cursor: pointer;
+      color: var(--ink-soft);
     }
+    .filter:hover { border-color: var(--mint); }
     .filter.active {
       background: var(--ink);
       color: #fff;
@@ -320,13 +620,13 @@ const htmlTemplate = `<!DOCTYPE html>
     }
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 14px;
     }
     .card {
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 18px 20px;
+      border-radius: 10px;
+      padding: 16px 18px;
       background: #fff;
       display: flex;
       flex-direction: column;
@@ -339,14 +639,11 @@ const htmlTemplate = `<!DOCTYPE html>
     }
     .card h3 {
       margin: 0;
-      font-size: 18px;
+      font-size: 16px;
       font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      line-height: 1.3;
     }
-    .card .desc {
-      font-size: 14px;
-      color: #333;
-      flex: 1;
-    }
+    .card .desc { font-size: 13px; color: var(--ink-soft); flex: 1; }
     .card .row {
       display: flex;
       justify-content: space-between;
@@ -355,17 +652,16 @@ const htmlTemplate = `<!DOCTYPE html>
       font-size: 12px;
       color: var(--muted);
     }
-    .card .row h3 { line-height: 1.25; }
-    .card .row .badge { margin-top: 4px; }
     .badge {
       display: inline-block;
       padding: 2px 8px;
       border-radius: 999px;
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 600;
-      letter-spacing: 0.02em;
+      letter-spacing: 0.04em;
       white-space: nowrap;
       flex-shrink: 0;
+      text-transform: uppercase;
     }
     .badge-core { background: rgba(61, 220, 151, 0.15); color: var(--mint-dark); }
     .badge-third { background: rgba(193, 132, 80, 0.15); color: var(--rust); }
@@ -373,53 +669,167 @@ const htmlTemplate = `<!DOCTYPE html>
     .agents { color: var(--muted); }
     .card-install {
       font-family: ui-monospace, monospace;
-      font-size: 12px;
+      font-size: 11px;
       background: var(--paper);
       padding: 6px 10px;
       border-radius: 6px;
       cursor: pointer;
       user-select: all;
+      color: var(--ink);
     }
+    .empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+      font-style: italic;
+    }
+    .more-link {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
     footer {
-      margin: 64px auto 32px;
-      padding: 24px 20px;
+      padding: 32px 20px 40px;
       text-align: center;
       color: var(--muted);
       font-size: 13px;
       border-top: 1px solid var(--border);
+      background: var(--paper);
     }
-    footer a { color: var(--ink); }
-    .empty {
-      text-align: center;
-      padding: 48px 20px;
-      color: var(--muted);
-      font-style: italic;
-    }
+    footer p { margin: 6px 0; }
+    footer a { color: var(--ink-soft); }
   </style>
 </head>
-<body>
+<body id="top">
 
-<header>
-  <img src="/web-app-manifest-192x192.png" alt="kaijutsu mascot">
-  <h1>kaijutsu</h1>
-  <p class="tagline">Open skills for AI coding agents. Install once, run on Claude Code, Codex, Gemini — all from the same registry.</p>
-  <div class="install" onclick="navigator.clipboard.writeText('curl -fsSL https://kaijutsu.dev/install.sh | sh')" title="Click to copy">
-    <code>curl -fsSL https://kaijutsu.dev/install.sh | sh</code>
-    <button>Copy</button>
+<nav class="topnav">
+  <div class="topnav-inner">
+    <a class="topnav-brand" href="#top">kaijutsu</a>
+    <div class="topnav-links">
+      <a href="#failure-demo">demo</a>
+      <a href="#quickstart">quickstart</a>
+      <a href="#portability">portability</a>
+      <a href="#cost">cost</a>
+      <a href="#trust">trust</a>
+      <a href="#catalog">catalog</a>
+      <a href="https://github.com/momentmaker/kaijutsu">github</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <img class="hero-mascot" src="/web-app-manifest-192x192.png" alt="kaijutsu chibi monster mascot">
+  <div class="hero-kanji" aria-hidden="true">術</div>
+  <h1>{{.Landing.Hero.Headline}}</h1>
+  <p class="subcopy">{{.Landing.Hero.SubCopy}}</p>
+  <p class="tagline">{{.Landing.Hero.Tagline}}</p>
+  <div class="install-box" onclick="navigator.clipboard.writeText('{{.Landing.Hero.InstallOneliner}}')" title="Click to copy">
+    <code>{{.Landing.Hero.InstallOneliner}}</code>
+    <span class="copy-hint">copy</span>
   </div>
   <div class="quick-links">
-    <a href="https://github.com/momentmaker/kaijutsu">GitHub</a> ·
-    <a href="https://github.com/momentmaker/kaijutsu/blob/main/README.md">README</a> ·
-    <a href="https://github.com/momentmaker/kaijutsu/blob/main/SCHEMA.md">Schema</a> ·
-    <a href="https://github.com/momentmaker/kaijutsu/blob/main/ROADMAP.md">Roadmap</a> ·
-    <a href="https://github.com/momentmaker/kaijutsu/blob/main/SECURITY.md">Security</a> ·
+    <a href="https://github.com/momentmaker/kaijutsu">GitHub</a>
+    <a href="https://github.com/momentmaker/kaijutsu/blob/main/README.md">README</a>
+    <a href="https://github.com/momentmaker/kaijutsu/blob/main/SCHEMA.md">Schema</a>
+    <a href="https://github.com/momentmaker/kaijutsu/blob/main/ROADMAP.md">Roadmap</a>
+    <a href="https://github.com/momentmaker/kaijutsu/blob/main/SECURITY.md">Security</a>
     <a href="/skills.json">skills.json</a>
   </div>
 </header>
 
-<main class="container">
-  <div class="controls">
-    <input type="search" id="search" placeholder="Search skills by name, description, tag…" autocomplete="off">
+<main>
+
+<section id="failure-demo" class="container">
+  <h2>One agent says yes. Three say no.</h2>
+  <p>{{.Landing.FailureDemo.Intro}}</p>
+  <div class="demo-grid">
+    <div class="demo-card">
+      <div class="label">{{.Landing.FailureDemo.LeftCaption}}</div>
+      <div class="body">{{.Landing.FailureDemo.LeftBody}}</div>
+    </div>
+    <div class="demo-card disagree">
+      <div class="label">{{.Landing.FailureDemo.RightCaption}}</div>
+      <div class="body">{{.Landing.FailureDemo.RightBody}}</div>
+    </div>
+  </div>
+  <p class="demo-caption"><a href="{{.Landing.FailureDemo.ArtifactLink}}">{{.Landing.FailureDemo.ArtifactLabel}}</a></p>
+  <p>{{.Landing.FailureDemo.Outro}}</p>
+</section>
+
+<section id="quickstart" class="container">
+  <h2>Quickstart</h2>
+  <p>Install:</p>
+  <pre><code>{{.Landing.Quickstart.SnippetInstall}}</code></pre>
+  <p>Run a swarm pr-review on the current branch:</p>
+  <pre><code>{{.Landing.Quickstart.SnippetRun}}</code></pre>
+  <p>Partial output:</p>
+  <pre><code>{{.Landing.Quickstart.SnippetOutput}}</code></pre>
+  <a class="more-link" href="{{.Landing.Quickstart.MoreLink}}">Full quickstart guide →</a>
+</section>
+
+<section id="portability" class="container">
+  <h2>One config. Every vendor.</h2>
+  <p>{{.Landing.Portability.Intro}}</p>
+  <pre><code>{{.Landing.Portability.SnippetYaml}}</code></pre>
+  <pre><code>{{.Landing.Portability.SnippetRun}}</code></pre>
+  <div class="callout">
+    <strong>{{.Landing.Portability.CalloutTitle}}</strong>
+    <p>{{.Landing.Portability.CalloutBody}}</p>
+  </div>
+</section>
+
+<section id="cost" class="container">
+  <h2>Cost per bug found</h2>
+  <p>{{.Landing.Cost.Intro}}</p>
+  <p class="demo-caption">{{.Landing.Cost.TableCaption}}</p>
+  <table class="cost-table">
+    <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+    <tbody>
+    {{range .Landing.Cost.Rows}}
+      <tr><td>{{.Metric}}</td><td class="value">{{.Value}}</td></tr>
+    {{end}}
+    </tbody>
+  </table>
+  <div class="objection">
+    <div class="q">{{.Landing.Cost.ObjectionTitle}}</div>
+    <div>{{.Landing.Cost.ObjectionBody}}</div>
+  </div>
+</section>
+
+<section id="trust" class="container">
+  <h2>Trust model</h2>
+  <p>kaijutsu's trust surface has four parts:</p>
+  <div class="trust-grid">
+  {{range .Landing.Trust.Parts}}
+    <div class="trust-card">
+      <h3>{{.Title}}</h3>
+      <p>{{.Body}}</p>
+    </div>
+  {{end}}
+  </div>
+  <div class="wrapper-defense">
+    <h3>{{.Landing.Trust.WrapperTitle}}</h3>
+    <p>{{.Landing.Trust.WrapperIntro}}</p>
+    <dl class="pair">
+      <dt>Wrapper:</dt><dd>{{.Landing.Trust.WrapperInside}}</dd>
+      <dt>Not wrapper:</dt><dd>
+        <ul style="margin: 0; padding-left: 18px;">
+        {{range .Landing.Trust.WrapperOutside}}
+          <li>{{.}}</li>
+        {{end}}
+        </ul>
+      </dd>
+    </dl>
+  </div>
+</section>
+
+<section id="catalog" class="container">
+  <h2>Skill catalog</h2>
+  <p>Browseable list of every skill kaijutsu ships, plus vendored third-party catalogs. Filter by source, search by name or tag.</p>
+  <div class="catalog-controls">
+    <input type="search" id="search" placeholder="Search skills by name, description, tag…" autocomplete="off" aria-label="Search skills">
     <div class="filter-group" id="filters">
       <button class="filter active" data-filter="all">All ({{.Total}})</button>
       <button class="filter" data-filter="core">Core</button>
@@ -428,7 +838,6 @@ const htmlTemplate = `<!DOCTYPE html>
     </div>
   </div>
   <p class="stats" id="stats">Showing all {{.Total}} skills.</p>
-
   <div class="grid" id="grid">
     {{range .Skills}}
     <article class="card" data-source="{{.Source}}" data-hooks="{{.HasHooks}}" data-search="{{.Name}} {{.Description}} {{join .Tags " "}} {{join .Agents " "}}">
@@ -446,10 +855,18 @@ const htmlTemplate = `<!DOCTYPE html>
     {{end}}
   </div>
   <p class="empty" id="empty" style="display:none">No skills match your filters.</p>
+</section>
+
+<section id="contributing" class="container">
+  <h2>Contributing</h2>
+  <p>{{.Landing.Contributing.Intro}}</p>
+  <p>{{.Landing.Contributing.Body}}</p>
+</section>
+
 </main>
 
 <footer>
-  <p>kaijutsu is MIT-licensed. The mascot, monster eats unrecoverable shell commands.</p>
+  <p>kaijutsu is MIT-licensed. The mascot eats unrecoverable shell commands.</p>
   <p>Generated from <a href="https://github.com/momentmaker/kaijutsu/tree/main/skills/core">skills/core/</a> + <a href="https://github.com/momentmaker/kaijutsu/blob/main/registry/index.json">registry/index.json</a>. <a href="/skills.json">JSON catalog</a>.</p>
 </footer>
 
