@@ -37,6 +37,8 @@ disable, test, migrate. (remove + cross-repo scan land in Stage 5b.)`,
 	cmd.AddCommand(newAgentTestCmd())
 	cmd.AddCommand(newAgentMigrateCmd())
 	cmd.AddCommand(newAgentRemoveCmd())
+	// v0.14.0 — read-only persona browse
+	cmd.AddCommand(newAgentPersonaCmd())
 	return cmd
 }
 
