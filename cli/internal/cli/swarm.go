@@ -44,6 +44,8 @@ before the synthesizer.`,
 	cmd.AddCommand(newSwarmTestGapCmd())
 	cmd.AddCommand(newSwarmBugReproCmd())
 	cmd.AddCommand(newSwarmCodeArchaeologyCmd())
+	// v0.13.0 Preset SDK
+	cmd.AddCommand(newSwarmValidateCmd())
 	return cmd
 }
 
