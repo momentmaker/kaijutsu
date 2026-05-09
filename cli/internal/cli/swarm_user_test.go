@@ -2,7 +2,6 @@ package cli
 
 import (
 	"bytes"
-	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -302,6 +301,72 @@ func TestSwarmHelp_DifferentiatesUserFromBuiltin(t *testing.T) {
 	}
 }
 
+// TestAddUserPresetSubcommands_BuiltinsSurviveRegistration is the
+// load-bearing zero-impact-failure-mode pin. After
+// addUserPresetSubcommands runs (with valid OR broken yaml), all
+// pre-existing built-in subcommands must remain present + invokable.
+func TestAddUserPresetSubcommands_BuiltinsSurviveRegistration(t *testing.T) {
+	cases := []struct {
+		name string
+		yaml string
+	}{
+		{"valid yaml", validUserPresetYaml},
+		{"broken yaml", "this is: very: broken: yaml: lol"},
+		{"shadow yaml", `
+- name: pr-review
+  description: shadows
+  inputKind: diff
+  defaultPrompt: "%s"
+  synthesizer: "%s"
+  severityVocab: [issue]
+`},
+		{"empty file", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tmp := t.TempDir()
+			homeDir := filepath.Join(tmp, "home")
+			if err := os.MkdirAll(homeDir, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			projectRoot := filepath.Join(tmp, "project")
+			writeUserPresetYaml(t, projectRoot, tc.yaml)
+
+			parent := freshParent()
+			builtinNames := []string{"pr-review", "doc-review", "brainstorm"}
+			for _, name := range builtinNames {
+				parent.AddCommand(&cobra.Command{Use: name, Short: name + " builtin"})
+			}
+			registry := swarm.NewPresetRegistry()
+			for _, name := range builtinNames {
+				registry.Register(&swarm.Preset{Name: name})
+			}
+
+			addUserPresetSubcommands(parent, registry, projectRoot, homeDir, io.Discard)
+
+			// All built-ins still findable as cobra subcommands.
+			for _, name := range builtinNames {
+				found := false
+				for _, sub := range parent.Commands() {
+					if sub.Name() == name {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("[%s] built-in %q lost after addUserPresetSubcommands", tc.name, name)
+				}
+			}
+			// All built-ins still in registry.
+			for _, name := range builtinNames {
+				if _, err := registry.Find(name); err != nil {
+					t.Errorf("[%s] built-in %q lost from registry: %v", tc.name, name, err)
+				}
+			}
+		})
+	}
+}
+
 // TestNewUserPresetSubcommand_InvalidInputKindStubErrors covers the
 // defense-in-depth path: validateUserPresetEntry rejects invalid
 // InputKind at load time, but if an unknown kind ever leaks through
@@ -331,5 +396,3 @@ func TestNewUserPresetSubcommand_InvalidInputKindStubErrors(t *testing.T) {
 	}
 }
 
-// Compile-time guard: ensure errors.New is in the test imports.
-var _ = errors.New
