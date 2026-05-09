@@ -1,0 +1,77 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://kaijutsu.dev/schemas/swarm.schema.json",
+  "title": "kaijutsu swarm.yaml (user-defined preset SDK)",
+  "description": "Schema for .kaijutsu/swarm.yaml (per-project) and ~/.kaijutsu/swarm.yaml (per-user). Each entry defines a custom swarm preset that becomes a `jutsu swarm <name>` cobra subcommand at root construction. v0.13.0+. Spec: docs/specs/2026-05-08-v0.13.0-preset-sdk.md.",
+  "type": "array",
+  "items": { "$ref": "#/definitions/userPreset" },
+  "definitions": {
+    "userPreset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "description", "inputKind", "defaultPrompt", "synthesizer", "severityVocab"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$",
+          "minLength": 2,
+          "maxLength": 64,
+          "description": "Subcommand name. Lowercase, no whitespace, alphanumeric + hyphens. Must NOT collide with a built-in preset (pr-review, doc-review, brainstorm, dream, refactor-plan, security-audit, reverse, test-gap, bug-repro, code-archaeology). Collision is a hard validation error per spec Decision #2."
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Single-line description shown in `jutsu swarm --help`."
+        },
+        "inputKind": {
+          "type": "string",
+          "enum": ["diff", "files", "prompt"],
+          "description": "Dispatch shape. `diff` reuses --pr/--diff-from-branch flags; `files` takes positional paths; `prompt` takes a positional free-form prompt. v0.13 supports only these 3 (no custom auxiliary input plumbing per spec Decision #3)."
+        },
+        "defaultPrompt": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Per-agent prompt template. MUST contain exactly one literal `%s` slot — the cobra layer substitutes the input body via fmt.Sprintf at dispatch time. Validation rejects 0 or 2+ slots."
+        },
+        "synthesizer": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Synthesizer prompt template. MUST contain exactly one literal `%s` slot — substituted with the per-agent findings JSON. Validation rejects 0 or 2+ slots."
+        },
+        "severityVocab": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": [
+              "blocker", "issue", "minor", "info",
+              "critical", "high", "medium", "low", "informational",
+              "recommended", "alternative", "risky", "speculative"
+            ]
+          },
+          "description": "Severity values valid for this preset. Each MUST match an existing swarm.Severity constant. v0.13 does NOT allow custom severity strings — pick from the predefined set used by built-in presets."
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["quick", "full"],
+          "default": "quick",
+          "description": "Default swarm mode. `quick` (default) runs Pass-1 + synthesis. `full` adds Pass-2 round-robin debate via `genericDebateTemplate`."
+        },
+        "personas": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "default": [],
+          "description": "Persona names to dispatch (resolved against agents.yaml). Empty = legacy auto-detect (claude/codex/gemini). Unknown persona name → cobra error at command time per the v0.10.1 enum-rejection format."
+        },
+        "confidenceFloor": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 0.0,
+          "description": "Drop synthesized findings below this confidence before clustering. 0.30 matches reverse/test-gap/bug-repro/code-archaeology defaults; 0.55 matches pr-review default."
+        }
+      }
+    }
+  }
+}

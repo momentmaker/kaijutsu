@@ -94,3 +94,92 @@ func TestPresetFor_BackwardCompat(t *testing.T) {
 		t.Errorf("got name %q", p.Name)
 	}
 }
+
+// TestRegisterUserPresets_RejectsBuiltinShadow pins spec Decision #2:
+// user preset name colliding with a built-in is hard-rejected; the
+// built-in is unaffected. Returns (registered, collisions).
+func TestRegisterUserPresets_RejectsBuiltinShadow(t *testing.T) {
+	r := NewPresetRegistry()
+	r.Register(&Preset{Name: "pr-review", DefaultPrompt: "%s"})
+
+	users := map[string]*UserPreset{
+		"pr-review": {
+			Preset: Preset{Name: "pr-review", DefaultPrompt: "%s"},
+			Source: SourceProject,
+		},
+	}
+	registered, collisions := r.RegisterUserPresets(users)
+	if len(registered) != 0 {
+		t.Errorf("expected 0 registered; got %v", registered)
+	}
+	if len(collisions) != 1 {
+		t.Fatalf("expected 1 collision; got %d", len(collisions))
+	}
+	if !strings.Contains(collisions[0].Error(), "pr-review") {
+		t.Errorf("collision error should name 'pr-review'; got %v", collisions[0])
+	}
+	// Built-in still findable.
+	p, err := r.Find("pr-review")
+	if err != nil || p.Name != "pr-review" {
+		t.Errorf("built-in should still be findable after rejection; got %v %v", p, err)
+	}
+}
+
+// TestRegisterUserPresets_RegistersValidEntries pins the happy path.
+func TestRegisterUserPresets_RegistersValidEntries(t *testing.T) {
+	r := NewPresetRegistry()
+	r.Register(&Preset{Name: "pr-review", DefaultPrompt: "%s"})
+
+	users := map[string]*UserPreset{
+		"my-tight-review": {
+			Preset: Preset{Name: "my-tight-review", DefaultPrompt: "%s"},
+			Source: SourceProject,
+		},
+	}
+	registered, collisions := r.RegisterUserPresets(users)
+	if len(collisions) != 0 {
+		t.Errorf("unexpected collisions: %v", collisions)
+	}
+	if len(registered) != 1 || registered[0] != "my-tight-review" {
+		t.Errorf("registered = %v, want [my-tight-review]", registered)
+	}
+	p, err := r.Find("my-tight-review")
+	if err != nil {
+		t.Fatalf("registered preset should be findable: %v", err)
+	}
+	if p.Name != "my-tight-review" {
+		t.Errorf("Name = %q", p.Name)
+	}
+	if r.UserSource("my-tight-review") != SourceProject {
+		t.Errorf("UserSource = %q, want SourceProject", r.UserSource("my-tight-review"))
+	}
+	if r.UserSource("pr-review") != "" {
+		t.Errorf("built-in UserSource should be empty; got %q", r.UserSource("pr-review"))
+	}
+}
+
+// TestRegisterUserPresets_PartialFailurePreservesValidEntries pins
+// that a mix of valid + colliding names registers the valid ones
+// while returning errors for the rest.
+func TestRegisterUserPresets_PartialFailurePreservesValidEntries(t *testing.T) {
+	r := NewPresetRegistry()
+	r.Register(&Preset{Name: "pr-review", DefaultPrompt: "%s"})
+
+	users := map[string]*UserPreset{
+		"pr-review": {
+			Preset: Preset{Name: "pr-review", DefaultPrompt: "%s"},
+			Source: SourceProject,
+		},
+		"my-good-one": {
+			Preset: Preset{Name: "my-good-one", DefaultPrompt: "%s"},
+			Source: SourceProject,
+		},
+	}
+	registered, collisions := r.RegisterUserPresets(users)
+	if len(registered) != 1 || registered[0] != "my-good-one" {
+		t.Errorf("registered = %v, want [my-good-one]", registered)
+	}
+	if len(collisions) != 1 {
+		t.Errorf("expected 1 collision; got %d: %v", len(collisions), collisions)
+	}
+}

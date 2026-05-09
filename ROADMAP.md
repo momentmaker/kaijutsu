@@ -129,9 +129,12 @@ Picks survived a `jutsu swarm dream --mode full --lenses all` adversarial pass o
 
 Configurable swarm orchestration. Users compose their own swarm shapes via `swarm.yaml` per-project rather than picking from a fixed catalog of subcommands. Reordered ahead of v0.13's original Persona SDK plan after dream surfaced 3-agent consensus that real user pain is **lens routing, not lens authoring** — a persona authoring SDK makes the discovery problem worse.
 
-- [ ] **`swarm.yaml` per-project DSL** — defines swarm shape (preset + persona mix + mode + lenses + cost cap) under a user-chosen name. `jutsu swarm <name>` looks up project-local `swarm.yaml` first, falls back to built-in presets.
-- [ ] **Curated example presets** in repo — reference implementations of `swarm.yaml` for the v0.12 Tier A presets so users see how to compose their own.
-- [ ] **Hot-reload** — `swarm.yaml` re-read on each invocation; no `jutsu install` step needed.
+- [x] **`swarm.yaml` per-project + per-user DSL** — shipped v0.13.0. Defines swarm shape (preset + persona mix + mode + confidence floor) under a user-chosen name. `jutsu swarm <name>` works alongside built-ins; help differentiates with `[user:project]` / `[user:home]` tags.
+- [x] **Curated example presets** in repo — `docs/examples/swarm/` ships `concise-pr-review.yaml` + `deep-test-gap.yaml` + `legacy-audit.yaml` as reference implementations.
+- [x] **Hot-reload** — swarm.yaml re-read on each invocation; no `jutsu install` step.
+- [x] **`jutsu swarm validate`** — schema validation surfaces field-citation errors before runtime.
+- [x] **Built-in shadowing = hard error** — user preset named `pr-review` rejected at load time per spec Decision #2.
+- [x] **Yaml parse failure = zero-impact** — broken swarm.yaml never blocks built-in subcommands.
 
 ## v0.13.x — Read-only persona browse
 

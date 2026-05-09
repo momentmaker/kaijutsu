@@ -1,0 +1,91 @@
+# deep-test-gap — example v0.13.0 swarm.yaml entry.
+#
+# Pattern: extends test-gap's missing-scenarios framing with
+# explicit "imagine attacker with intermediate domain knowledge"
+# language. Uses 4 personas (instead of test-gap's auto-detect 3)
+# in `--mode full` for round-robin debate. Cost trade-off: 4x
+# Pass-1 dispatch + Pass-2 critique + final synthesis ≈ 2-3x
+# test-gap's default cost. Reach for this when you suspect there
+# ARE gaps but the standard test-gap missed them.
+#
+# To use:
+#   1. Copy to .kaijutsu/swarm.yaml.
+#   2. Run `jutsu swarm validate`.
+#   3. `jutsu swarm deep-test-gap path/to/test/file_or_dir`.
+#
+# Severity vocab matches test-gap. Confidence floor 0.30 admits
+# speculative findings (hypothesis-gen pattern).
+#
+# Note: this preset takes ONE positional path arg (the InputFiles
+# pattern) — it does NOT have separate --code / --tests flags
+# like the built-in test-gap. Custom auxiliary input plumbing is
+# not yaml-configurable in v0.13 (per spec Decision #3); user
+# presets compose existing dispatch shapes.
+
+- name: deep-test-gap
+  description: extended missing-test-scenarios with attacker lens (4 personas, full mode)
+  inputKind: files
+  defaultPrompt: |
+    Read the test file(s) below. Imagine a determined attacker
+    with intermediate domain knowledge of the system: what failure
+    modes do the existing tests NOT exercise that an attacker
+    would target?
+
+    Categories:
+      edge-case: boundary values, off-by-one, max-size
+      race: timing, concurrency, ordering
+      resource: exhaustion (memory, fds, conns, disk)
+      input: malformed, hostile, encoding, null
+      integration: cross-component contracts, error propagation
+      state: stale, uninitialized, leaked
+
+    Each finding is a JSON object:
+      severity:    blocker | issue | minor | info
+      file:        relative path (test file, the one MISSING coverage)
+      line_range:  "0" if none specific
+      summary:     "[<CATEGORY>] one-line scenario"
+      reasoning:   2-3 sentences: why this scenario is plausible +
+                   what the test does NOT cover + attacker angle
+      confidence:  0.0-1.0
+
+    Skip scenarios already covered. Skip purely-theoretical
+    edge cases that can't surface in production.
+
+    TEST-FILE(S):
+    %s
+  synthesizer: |
+    Four reviewers each generated missing-scenario findings.
+    Cluster by category. Within a cluster, multiple reviewers
+    naming the same scenario → one row, multiple credits.
+
+    Output:
+
+    ## Missing-scenario clusters (ranked)
+
+    | # | severity | category | reviewers | confidence | summary |
+    |---|---|---|---|---|---|
+
+    Rank by:
+      1. severity (blocker > issue > minor > info)
+      2. reviewer count (4/4 > 3/4 > 2/4 > 1/4)
+      3. mean confidence
+
+    Then per-cluster bodies for top 5 only:
+
+    ### 1. <summary>
+    - reasoning: <synth across reviewers>
+    - reviewers: <list>
+
+    Lower-corroboration findings (1/4 only) listed at bottom as a
+    "## Speculative" tail without bodies.
+
+    PER-AGENT FINDINGS:
+    %s
+  severityVocab: [blocker, issue, minor, info]
+  mode: full
+  personas:
+    - paranoid-security-claude
+    - claim-auditor-claude
+    - performance-deepseek
+    - perf-purist-codex
+  confidenceFloor: 0.30
