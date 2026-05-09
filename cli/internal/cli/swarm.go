@@ -46,7 +46,25 @@ before the synthesizer.`,
 	cmd.AddCommand(newSwarmCodeArchaeologyCmd())
 	// v0.13.0 Preset SDK
 	cmd.AddCommand(newSwarmValidateCmd())
+	// User-defined presets (per-project + per-user swarm.yaml).
+	// Loaded at root construction; failures surface to stderr but
+	// never block built-in subcommands.
+	projectRoot, _ := os.Getwd()
+	homeDir, _ := os.UserHomeDir()
+	addUserPresetSubcommands(cmd, swarmDefaultRegistry(), projectRoot, homeDir, os.Stderr)
 	return cmd
+}
+
+// swarmDefaultRegistry returns the swarm package's default registry
+// for cli-side user-preset registration. Defined as a wrapper so
+// the test path can swap in a fresh registry without touching the
+// production singleton.
+func swarmDefaultRegistry() *swarm.PresetRegistry {
+	// Currently the swarm package exposes the singleton via PresetFor;
+	// for v0.13.0 we expose it directly via this wrapper. If the
+	// registry surface graduates to a constructor, callers update
+	// here only.
+	return swarm.DefaultRegistry()
 }
 
 // commonSwarmFlags carries the flag values that every preset

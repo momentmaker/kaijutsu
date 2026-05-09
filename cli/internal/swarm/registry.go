@@ -167,6 +167,15 @@ func builtinNamesLocked(r *PresetRegistry) []string {
 	return out
 }
 
+// DefaultRegistry returns the package's default preset registry.
+// Exported in v0.13.0 so the cli package can call
+// RegisterUserPresets at root cmd construction. Tests construct
+// their own registries via NewPresetRegistry to avoid mutating
+// the singleton.
+func DefaultRegistry() *PresetRegistry {
+	return defaultRegistry
+}
+
 // PresetFor preserves the Phase-1 entry point but is now backed by
 // the default registry. Existing call sites stay unchanged; new
 // call sites can use the registry directly when they need to
