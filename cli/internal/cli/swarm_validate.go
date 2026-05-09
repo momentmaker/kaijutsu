@@ -60,7 +60,6 @@ otherwise.`,
 			if err != nil {
 				return fmt.Errorf("absolute path %s: %w", path, err)
 			}
-			fileDir := filepath.Dir(absPath)
 			// LoadUserPresets reads <projectRoot>/.kaijutsu/swarm.yaml.
 			// The user-supplied path may already include .kaijutsu/swarm.yaml
 			// (default case) or may point elsewhere. We resolve via:
@@ -100,7 +99,6 @@ otherwise.`,
 					fmt.Fprintf(stderr, "  - %s\n", name)
 				}
 			}
-			_ = fileDir
 			return errors.New("swarm.yaml has validation issues; fix the entries above")
 		},
 	}

@@ -104,6 +104,21 @@ func LoadUserPresets(projectRoot, homeDir string) (map[string]*UserPreset, []err
 
 	// Home first; project shadows it.
 	homePath := filepath.Join(homeDir, ".kaijutsu", "swarm.yaml")
+	projectPath := filepath.Join(projectRoot, ".kaijutsu", "swarm.yaml")
+
+	// Same-dir guard: if homeDir == projectRoot, both paths point at
+	// the same file. Load once + tag with SourceProject so the
+	// project-shadows-home rule is visually preserved (project
+	// takes precedence in single-source mode, matching what a real
+	// project-only setup looks like).
+	if homePath == projectPath {
+		entries, warnings, err := loadUserPresetsFile(projectPath, SourceProject)
+		if err != nil {
+			return nil, nil, fmt.Errorf("load %s: %w", projectPath, err)
+		}
+		return entries, warnings, nil
+	}
+
 	homeEntries, homeWarnings, homeErr := loadUserPresetsFile(homePath, SourceHome)
 	if homeErr != nil {
 		return nil, nil, fmt.Errorf("load %s: %w", homePath, homeErr)
@@ -113,7 +128,6 @@ func LoadUserPresets(projectRoot, homeDir string) (map[string]*UserPreset, []err
 		out[name] = p
 	}
 
-	projectPath := filepath.Join(projectRoot, ".kaijutsu", "swarm.yaml")
 	projectEntries, projectWarnings, projectErr := loadUserPresetsFile(projectPath, SourceProject)
 	if projectErr != nil {
 		return nil, nil, fmt.Errorf("load %s: %w", projectPath, projectErr)

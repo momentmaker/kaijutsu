@@ -122,12 +122,16 @@ func (r *PresetRegistry) RegisterUserPresets(m map[string]*UserPreset) (register
 
 	for _, name := range names {
 		up := m[name]
-		// Only built-ins existed in the registry pre-call (or other
-		// already-registered user presets — possible if RegisterUserPresets
-		// is called multiple times in a single run; treat that the same as
-		// built-in collision).
+		// Pre-existing entry blocks registration. Could be either a
+		// built-in OR a user preset from a prior RegisterUserPresets
+		// call (possible in tests / multi-call scenarios). Surface
+		// which kind it is so the user understands the conflict.
 		if _, exists := r.presets[name]; exists {
-			collisions = append(collisions, fmt.Errorf("user preset %q collides with an already-registered preset (built-ins: %s); pick a different name", name, formatNames(builtinNamesLocked(r))))
+			if existingSrc, isUser := r.userSources[name]; isUser {
+				collisions = append(collisions, fmt.Errorf("user preset %q collides with another user preset already registered from %s; pick a different name", name, existingSrc))
+			} else {
+				collisions = append(collisions, fmt.Errorf("user preset %q collides with built-in preset %q; pick a different name. Built-ins: %s", name, name, formatNames(builtinNamesLocked(r))))
+			}
 			continue
 		}
 		// Register the embedded Preset; track source separately.

@@ -64,8 +64,10 @@ func TestLoadUserPresets_ProjectShadowsHome(t *testing.T) {
 		t.Fatal("my-tight-review missing from merged presets")
 	} else if p.Source != SourceProject {
 		t.Errorf("my-tight-review Source = %q, want %q (project should shadow home)", p.Source, SourceProject)
-	} else if !strings.Contains(p.DefaultPrompt, "review %s") {
-		t.Errorf("my-tight-review.DefaultPrompt should be project's, not home's; got %q", p.DefaultPrompt)
+	} else if strings.Contains(p.DefaultPrompt, "home review") {
+		t.Errorf("my-tight-review.DefaultPrompt should be project's (which has 'review %%s'), not home's (which has 'home review %%s'); got %q", p.DefaultPrompt)
+	} else if !strings.HasPrefix(p.DefaultPrompt, "review ") {
+		t.Errorf("my-tight-review.DefaultPrompt should start with 'review '; got %q", p.DefaultPrompt)
 	}
 	// my-personal-quick-audit only in home.
 	if p, ok := presets["my-personal-quick-audit"]; !ok {
@@ -289,5 +291,27 @@ func TestLoadUserPresets_RequiresOneSlotInSynthesizer(t *testing.T) {
 	}
 	if len(warnings) != 1 {
 		t.Errorf("expected 1 warning; got %d", len(warnings))
+	}
+}
+
+// TestBuiltinPresetNames_StaysInSyncWithRegistryInit guards against
+// a new built-in preset landing in registry.go::init() without
+// being added to builtinPresetNames. If the two drift, user
+// presets could shadow the new built-in silently — defeating
+// spec Decision #2's hard-shadow-rejection contract.
+func TestBuiltinPresetNames_StaysInSyncWithRegistryInit(t *testing.T) {
+	for name := range builtinPresetNames {
+		if _, err := defaultRegistry.Find(name); err != nil {
+			t.Errorf("builtinPresetNames lists %q but defaultRegistry doesn't have it; user_presets.go is out of sync", name)
+		}
+	}
+	for _, name := range defaultRegistry.Names() {
+		// Skip names registered as user presets in test runs.
+		if defaultRegistry.UserSource(name) != "" {
+			continue
+		}
+		if !builtinPresetNames[name] {
+			t.Errorf("defaultRegistry has built-in %q but builtinPresetNames doesn't list it; user_presets.go::builtinPresetNames is out of sync", name)
+		}
 	}
 }
