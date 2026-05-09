@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  kaijutsu brand mark — sumi-e ink-brush kanji 術 (skill / technique / art)
+  with an asymmetric accent stroke. Themeable via currentColor: set the
+  parent CSS color for the kanji ink, override .accent-stroke for the
+  saffron-rust accent.
+
+  Companion to docs/web-app-manifest-*.png (the chibi character mascot).
+  The brand mark is the abstract identity; the chibi is the personality.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="kaijutsu — kanji 術 (skill)">
+  <title>kaijutsu</title>
+  <desc>Sumi-e ink-brush rendering of the kanji 術 (skill) with an asymmetric accent stroke.</desc>
+
+  <!-- accent ink-brush sweep — saffron-rust under the kanji -->
+  <g class="accent-stroke" fill="none" stroke="#C18450" stroke-linecap="round" stroke-linejoin="round" opacity="0.55">
+    <path d="M 18 158 Q 80 152, 168 174" stroke-width="6"/>
+    <path d="M 22 168 Q 95 178, 178 165" stroke-width="3"/>
+  </g>
+
+  <!-- kanji 術 (skill) rendered in Hiragino Mincho weight; falls back to system serif -->
+  <text x="100" y="118"
+        text-anchor="middle"
+        font-family="'Hiragino Mincho ProN', 'Yu Mincho', 'Songti SC', 'Noto Serif CJK JP', serif"
+        font-size="120"
+        font-weight="600"
+        fill="currentColor">術</text>
+</svg>

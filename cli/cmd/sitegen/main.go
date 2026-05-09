@@ -335,6 +335,13 @@ const htmlTemplate = `<!DOCTYPE html>
   <meta property="og:description" content="{{.Landing.Hero.SubCopy}}">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://kaijutsu.dev">
+  <meta property="og:image" content="https://kaijutsu.dev/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="kaijutsu — {{.Landing.Hero.Headline}}">
+  <meta name="twitter:description" content="{{.Landing.Hero.SubCopy}}">
+  <meta name="twitter:image" content="https://kaijutsu.dev/og-image.png">
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">

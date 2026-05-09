@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  kaijutsu.dev social-share open-graph image (1200×630).
+  Compose: sumi-e brand mark (kanji 術 + ink-brush accent) on the left;
+  hi-res chibi mascot on the right; quiet skill-name shelf in the
+  middle gutter; swarm/persona line under the shelf; symmetric margins.
+
+  Source for the rendered PNG at docs/og-image.png. Regenerate via:
+    rsvg-convert -w 1200 -h 630 docs/og-image.svg -o docs/og-image.png
+-->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     viewBox="0 0 1200 630" width="1200" height="630">
+  <title>kaijutsu — Open arts for AI agents</title>
+
+  <defs>
+    <radialGradient id="ink-wash" cx="20%" cy="15%" r="70%">
+      <stop offset="0%" stop-color="#3DDC97" stop-opacity="0.07"/>
+      <stop offset="60%" stop-color="#C18450" stop-opacity="0.03"/>
+      <stop offset="100%" stop-color="#F5EDE0" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- paper background -->
+  <rect width="1200" height="630" fill="#F5EDE0"/>
+  <rect width="1200" height="630" fill="url(#ink-wash)"/>
+
+  <!-- saffron-rust ink-brush sweep behind the kanji -->
+  <g fill="none" stroke="#C18450" stroke-linecap="round" stroke-linejoin="round" opacity="0.32">
+    <path d="M 60 245 Q 180 232, 320 270" stroke-width="14"/>
+    <path d="M 70 268 Q 200 282, 305 252" stroke-width="6"/>
+  </g>
+
+  <!-- kanji 術 — top of glyph ~y=55 (top margin ≈ 55px) -->
+  <text x="100" y="225"
+        font-family="'Hiragino Mincho ProN', 'Yu Mincho', 'Songti SC', 'Noto Serif CJK JP', serif"
+        font-size="200"
+        font-weight="600"
+        fill="#1A1A1A">術</text>
+
+  <!-- wordmark -->
+  <text x="100" y="318"
+        font-family="'Hiragino Mincho ProN', 'Yu Mincho', Georgia, serif"
+        font-size="80"
+        font-weight="700"
+        fill="#1A1A1A"
+        letter-spacing="-2">kaijutsu</text>
+
+  <!-- tagline -->
+  <text x="100" y="358"
+        font-family="ui-sans-serif, -apple-system, 'Helvetica Neue', sans-serif"
+        font-size="28"
+        font-weight="400"
+        fill="#2E2E2E">Open arts for AI agents</text>
+
+  <!-- mint hairline accent under tagline (tight gap, left-anchored to match tagline x) -->
+  <line x1="100" y1="372" x2="220" y2="372" stroke="#3DDC97" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- skill-name shelf — only confirmed core skills, monospace, rust-tinted -->
+  <g font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace"
+     font-size="18"
+     fill="#8A6A48"
+     opacity="0.82">
+    <text x="100" y="418">pr-review</text>
+    <text x="100" y="446">polish</text>
+    <text x="100" y="474">dream</text>
+
+    <text x="280" y="418">doc-review</text>
+    <text x="280" y="446">brainstorm</text>
+    <text x="280" y="474">refactor-plan</text>
+
+    <text x="510" y="418">security-audit</text>
+    <text x="510" y="446">autopilot</text>
+    <text x="510" y="474">+ a registry of more</text>
+  </g>
+
+  <!-- swarm + persona feature line (below shelf, one quiet sentence) -->
+  <text x="100" y="520"
+        font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace"
+        font-size="16"
+        fill="#5C5C5C">jutsu swarm — multi-agent · persona-aware · cross-vendor</text>
+
+  <!-- ink-brush divider above the URL row -->
+  <g fill="none" stroke="#C18450" stroke-linecap="round" opacity="0.4">
+    <path d="M 100 555 Q 360 550, 620 556" stroke-width="2"/>
+  </g>
+
+  <!-- URL — bottom-left, monospace, muted (bottom margin ≈ 55px) -->
+  <text x="100" y="582"
+        font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace"
+        font-size="20"
+        fill="#1A1A1A">kaijutsu.dev</text>
+
+  <!-- chibi mascot — right-side hero presence, hi-res 2048×2048 source -->
+  <image x="780" y="105" width="380" height="380"
+         href="assets/mascot-2048.png"
+         xlink:href="assets/mascot-2048.png"
+         preserveAspectRatio="xMidYMid meet"/>
+
+  <!-- saffron-rust under-stroke beneath mascot, anchoring it to the page -->
+  <g fill="none" stroke="#C18450" stroke-linecap="round" opacity="0.35">
+    <path d="M 800 500 Q 970 514, 1140 498" stroke-width="5"/>
+  </g>
+
+  <!-- etymology tagline — bottom-right, sumi-e small, rust serif -->
+  <text x="1100" y="582" text-anchor="end"
+        font-family="'Hiragino Mincho ProN', 'Yu Mincho', serif"
+        font-size="20"
+        fill="#C18450"
+        opacity="0.78">開 + 術 — open + skill</text>
+</svg>
