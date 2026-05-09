@@ -501,11 +501,13 @@ const htmlTemplate = `<!DOCTYPE html>
       display: block;
     }
     .hero-kanji {
-      font-size: 22px;
-      color: var(--rust);
-      opacity: 0.6;
-      letter-spacing: 0.08em;
-      font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+      display: block;
+      width: 56px;
+      height: 56px;
+      margin: -8px auto 0;
+      color: var(--ink);
+      opacity: 0.85;
+      pointer-events: none;
     }
     .hero h1 {
       font-size: clamp(30px, 4.8vw, 52px);
@@ -890,7 +892,15 @@ const htmlTemplate = `<!DOCTYPE html>
 
 <header class="hero">
   <img class="hero-mascot" src="/web-app-manifest-192x192.png" alt="kaijutsu chibi monster mascot">
-  <div class="hero-kanji" aria-hidden="true">術</div>
+  <svg class="hero-kanji" viewBox="0 0 200 200" aria-hidden="true">
+    <g class="accent-stroke" fill="none" stroke="#C18450" stroke-linecap="round" stroke-linejoin="round" opacity="0.55">
+      <path d="M 18 158 Q 80 152, 168 174" stroke-width="6"/>
+      <path d="M 22 168 Q 95 178, 178 165" stroke-width="3"/>
+    </g>
+    <text x="100" y="118" text-anchor="middle"
+          font-family="'Hiragino Mincho ProN', 'Yu Mincho', 'Songti SC', 'Noto Serif CJK JP', serif"
+          font-size="120" font-weight="600" fill="currentColor">術</text>
+  </svg>
   <h1>{{.Landing.Hero.Headline}}</h1>
   <p class="subcopy">{{.Landing.Hero.SubCopy}}</p>
   <ul class="tagline">
