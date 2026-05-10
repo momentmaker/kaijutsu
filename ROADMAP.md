@@ -149,7 +149,25 @@ Read-only persona discovery + ghost-town-watch data + landing-page rebuild. 80% 
 - [ ] **`jutsu agent persona test <name>`** — dry-run validation. Sends a fixed test prompt through the persona; shows the synthesis. Validates lens BEFORE committing to a real swarm run.
 - [ ] **`jutsu agent persona new <name>`** — interactive wizard scaffolding into `agents.yaml`. Pure ergonomics; no design risk. Conditional on browse usage data showing demand.
 
-## v0.15+ — Maybe Persona SDK
+## v0.15 — Typed exit codes + finding export upgrade
+
+Two low-risk agent-ergonomics wins surfaced from parallel dream passes on v0.14 post-ship candidates (printing-press inspirations evaluated against project ethos).
+
+- [x] **Typed exit codes — minimal subset** (0/2/3/4). Documented public contract. Codes 5/6/7/8/9 explicitly deferred — full-set lock-in flagged as contract risk by both dream passes; codes earn slots via concrete friction, not preemptive coverage.
+- [x] **`jutsu finding export --since --format jsonl`** — composability beats built-in search. Stream JSONL to stdout, pipe to ripgrep / jq / your own LLM. Replaces the FTS5 candidate that didn't survive dream review.
+
+## v0.15.x — Maybe
+
+- [ ] **Provenance-receipt backfill** on the 22 already-vendored skills (anthropics/skills, addyosmani/agent-skills, obra/superpowers). Surfaced from the v0.14 absorb dream as the "actual gem" inside the killed `jutsu absorb` proposal — apply the trust primitive retroactively without the fetch-from-anywhere infrastructure.
+- [ ] **Cobra mutually-exclusive flag errors → exit 2.** Long-tail conversion from v0.15.0's "stays at exit 1" carve-out.
+
+## v0.16+ — Conditional
+
+- [ ] **Compound finding queries** (`stale` / `health` / `bottleneck` / `reconcile`). Schema-versioning gap from the dream pass needs a versioning plan first. Conditional on real usage telemetry from `jutsu finding stats`.
+- [ ] **NL→SQL over findings.db** — wild-lens candidate. "Which auth bugs did claude miss but deepseek caught?" Pairs naturally with the JSONL export (export piped through user's own LLM is a 90% workalike).
+- [ ] **Structured error JSON on stderr** (`{code, message, suggestion, retry-after, doc-url}`). Natural follow-on once typed exit codes earn their keep.
+
+## v0.20+ — Maybe Persona SDK
 
 Conditional on:
 1. **A/B evidence** that cross-corpus diversity (claude+gemini+deepseek with same system_prompt) outperforms multi-persona-on-one-provider. Dream flagged this premise as untested + possibly self-confirming bias from RLHF-aligned reviewers.

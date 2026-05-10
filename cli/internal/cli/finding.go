@@ -479,20 +479,65 @@ func parseDurationSpec(s string) (time.Duration, error) {
 
 // --- export ---
 
+// formatJSON keeps the v0.7 single-object envelope; formatJSONL emits
+// one row per line for stream-piping. v0.15 adds jsonl + stdout.
+const (
+	formatJSON  = "json"
+	formatJSONL = "jsonl"
+)
+
 func newFindingExportCmd() *cobra.Command {
 	var (
 		codebaseOverr string
 		allCodebases  bool
+		since         string
+		format        string
 	)
 	cmd := &cobra.Command{
-		Use:   "export <path>",
-		Short: "Write portable JSON dump for current codebase",
-		Long: `Writes a portable JSON file with top-level schema_version: 1 so
-future jutsu versions can import the data. Local file write only —
-this command does NOT make network calls.`,
-		Args: cobra.ExactArgs(1),
+		Use:   "export [path]",
+		Short: "Write portable JSON / JSONL dump for current codebase",
+		Long: `Exports findings for piping or archival. Local-only — no network calls.
+
+Formats:
+  --format json (default)  v0.7-stable single-object envelope with
+                           schema_version: 1; round-trippable via future
+                           import paths. Always written to a path.
+  --format jsonl           one JSON object per line, no envelope. Pipe
+                           to ripgrep / jq / your own LLM. Path optional;
+                           omit it (or pass "-") to stream to stdout.
+
+Filter:
+  --since <duration>       only export rows with created_at >= now - X
+                           (e.g. 7d, 4w, 3mo, 1y, 30s, 5m, 2h). Empty =
+                           all-time. Zero / negative = error.
+
+Examples:
+  jutsu finding export /tmp/all.json                 # back-compat: v0.7 single-file JSON
+  jutsu finding export --format jsonl                # stream JSONL to stdout
+  jutsu finding export --format jsonl - > x.jsonl    # explicit stdout
+  jutsu finding export --since 7d --format jsonl | rg severity
+  jutsu finding export --all-codebases --format jsonl | jq .`,
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path := args[0]
+			if format != formatJSON && format != formatJSONL {
+				return UsageError(fmt.Errorf("--format %q invalid (want %s | %s)", format, formatJSON, formatJSONL))
+			}
+			dur, err := findings.ParseSinceDuration(since)
+			if err != nil {
+				return UsageError(err)
+			}
+
+			// Resolve output target. JSONL allows stdout (no path or "-");
+			// JSON keeps the v0.7 contract of writing to a named file.
+			var path string
+			if len(args) == 1 {
+				path = args[0]
+			}
+			toStdout := format == formatJSONL && (path == "" || path == "-")
+			if format == formatJSON && (path == "" || path == "-") {
+				return UsageError(fmt.Errorf("--format json requires a file path argument; pass a path or use --format jsonl to stream to stdout"))
+			}
+
 			store, err := openFindingsStore(cmd)
 			if err != nil {
 				return err
@@ -507,12 +552,35 @@ this command does NOT make network calls.`,
 			if err != nil {
 				return err
 			}
+			rows = filterRowsSince(rows, dur)
+
+			if toStdout {
+				if err := findings.ExportJSONL(cmd.OutOrStdout(), rows); err != nil {
+					return err
+				}
+				return nil
+			}
+
+			f, err := os.Create(path)
+			if err != nil {
+				return fmt.Errorf("create %s: %w", path, err)
+			}
+			defer f.Close()
+
+			if format == formatJSONL {
+				if err := findings.ExportJSONL(f, rows); err != nil {
+					return err
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "exported %d row(s) → %s\n", len(rows), path)
+				return nil
+			}
+
 			payload := struct {
-				SchemaVersion int             `json:"schema_version"`
-				ExportedAt    time.Time       `json:"exported_at"`
-				CodebaseFP    string          `json:"codebase_fp,omitempty"`
-				AllCodebases  bool            `json:"all_codebases,omitempty"`
-				Findings      []findings.Row  `json:"findings"`
+				SchemaVersion int            `json:"schema_version"`
+				ExportedAt    time.Time      `json:"exported_at"`
+				CodebaseFP    string         `json:"codebase_fp,omitempty"`
+				AllCodebases  bool           `json:"all_codebases,omitempty"`
+				Findings      []findings.Row `json:"findings"`
 			}{
 				SchemaVersion: 1,
 				ExportedAt:    time.Now().UTC(),
@@ -523,11 +591,6 @@ this command does NOT make network calls.`,
 			if allCodebases {
 				payload.CodebaseFP = ""
 			}
-			f, err := os.Create(path)
-			if err != nil {
-				return fmt.Errorf("create %s: %w", path, err)
-			}
-			defer f.Close()
 			enc := json.NewEncoder(f)
 			enc.SetIndent("", "  ")
 			if err := enc.Encode(payload); err != nil {
@@ -539,5 +602,31 @@ this command does NOT make network calls.`,
 	}
 	cmd.Flags().StringVar(&codebaseOverr, "codebase", "", "override codebase fingerprint")
 	cmd.Flags().BoolVar(&allCodebases, "all-codebases", false, "export every recorded codebase")
+	cmd.Flags().StringVar(&since, "since", "", `time window (e.g. 7d, 4w, 3mo, 1y, 30s, 5m, 2h). "" = all-time`)
+	cmd.Flags().StringVar(&format, "format", formatJSON, "output format: json | jsonl")
+	cmd.MarkFlagsMutuallyExclusive("codebase", "all-codebases")
 	return cmd
+}
+
+// filterRowsSince drops rows whose CreatedAt is older than now-window.
+// window == 0 (all-time) returns rows unchanged.
+//
+// Allocates a fresh slice so the returned value never aliases the
+// caller's backing array — at the single current call site this is
+// overkill, but the function reads as a reusable helper and a future
+// caller mutating either side could corrupt the other. v0.15.x
+// candidate: push the --since filter into findings.Store as a SQL
+// `WHERE created_at >= ?` so the post-load walk goes away entirely.
+func filterRowsSince(rows []findings.Row, window time.Duration) []findings.Row {
+	if window <= 0 {
+		return rows
+	}
+	cutoff := time.Now().UTC().Add(-window)
+	out := make([]findings.Row, 0, len(rows))
+	for _, r := range rows {
+		if r.CreatedAt.After(cutoff) || r.CreatedAt.Equal(cutoff) {
+			out = append(out, r)
+		}
+	}
+	return out
 }

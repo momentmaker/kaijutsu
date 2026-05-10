@@ -34,7 +34,7 @@ Default lens for every design decision in this repo. Apply per-command, per-skil
 What this means in practice:
 
 - **Output format auto-detection**: `isatty(stdout) AND no --format flag → markdown / table / colored`. Non-TTY (pipe, redirect, agent capture) → `JSON`. Explicit `--format json` / `--json` / `--format markdown` overrides. Pattern from `gh`, `jq -C`, `kubectl`.
-- **Stable exit codes** + structured error messages with codes. Agents can self-recover; humans can grep.
+- **Stable exit codes** + structured error messages with codes. Agents can self-recover; humans can grep. v0.15+ ships a 4-code public contract — see [`docs/exit-codes.md`](./docs/exit-codes.md).
 - **Idempotent commands**. Re-run is safe. Critical for agent retry loops.
 - **Deterministic file outputs** — sorted, stable. Avoids spurious diff churn.
 - **No interactive prompts blocking pipelines.** `--yes` for non-interactive consent. TUI / fuzzy-finder UI is rejected on principle (breaks pipes, contradicts the lens).
