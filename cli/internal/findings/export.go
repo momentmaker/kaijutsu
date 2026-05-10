@@ -32,6 +32,14 @@ func ExportJSONL(w io.Writer, rows []Row) error {
 	// `&`. Default Go json encoder HTML-escapes these to < etc., which
 	// muddies grep / jq / human-eyeball workflows. JSONL is meant for
 	// pipelines, not browsers; turn the escaping off.
+	//
+	// Asymmetry note: the v0.7 single-object JSON envelope (encoded
+	// inline in cli/finding.go::newFindingExportCmd's RunE) keeps the
+	// default HTML-escape behavior. JSON envelope is read by the future
+	// import path; JSONL is read by humans + agents piping through
+	// ripgrep/jq. Different audiences, different escape choices. A
+	// v0.15.x refactor will extract both encoders into a shared cli-
+	// layer helper and unify the choice.
 	enc.SetEscapeHTML(false)
 	for i := range rows {
 		if err := enc.Encode(rows[i]); err != nil {

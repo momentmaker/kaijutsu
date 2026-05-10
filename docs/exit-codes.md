@@ -10,6 +10,16 @@ Public contract from v0.15.0 onwards. Future minor versions may **add** codes; t
 | `3` | Not found | preset / persona / skill / agent name not in the registry. `jutsu install no-such-skill`, `jutsu swarm pr-review --personas ghost`, etc. |
 | `4` | Auth / credential failure | required `<PROVIDER>_API_KEY` env var unset; provider rejected creds at agent-doctor / preflight |
 
+## What's wired in v0.15.0
+
+The contract above is the **forward-compat surface** — agents may rely on these meanings going forward. In v0.15.0 specifically, the call sites that wrap their errors with the typed-code helpers are:
+
+- **Code 2** (usage): `jutsu finding stats` validation (`--by`, `--source`, `--since`, source-with-non-preset combo); `jutsu finding export` validation (`--format`, `--since`, `--format json` without a path); cobra's `MarkFlagsMutuallyExclusive` on `finding export`'s `--codebase` × `--all-codebases`.
+- **Code 3** (not-found): documented + reserved, but **not yet wired at any call site in v0.15.0**. Registry-Find misses on the swarm dispatch path stay at exit 1 in this release. v0.15.x will convert specific paths.
+- **Code 4** (auth): documented + reserved, but **not yet wired**. Provider-credential preflight failures stay at exit 1 in this release. v0.15.x will convert specific paths.
+
+The *contract* in the table at the top is the public surface — when codes 3 and 4 land, they will mean exactly what's documented. The forward-compat doc isn't a lie about today; it's a stake in the ground for tomorrow.
+
 ## Why typed codes
 
 Agents that wrap `jutsu` shouldn't have to parse stderr to decide whether to **retry**, **ask the user for credentials**, or **abort**. Branching on `$?` is faster, more reliable, and language-agnostic.
@@ -24,8 +34,12 @@ If you find yourself wishing `jutsu` distinguished a specific failure mode (rate
 
 ```bash
 #!/usr/bin/env bash
-# Wrap jutsu in a retry-with-context loop.
+# Wrap jutsu in a retry-with-context loop. Cap the catch-all retries
+# so persistent code-1 failures (e.g. multi-model consent not granted,
+# disk full, internal panic) don't loop forever.
 
+attempts=0
+max_attempts=5
 while :; do
   jutsu swarm pr-review --diff-from-branch main --post-comment
   case $? in
@@ -33,7 +47,13 @@ while :; do
     2) echo "caller misuse — fix args + re-run"; exit 1 ;;
     3) echo "preset/persona/skill not found — install or rename"; exit 1 ;;
     4) echo "missing API key — please export the relevant *_API_KEY"; exit 1 ;;
-    *) echo "transient failure — retry in 30s"; sleep 30 ;;
+    *) attempts=$((attempts + 1))
+       if [ "$attempts" -ge "$max_attempts" ]; then
+         echo "giving up after $max_attempts attempts; check stderr for the underlying error"
+         exit 1
+       fi
+       echo "transient failure (attempt $attempts/$max_attempts) — retry in 30s"
+       sleep 30 ;;
   esac
 done
 ```

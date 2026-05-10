@@ -156,3 +156,20 @@ func TestFindingExport_JSONRequiresPath(t *testing.T) {
 		t.Errorf("ExitCode = %d; want %d (usage)", got, ExitUsage)
 	}
 }
+
+func TestFindingExport_CodebaseAndAllCodebasesMutexRejected(t *testing.T) {
+	cmd := newFindingExportCmd()
+	cmd.SetArgs([]string{"--codebase", "fp1", "--all-codebases", "--format", "jsonl"})
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected error: --codebase and --all-codebases are mutually exclusive")
+	}
+	// Cobra's MarkFlagsMutuallyExclusive emits a generic error that we
+	// don't currently wrap with UsageError (the wrap happens before
+	// RunE, which is where our typed-code helpers fire). Document this
+	// as a v0.15.x conversion target — for now the regression guard is
+	// just that the error fires at all.
+	if !strings.Contains(err.Error(), "codebase") || !strings.Contains(err.Error(), "all-codebases") {
+		t.Errorf("error should name both flags; got: %v", err)
+	}
+}

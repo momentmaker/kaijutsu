@@ -604,17 +604,25 @@ Examples:
 	cmd.Flags().BoolVar(&allCodebases, "all-codebases", false, "export every recorded codebase")
 	cmd.Flags().StringVar(&since, "since", "", `time window (e.g. 7d, 4w, 3mo, 1y, 30s, 5m, 2h). "" = all-time`)
 	cmd.Flags().StringVar(&format, "format", formatJSON, "output format: json | jsonl")
+	cmd.MarkFlagsMutuallyExclusive("codebase", "all-codebases")
 	return cmd
 }
 
 // filterRowsSince drops rows whose CreatedAt is older than now-window.
 // window == 0 (all-time) returns rows unchanged.
+//
+// Allocates a fresh slice so the returned value never aliases the
+// caller's backing array — at the single current call site this is
+// overkill, but the function reads as a reusable helper and a future
+// caller mutating either side could corrupt the other. v0.15.x
+// candidate: push the --since filter into findings.Store as a SQL
+// `WHERE created_at >= ?` so the post-load walk goes away entirely.
 func filterRowsSince(rows []findings.Row, window time.Duration) []findings.Row {
 	if window <= 0 {
 		return rows
 	}
 	cutoff := time.Now().UTC().Add(-window)
-	out := rows[:0]
+	out := make([]findings.Row, 0, len(rows))
 	for _, r := range rows {
 		if r.CreatedAt.After(cutoff) || r.CreatedAt.Equal(cutoff) {
 			out = append(out, r)
