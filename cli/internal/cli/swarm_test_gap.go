@@ -72,10 +72,10 @@ column do the gatekeeping. Tune via --confidence-threshold.`,
 			}
 
 			if codePath == "" {
-				return errors.New("--code <path> is required")
+				return UsageError(errors.New("--code <path> is required"))
 			}
 			if testPath == "" {
-				return errors.New("--tests <path> is required (file or directory)")
+				return UsageError(errors.New("--tests <path> is required (file or directory)"))
 			}
 
 			testsBody, err := readTestsContent(testPath)
@@ -83,7 +83,7 @@ column do the gatekeeping. Tune via --confidence-threshold.`,
 				return fmt.Errorf("--tests %s: %w", testPath, err)
 			}
 			if len(testsBody) > MaxTestsContentBytes {
-				return fmt.Errorf("--tests content is %d bytes — exceeds %d-byte cap. Narrow with a smaller path (e.g. a single test file or a tighter subdir)", len(testsBody), MaxTestsContentBytes)
+				return UsageError(fmt.Errorf("--tests content is %d bytes — exceeds %d-byte cap. Narrow with a smaller path (e.g. a single test file or a tighter subdir)", len(testsBody), MaxTestsContentBytes))
 			}
 
 			// Bake tests content into DefaultPrompt at command-time —

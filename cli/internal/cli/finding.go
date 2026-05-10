@@ -87,7 +87,7 @@ func openFindingsStore(cmd *cobra.Command) (*findings.Store, error) {
 		}
 	}
 	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
-		return nil, fmt.Errorf("no findings store at %s — run `jutsu swarm <preset>` first to create it", path)
+		return nil, NotFoundError(fmt.Errorf("no findings store at %s — run `jutsu swarm <preset>` first to create it", path))
 	}
 	return findings.Open(path)
 }
@@ -220,7 +220,7 @@ when batch-actioning across repos from a single shell session).`, action),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id, err := strconv.ParseInt(args[0], 10, 64)
 			if err != nil {
-				return fmt.Errorf("id %q: must be an integer (see leftmost column of `jutsu finding list`)", args[0])
+				return UsageError(fmt.Errorf("id %q: must be an integer (see leftmost column of `jutsu finding list`)", args[0]))
 			}
 			store, err := openFindingsStore(cmd)
 			if err != nil {
@@ -230,7 +230,7 @@ when batch-actioning across repos from a single shell session).`, action),
 
 			row, err := findings.GetByID(store, id)
 			if errors.Is(err, sql.ErrNoRows) {
-				return fmt.Errorf("finding id %d not found — list ids with `jutsu finding list`", id)
+				return NotFoundError(fmt.Errorf("finding id %d not found — list ids with `jutsu finding list`", id))
 			}
 			if err != nil {
 				return fmt.Errorf("finding id %d: %w", id, err)
@@ -398,7 +398,7 @@ Runs VACUUM after deletion to reclaim disk.`,
 			if olderThanS != "" {
 				d, err := parseDurationSpec(olderThanS)
 				if err != nil {
-					return fmt.Errorf("--older-than %q: %w", olderThanS, err)
+					return UsageError(fmt.Errorf("--older-than %q: %w", olderThanS, err))
 				}
 				opts.OlderThan = d
 			}

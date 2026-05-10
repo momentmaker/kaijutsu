@@ -86,7 +86,7 @@ func resolveLintRoots(args []string) ([]string, error) {
 		}
 	}
 	if len(roots) == 0 {
-		return nil, fmt.Errorf("no skills/core or skills/community in current directory; pass a path argument")
+		return nil, NotFoundError(fmt.Errorf("no skills/core or skills/community in current directory; pass a path argument"))
 	}
 	return roots, nil
 }

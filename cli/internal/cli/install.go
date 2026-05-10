@@ -351,7 +351,7 @@ func (s *installSession) warnVersionConflict(name, requested, parent string) {
 // with no arguments — the reproducibility primitive.
 func runSyncFromLockfile(cmd *cobra.Command, installRoot, manifestPath, lockPath string, global bool) error {
 	if _, err := os.Stat(lockPath); err != nil {
-		return errors.New("no lockfile to sync from; run `jutsu install <skill>` first")
+		return NotFoundError(errors.New("no lockfile to sync from; run `jutsu install <skill>` first"))
 	}
 	m, err := loadOrInitManifest(manifestPath, global)
 	if err != nil {
@@ -496,7 +496,7 @@ func loadOrInitManifest(path string, global bool) (*manifest.Manifest, error) {
 		return manifest.Load(path)
 	}
 	if !global {
-		return nil, errors.New("no kaijutsu.json in current directory; run `jutsu init` first")
+		return nil, NotFoundError(errors.New("no kaijutsu.json in current directory; run `jutsu init` first"))
 	}
 	active := detect.Active()
 	if len(active) == 0 {

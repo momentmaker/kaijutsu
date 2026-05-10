@@ -95,7 +95,7 @@ func newUserPresetSubcommand(name string, up *swarm.UserPreset) *cobra.Command {
 			Use:   name,
 			Short: short + " (DISABLED: invalid InputKind)",
 			RunE: func(cmd *cobra.Command, args []string) error {
-				return fmt.Errorf("user preset %q has invalid InputKind; check swarm.yaml + run `jutsu swarm validate`", name)
+				return UsageError(fmt.Errorf("user preset %q has invalid InputKind; check swarm.yaml + run `jutsu swarm validate`", name))
 			},
 		}
 	}

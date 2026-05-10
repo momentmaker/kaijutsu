@@ -55,7 +55,7 @@ v0.9.x follow-up — needs the --post-review render mode plumbed.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pr, err := strconv.Atoi(args[0])
 			if err != nil || pr <= 0 {
-				return fmt.Errorf("pr arg %q: must be a positive integer", args[0])
+				return UsageError(fmt.Errorf("pr arg %q: must be a positive integer", args[0]))
 			}
 			ctx := cmd.Context()
 			store, err := openFindingsStore(cmd)

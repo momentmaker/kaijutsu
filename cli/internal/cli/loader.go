@@ -47,7 +47,7 @@ func loadLocal(registryPath, skillName string) (*loaded, error) {
 	dir := filepath.Join(registryPath, "skills", "core", skillName)
 	yamlPath := filepath.Join(dir, "skill.yaml")
 	if _, err := os.Stat(yamlPath); err != nil {
-		return nil, fmt.Errorf("skill %q not found in registry at %s", skillName, registryPath)
+		return nil, NotFoundError(fmt.Errorf("skill %q not found in registry at %s", skillName, registryPath))
 	}
 	sk, err := skill.Load(yamlPath)
 	if err != nil {
@@ -305,7 +305,7 @@ func resolveRef(ctx context.Context, fetcher *fetch.Fetcher, src *source.Source,
 	} else {
 		c, err := semver.NewConstraint(constraint)
 		if err != nil {
-			return "", "", "", fmt.Errorf("invalid version constraint %q: %w", constraint, err)
+			return "", "", "", UsageError(fmt.Errorf("invalid version constraint %q: %w", constraint, err))
 		}
 
 		if skillPath != "" {

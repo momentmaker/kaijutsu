@@ -47,7 +47,7 @@ otherwise.`,
 			stderr := cmd.ErrOrStderr()
 
 			if _, err := os.Stat(path); os.IsNotExist(err) {
-				return fmt.Errorf("file not found: %s. Default path is .kaijutsu/swarm.yaml; pass a path argument or run `jutsu swarm validate <path>` if your file lives elsewhere", path)
+				return NotFoundError(fmt.Errorf("file not found: %s. Default path is .kaijutsu/swarm.yaml; pass a path argument or run `jutsu swarm validate <path>` if your file lives elsewhere", path))
 			} else if err != nil {
 				return fmt.Errorf("stat %s: %w", path, err)
 			}

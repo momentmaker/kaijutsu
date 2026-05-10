@@ -20,7 +20,10 @@
 // Reference: docs/exit-codes.md
 package cli
 
-import "errors"
+import (
+	"errors"
+	"strings"
+)
 
 // Stable exit codes — public contract from v0.15.0 onwards. Future minor
 // versions may ADD codes, must NEVER renumber or repurpose existing ones.
@@ -85,6 +88,19 @@ func AuthError(err error) error {
 // ExitCode extracts the exit code carried by err, or 1 for any non-nil
 // generic error (cobra default), or 0 for nil. Used by the cmd/jutsu/main
 // runner to bridge cobra's error return to os.Exit.
+//
+// If err is not already wrapped with ExitError, this also pattern-matches
+// well-known cobra-emitted error messages and treats them as ExitUsage:
+//   - "if any flags in the group ... are set"  (MarkFlagsMutuallyExclusive)
+//   - "unknown flag"                            (cobra parser)
+//   - "required flag(s) ... not set"            (cobra parser)
+//   - "flag needs an argument"                  (cobra parser)
+//   - "invalid argument"                        (cobra parser)
+//   - "unknown command"                         (cobra dispatcher)
+//
+// Caller misuse always lands at exit 2. RunE callers can wrap with
+// UsageError / NotFoundError / AuthError to get a typed code; everything
+// else falls through to 1.
 func ExitCode(err error) int {
 	if err == nil {
 		return ExitSuccess
@@ -93,5 +109,33 @@ func ExitCode(err error) int {
 	if errors.As(err, &exitErr) {
 		return exitErr.Code
 	}
+	if isCobraUsageError(err) {
+		return ExitUsage
+	}
 	return ExitGeneric
+}
+
+// cobraUsageMarkers are stable substrings cobra emits in error messages
+// for caller-side mistakes. Any of these → exit 2 even when the RunE
+// didn't wrap the error.
+var cobraUsageMarkers = []string{
+	"if any flags in the group", // MarkFlagsMutuallyExclusive
+	"unknown flag",
+	"required flag",
+	"flag needs an argument",
+	"invalid argument",
+	"unknown command",
+}
+
+func isCobraUsageError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	for _, m := range cobraUsageMarkers {
+		if strings.Contains(msg, m) {
+			return true
+		}
+	}
+	return false
 }

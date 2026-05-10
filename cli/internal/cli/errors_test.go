@@ -66,3 +66,44 @@ func TestExitCode_FindsExitErrorThroughWrappedChain(t *testing.T) {
 		t.Errorf("ExitCode through wrap chain = %d; want %d", got, ExitUsage)
 	}
 }
+
+// TestExitCode_CobraPatternsMapToUsage pins the v0.15.1 global cobra-error
+// pattern matching: caller-misuse errors emitted by cobra (mutex enforce,
+// unknown flag, required flag, etc.) get exit 2 even when the RunE didn't
+// wrap them.
+func TestExitCode_CobraPatternsMapToUsage(t *testing.T) {
+	cases := []string{
+		`if any flags in the group [json yaml] are set none of the others can be; [json yaml] were all set`,
+		`unknown flag: --foo`,
+		`required flag(s) "name" not set`,
+		`flag needs an argument: --name`,
+		`invalid argument "x" for "--by"`,
+		`unknown command "ghost" for "jutsu"`,
+	}
+	for _, msg := range cases {
+		t.Run(msg, func(t *testing.T) {
+			if got := ExitCode(errors.New(msg)); got != ExitUsage {
+				t.Errorf("ExitCode = %d; want %d for %q", got, ExitUsage, msg)
+			}
+		})
+	}
+}
+
+// TestExitCode_NonCobraGenericStaysOne pins that arbitrary non-matching
+// errors still hit exit 1 (the long tail). Without this, a regression that
+// over-broadens the cobra pattern set would silently re-route real failures.
+func TestExitCode_NonCobraGenericStaysOne(t *testing.T) {
+	cases := []string{
+		"disk full",
+		"network timeout",
+		"some random failure",
+		"context deadline exceeded",
+	}
+	for _, msg := range cases {
+		t.Run(msg, func(t *testing.T) {
+			if got := ExitCode(errors.New(msg)); got != ExitGeneric {
+				t.Errorf("ExitCode = %d; want %d for %q", got, ExitGeneric, msg)
+			}
+		})
+	}
+}

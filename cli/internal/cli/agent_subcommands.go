@@ -101,7 +101,7 @@ func buildProviderFromFlags(name, driver, cmd2 string, argsArg []string, protoco
 			cp.Name = name
 			return &cp, nil
 		}
-		return nil, fmt.Errorf("agent add %q: not in vendored catalog and no --driver flag set; pass --driver cli|http|cli-compat|mcp", name)
+		return nil, UsageError(fmt.Errorf("agent add %q: not in vendored catalog and no --driver flag set; pass --driver cli|http|cli-compat|mcp", name))
 	}
 	p := &agents.Provider{Name: name, Driver: agents.DriverKind(driver)}
 	switch p.Driver {
@@ -113,7 +113,7 @@ func buildProviderFromFlags(name, driver, cmd2 string, argsArg []string, protoco
 		p.Args = argsArg
 	case agents.DriverHTTP:
 		if protocol == "" || baseURL == "" || model == "" {
-			return nil, errors.New("http driver requires --protocol, --base-url, --model")
+			return nil, UsageError(errors.New("http driver requires --protocol, --base-url, --model"))
 		}
 		p.Protocol = protocol
 		p.BaseURL = baseURL
@@ -121,7 +121,7 @@ func buildProviderFromFlags(name, driver, cmd2 string, argsArg []string, protoco
 		p.APIKeyEnv = apiKeyEnv
 	case agents.DriverCLICompat:
 		if baseCLI == "" {
-			return nil, errors.New("cli-compat driver requires --base-cli")
+			return nil, UsageError(errors.New("cli-compat driver requires --base-cli"))
 		}
 		p.BaseCLI = baseCLI
 		p.Env = parseKeyValPairs(envPairs)
@@ -130,7 +130,7 @@ func buildProviderFromFlags(name, driver, cmd2 string, argsArg []string, protoco
 	case agents.DriverMCP:
 		return nil, errors.New("mcp driver lands in Stage 6")
 	default:
-		return nil, fmt.Errorf("unknown driver kind %q", driver)
+		return nil, UsageError(fmt.Errorf("unknown driver kind %q", driver))
 	}
 	return p, nil
 }
@@ -335,7 +335,7 @@ func lookupTestProvider(name string, global *agents.GlobalConfig, project *agent
 	if p, ok := agents.BuiltinProviders()[name]; ok {
 		return p, nil
 	}
-	return nil, fmt.Errorf("agent test %q: provider not found. Run `jutsu agent add %s ...` to declare it, or `jutsu agent list` to see available providers", name, name)
+	return nil, NotFoundError(fmt.Errorf("agent test %q: provider not found. Run `jutsu agent add %s ...` to declare it, or `jutsu agent list` to see available providers", name, name))
 }
 
 func runAgentTest(ctx context.Context, p *agents.Provider, out io.Writer) error {
@@ -360,13 +360,13 @@ func runAgentTest(ctx context.Context, p *agents.Provider, out io.Writer) error 
 	case agents.DriverMCP:
 		return errors.New("mcp driver test lands in Stage 6")
 	}
-	return fmt.Errorf("agent test %q: unknown driver kind %q", p.Name, p.Driver)
+	return UsageError(fmt.Errorf("agent test %q: unknown driver kind %q", p.Name, p.Driver))
 }
 
 func runHTTPTest(ctx context.Context, p *agents.Provider, out io.Writer) error {
 	apiKey := os.Getenv(p.APIKeyEnv)
 	if p.APIKeyEnv != "" && apiKey == "" {
-		return fmt.Errorf("agent test %q: %s not set in environment", p.Name, p.APIKeyEnv)
+		return AuthError(fmt.Errorf("agent test %q: %s not set in environment", p.Name, p.APIKeyEnv))
 	}
 
 	// Probe order per spec D4: GET /models first (free for OpenAI-compat
@@ -530,7 +530,7 @@ func runMigrate(root, prefer string, out io.Writer) error {
 	case "merge":
 		yamlCfg.Enabled = unionStrings(yamlCfg.Enabled, mf.Agents)
 	default:
-		return fmt.Errorf("--prefer must be legacy | yaml | merge (got %q)", prefer)
+		return UsageError(fmt.Errorf("--prefer must be legacy | yaml | merge (got %q)", prefer))
 	}
 	if err := agents.SaveProjectConfig(root, yamlCfg); err != nil {
 		return err

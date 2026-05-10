@@ -35,7 +35,7 @@ func (r *personaResolver) Resolve(ctx context.Context, name string) (eval.Target
 	// the agent wrapper. agents.For supports the v0.6 native CLIs;
 	// returns nil for personas not in the registry.
 	if agents.For(name) == nil {
-		return nil, fmt.Errorf("no driver for persona %q (v0.10 Stage 2 supports claude/codex/gemini; persona-registry resolution lands in v0.10.x)", name)
+		return nil, NotFoundError(fmt.Errorf("no driver for persona %q (v0.10 Stage 2 supports claude/codex/gemini; persona-registry resolution lands in v0.10.x)", name))
 	}
 	return &nativeCliEvalAgent{name: swarm.AgentName(name), timeout: r.timeout, budget: r.budget}, nil
 }
@@ -299,7 +299,7 @@ type swarmShapeCfg struct {
 // `kind`, writes artifacts the same way Stage 1 does.
 func runEvalSwarmShape(cmd *cobra.Command, cfg swarmShapeCfg) error {
 	if cfg.evalsPath == "" {
-		return fmt.Errorf("--evals <path> is required")
+		return UsageError(fmt.Errorf("--evals <path> is required"))
 	}
 	data, err := os.ReadFile(cfg.evalsPath)
 	if err != nil {

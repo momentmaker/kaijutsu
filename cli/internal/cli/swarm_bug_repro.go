@@ -74,11 +74,11 @@ confidence column do the gatekeeping.`,
 				return runReplay(ctx, cmd, projectRoot, "bug-repro", flags.replayKey, flags.synthesizer, flags.perAgentBudget, flags.timeout, false)
 			}
 			if len(args) == 0 {
-				return errors.New("bug-repro requires a bug description argument (or --replay <key>). Quote multi-word descriptions.")
+				return UsageError(errors.New("bug-repro requires a bug description argument (or --replay <key>). Quote multi-word descriptions."))
 			}
 			bug := strings.Join(args, " ")
 			if strings.TrimSpace(bug) == "" {
-				return errors.New("bug description must be non-empty after canonicalization")
+				return UsageError(errors.New("bug description must be non-empty after canonicalization"))
 			}
 
 			// Read --files content if provided + bake into prompt.
@@ -87,7 +87,7 @@ confidence column do the gatekeeping.`,
 				return err
 			}
 			if len(filesBody) > MaxBugReproFilesBytes {
-				return fmt.Errorf("--files content is %d bytes — exceeds %d-byte cap. Narrow to a single function/module or fewer paths", len(filesBody), MaxBugReproFilesBytes)
+				return UsageError(fmt.Errorf("--files content is %d bytes — exceeds %d-byte cap. Narrow to a single function/module or fewer paths", len(filesBody), MaxBugReproFilesBytes))
 			}
 			presetCopy := *preset
 			presetCopy.DefaultPrompt = swarm.BuildBugReproPrompt(filesBody)

@@ -81,10 +81,13 @@ func newEvalSkillCmd() *cobra.Command {
 			skillPath := args[0]
 			info, err := os.Stat(skillPath)
 			if err != nil {
+				if os.IsNotExist(err) {
+					return NotFoundError(fmt.Errorf("skill path %q: %w", skillPath, err))
+				}
 				return fmt.Errorf("skill path %q: %w", skillPath, err)
 			}
 			if !info.IsDir() {
-				return fmt.Errorf("skill path must be a directory: %s", skillPath)
+				return UsageError(fmt.Errorf("skill path must be a directory: %s", skillPath))
 			}
 			evalsJSON := filepath.Join(skillPath, "evals", "evals.json")
 			data, err := os.ReadFile(evalsJSON)
