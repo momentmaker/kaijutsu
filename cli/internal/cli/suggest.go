@@ -50,7 +50,7 @@ once usage signal informs the right shape.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			task := strings.Join(args, " ")
 			if strings.TrimSpace(task) == "" {
-				return fmt.Errorf("task description required (e.g. `jutsu suggest \"review my PR\"`)")
+				return UsageError(fmt.Errorf("task description required (e.g. `jutsu suggest \"review my PR\"`)"))
 			}
 
 			scores := scoreSkills(task)

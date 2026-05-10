@@ -175,7 +175,7 @@ the file is absent.`,
 			}
 			path := AutopilotConfigPath(root)
 			if _, err := os.Stat(path); err == nil && !force {
-				return fmt.Errorf("%s already exists; pass --force to overwrite", path)
+				return UsageError(fmt.Errorf("%s already exists; pass --force to overwrite", path))
 			}
 			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 				return fmt.Errorf("create config dir: %w", err)
@@ -276,7 +276,7 @@ skill (running inside an agent CLI session).`,
 			path := AutopilotStatePath(root)
 			body, err := os.ReadFile(path)
 			if os.IsNotExist(err) {
-				return errors.New("no autopilot run in progress; use /autopilot to start one")
+				return NotFoundError(errors.New("no autopilot run in progress; use /autopilot to start one"))
 			}
 			if err != nil {
 				return fmt.Errorf("read %s: %w", path, err)
@@ -312,18 +312,18 @@ func newAutopilotRunCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			intent := args[0]
 			if strings.TrimSpace(intent) == "" {
-				return errors.New("intent must be non-empty")
+				return UsageError(errors.New("intent must be non-empty"))
 			}
 			ceiling := resolveHardCap()
 			if maxCost < 0 {
-				return errors.New("--max-cost must be non-negative")
+				return UsageError(errors.New("--max-cost must be non-negative"))
 			}
 			if maxCost > ceiling {
-				return fmt.Errorf("--max-cost $%.2f exceeds hard ceiling $%.2f. To raise the ceiling, set %s=N in your shell environment (per-shell, never in repo)",
-					maxCost, ceiling, AutopilotEnvHardCapOverride)
+				return UsageError(fmt.Errorf("--max-cost $%.2f exceeds hard ceiling $%.2f. To raise the ceiling, set %s=N in your shell environment (per-shell, never in repo)",
+					maxCost, ceiling, AutopilotEnvHardCapOverride))
 			}
 			if !yes {
-				return errors.New("--yes required for non-interactive run; for interactive runs invoke /autopilot inside an agent CLI session")
+				return UsageError(errors.New("--yes required for non-interactive run; for interactive runs invoke /autopilot inside an agent CLI session"))
 			}
 			out := cmd.OutOrStdout()
 			testMode := os.Getenv(AutopilotEnvTestMode) == "1"

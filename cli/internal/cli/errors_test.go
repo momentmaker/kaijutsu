@@ -3,6 +3,7 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"syscall"
 	"testing"
 )
 
@@ -64,5 +65,68 @@ func TestExitCode_FindsExitErrorThroughWrappedChain(t *testing.T) {
 	outer := fmt.Errorf("running command: %w", inner)
 	if got := ExitCode(outer); got != ExitUsage {
 		t.Errorf("ExitCode through wrap chain = %d; want %d", got, ExitUsage)
+	}
+}
+
+// TestExitCode_CobraPatternsMapToUsage pins the v0.15.1 global cobra-error
+// pattern matching: caller-misuse errors emitted by cobra (mutex enforce,
+// unknown flag, required flag, etc.) get exit 2 even when the RunE didn't
+// wrap them. Strings match the exact cobra output format.
+func TestExitCode_CobraPatternsMapToUsage(t *testing.T) {
+	cases := []string{
+		`if any flags in the group [json yaml] are set none of the others can be; [json yaml] were all set`,
+		`unknown flag: --foo`,
+		`required flag(s) "name" not set`,
+		`flag needs an argument: --name`,
+		`invalid argument "x" for "--by"`,
+		`unknown command "ghost" for "jutsu"`,
+	}
+	for _, msg := range cases {
+		t.Run(msg, func(t *testing.T) {
+			if got := ExitCode(errors.New(msg)); got != ExitUsage {
+				t.Errorf("ExitCode = %d; want %d for %q", got, ExitUsage, msg)
+			}
+		})
+	}
+}
+
+// TestExitCode_NonCobraGenericStaysOne pins that arbitrary non-matching
+// errors still hit exit 1 (the long tail). Without this, a regression that
+// over-broadens the cobra pattern set would silently re-route real failures.
+func TestExitCode_NonCobraGenericStaysOne(t *testing.T) {
+	cases := []string{
+		"disk full",
+		"network timeout",
+		"some random failure",
+		"context deadline exceeded",
+		// Adversarial: strings that contain marker-words but NOT in the
+		// anchored-cobra format. These were the false-positive risk flagged
+		// by the v0.15.1 final pr-review.
+		"got unknown flag from upstream tool",                  // word "unknown flag" without ": "
+		"server returned: required flag value is corrupted",    // "required flag" but no parens
+		"git output: invalid argument list",                    // "invalid argument" but no quote
+		"pkg ran unknown command in shell",                     // "unknown command" but no quote
+	}
+	for _, msg := range cases {
+		t.Run(msg, func(t *testing.T) {
+			if got := ExitCode(errors.New(msg)); got != ExitGeneric {
+				t.Errorf("ExitCode = %d; want %d for %q", got, ExitGeneric, msg)
+			}
+		})
+	}
+}
+
+// TestExitCode_EINVALStaysOne pins the OS-error guard: syscall.EINVAL
+// stringifies to "invalid argument", which collides with cobra's parser
+// pattern. A file op / net dial / syscall returning EINVAL is a real OS
+// failure, NOT caller misuse — must stay at exit 1. Surfaced by the
+// v0.15.1 final pr-review (paranoid-security-claude conf 0.8).
+func TestExitCode_EINVALStaysOne(t *testing.T) {
+	if got := ExitCode(syscall.EINVAL); got != ExitGeneric {
+		t.Errorf("ExitCode(EINVAL) = %d; want %d (must not collide with cobra invalid-argument pattern)", got, ExitGeneric)
+	}
+	wrapped := fmt.Errorf("opening file: %w", syscall.EINVAL)
+	if got := ExitCode(wrapped); got != ExitGeneric {
+		t.Errorf("ExitCode(wrap-EINVAL) = %d; want %d", got, ExitGeneric)
 	}
 }

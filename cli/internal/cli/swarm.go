@@ -175,7 +175,7 @@ func newSwarmDocReviewCmd() *cobra.Command {
 				return runReplay(ctx, cmd, projectRoot, "doc-review", flags.replayKey, flags.synthesizer, flags.perAgentBudget, flags.timeout, false)
 			}
 			if len(args) == 0 {
-				return errors.New("doc-review requires at least one markdown path argument (or --replay <key>)")
+				return UsageError(errors.New("doc-review requires at least one markdown path argument (or --replay <key>)"))
 			}
 			ictx, err := swarm.ResolveInput(ctx, preset, swarm.InputOptions{
 				Files: args,
@@ -224,7 +224,7 @@ speculative) with cross-cut themes called out separately.`,
 				return runReplay(ctx, cmd, projectRoot, "brainstorm", flags.replayKey, flags.synthesizer, flags.perAgentBudget, flags.timeout, false)
 			}
 			if len(args) == 0 {
-				return errors.New("brainstorm requires a prompt argument (or --replay <key>)")
+				return UsageError(errors.New("brainstorm requires a prompt argument (or --replay <key>)"))
 			}
 			prompt := strings.Join(args, " ")
 			ictx, err := swarm.ResolveInput(ctx, preset, swarm.InputOptions{
@@ -335,7 +335,7 @@ build X?". Use brainstorm for the latter.`,
 				return runReplay(ctx, cmd, projectRoot, "dream", flags.replayKey, flags.synthesizer, flags.perAgentBudget, flags.timeout, false)
 			}
 			if len(args) == 0 {
-				return errors.New("dream requires a topic argument (or --replay <key>)")
+				return UsageError(errors.New("dream requires a topic argument (or --replay <key>)"))
 			}
 			topic := strings.Join(args, " ")
 			// Cap matches the documented limit in --help. ResolveInput
@@ -345,7 +345,7 @@ build X?". Use brainstorm for the latter.`,
 			// rely on a deep-stack message that mentions "brainstorm".
 			const maxTopicBytes = 8 * 1024
 			if len(topic) > maxTopicBytes {
-				return fmt.Errorf("dream topic is %d bytes; cap is %d (8 KB). Shorten the topic — dream is for high-level interrogation, not whole-spec input", len(topic), maxTopicBytes)
+				return UsageError(fmt.Errorf("dream topic is %d bytes; cap is %d (8 KB). Shorten the topic — dream is for high-level interrogation, not whole-spec input", len(topic), maxTopicBytes))
 			}
 			ictx, err := swarm.ResolveInput(ctx, preset, swarm.InputOptions{
 				Prompt: topic,
@@ -391,7 +391,7 @@ func resolveDreamLenses(arg string) ([]string, error) {
 			continue
 		}
 		if !swarm.IsValidDreamLens(name) {
-			return nil, fmt.Errorf("--lenses %q: unknown lens %q. Valid: %v", arg, name, swarm.DreamLensesAll())
+			return nil, UsageError(fmt.Errorf("--lenses %q: unknown lens %q. Valid: %v", arg, name, swarm.DreamLensesAll()))
 		}
 		if seen[name] {
 			continue // dedupe quietly
@@ -400,7 +400,7 @@ func resolveDreamLenses(arg string) ([]string, error) {
 		out = append(out, name)
 	}
 	if len(out) == 0 {
-		return nil, fmt.Errorf("--lenses %q: empty after parsing; pass 'base', 'all', or a comma-list of: %v", arg, swarm.DreamLensesAll())
+		return nil, UsageError(fmt.Errorf("--lenses %q: empty after parsing; pass 'base', 'all', or a comma-list of: %v", arg, swarm.DreamLensesAll()))
 	}
 	return out, nil
 }
@@ -437,10 +437,10 @@ set. The goal text counts against the 200 KB InputFiles cap.`,
 				return runReplay(ctx, cmd, projectRoot, "refactor-plan", flags.replayKey, flags.synthesizer, flags.perAgentBudget, flags.timeout, false)
 			}
 			if len(args) == 0 {
-				return errors.New("refactor-plan requires at least one file path argument (or --replay <key>)")
+				return UsageError(errors.New("refactor-plan requires at least one file path argument (or --replay <key>)"))
 			}
 			if strings.TrimSpace(goal) == "" {
-				return errors.New("refactor-plan requires --goal \"<refactor goal>\". Example: --goal \"extract HTTP handler into its own service\"")
+				return UsageError(errors.New("refactor-plan requires --goal \"<refactor goal>\". Example: --goal \"extract HTTP handler into its own service\""))
 			}
 			ictx, err := swarm.ResolveInput(ctx, preset, swarm.InputOptions{
 				Files: args,
@@ -502,10 +502,10 @@ the preset name is part of the cache-key salt.`,
 			diffMode := pr != 0 || diffFromBranch != ""
 			filesMode := len(args) > 0
 			if diffMode && filesMode {
-				return errors.New("security-audit: pick ONE input mode — either --pr/--diff-from-branch (diff mode) OR positional file paths (files mode), not both")
+				return UsageError(errors.New("security-audit: pick ONE input mode — either --pr/--diff-from-branch (diff mode) OR positional file paths (files mode), not both"))
 			}
 			if !diffMode && !filesMode {
-				return errors.New("security-audit requires either --pr <n> / --diff-from-branch <ref> (diff mode) or one or more file paths (files mode)")
+				return UsageError(errors.New("security-audit requires either --pr <n> / --diff-from-branch <ref> (diff mode) or one or more file paths (files mode)"))
 			}
 			// Default --full ON for security-audit. User can override
 			// to --mode quick if they want a cheap first-pass scan.

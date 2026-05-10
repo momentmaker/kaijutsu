@@ -156,10 +156,10 @@ Two low-risk agent-ergonomics wins surfaced from parallel dream passes on v0.14 
 - [x] **Typed exit codes — minimal subset** (0/2/3/4). Documented public contract. Codes 5/6/7/8/9 explicitly deferred — full-set lock-in flagged as contract risk by both dream passes; codes earn slots via concrete friction, not preemptive coverage.
 - [x] **`jutsu finding export --since --format jsonl`** — composability beats built-in search. Stream JSONL to stdout, pipe to ripgrep / jq / your own LLM. Replaces the FTS5 candidate that didn't survive dream review.
 
-## v0.15.x — Maybe
+## v0.15.x — Shipped + maybe
 
+- [x] **Cobra mutually-exclusive flag errors → exit 2** (v0.15.1). Plus all caller-misuse / lookup-miss / auth-failure paths across the CLI now carry typed exit codes.
 - [ ] **Provenance-receipt backfill** on the 22 already-vendored skills (anthropics/skills, addyosmani/agent-skills, obra/superpowers). Surfaced from the v0.14 absorb dream as the "actual gem" inside the killed `jutsu absorb` proposal — apply the trust primitive retroactively without the fetch-from-anywhere infrastructure.
-- [ ] **Cobra mutually-exclusive flag errors → exit 2.** Long-tail conversion from v0.15.0's "stays at exit 1" carve-out.
 
 ## v0.16+ — Conditional
 

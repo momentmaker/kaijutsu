@@ -51,10 +51,13 @@ filtering.`,
 			projectRoot, _ := os.Getwd()
 
 			if specPath == "" {
-				return errors.New("--spec <path> is required for reverse preset")
+				return UsageError(errors.New("--spec <path> is required for reverse preset"))
 			}
 			specBytes, err := os.ReadFile(specPath)
 			if err != nil {
+				if os.IsNotExist(err) {
+					return NotFoundError(fmt.Errorf("read spec %s: %w", specPath, err))
+				}
 				return fmt.Errorf("read spec %s: %w", specPath, err)
 			}
 

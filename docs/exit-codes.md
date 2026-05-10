@@ -10,15 +10,34 @@ Public contract from v0.15.0 onwards. Future minor versions may **add** codes; t
 | `3` | Not found | preset / persona / skill / agent name not in the registry. `jutsu install no-such-skill`, `jutsu swarm pr-review --personas ghost`, etc. |
 | `4` | Auth / credential failure | required `<PROVIDER>_API_KEY` env var unset; provider rejected creds at agent-doctor / preflight |
 
-## What's wired in v0.15.0
+## What's wired
 
-The contract above is the **forward-compat surface** — agents may rely on these meanings going forward. In v0.15.0 specifically, the call sites that wrap their errors with the typed-code helpers are:
+v0.15.1 closes the gap from v0.15.0's typed-subset-only surface. Codes 2, 3, 4 now carry their documented meaning across the CLI; the only paths that stay at exit 1 are the genuine "long tail" (file-not-found errors not directly wrapped, network failures, internal panics, third-party tool failures).
 
-- **Code 2** (usage): `jutsu finding stats` validation (`--by`, `--source`, `--since`, source-with-non-preset combo); `jutsu finding export` validation (`--format`, `--since`, `--format json` without a path); cobra's `MarkFlagsMutuallyExclusive` on `finding export`'s `--codebase` × `--all-codebases`.
-- **Code 3** (not-found): documented + reserved, but **not yet wired at any call site in v0.15.0**. Registry-Find misses on the swarm dispatch path stay at exit 1 in this release. v0.15.x will convert specific paths.
-- **Code 4** (auth): documented + reserved, but **not yet wired**. Provider-credential preflight failures stay at exit 1 in this release. v0.15.x will convert specific paths.
+**Code 2 — usage**:
+- All cobra-emitted parser errors (`unknown flag`, `required flag`, `flag needs an argument`, `invalid argument`, `unknown command`, `MarkFlagsMutuallyExclusive`) — caught globally via pattern match in `cli.ExitCode`.
+- Validation errors across: `jutsu agent add|migrate|test`, `jutsu autopilot init|run`, `jutsu eval skill|persona|preset|swarm-skill`, `jutsu finding accept|dismiss|clear|seed|stats|sync-pr|export`, `jutsu init`, `jutsu install`, `jutsu suggest`, `jutsu swarm bug-repro|code-archaeology|doc-review|brainstorm|dream|refactor-plan|reverse|security-audit|test-gap`.
 
-The *contract* in the table at the top is the public surface — when codes 3 and 4 land, they will mean exactly what's documented. The forward-compat doc isn't a lie about today; it's a stake in the ground for tomorrow.
+**Code 3 — not-found**:
+- `jutsu agent test <name>` — provider not in vendored catalog
+- `jutsu eval persona` — unknown driver / persona registry miss
+- `jutsu finding accept|dismiss <id>` — finding-id-not-found
+- `jutsu finding *` — no findings store at expected path (run swarm first)
+- `jutsu install` — no `kaijutsu.json` in cwd, no lockfile to sync, skill not in registry
+- `jutsu lint` — no `skills/core` or `skills/community` in cwd
+- `jutsu swarm code-archaeology|reverse` — `--code`/`--spec` path doesn't exist
+- `jutsu swarm validate <path>` — file-not-found
+
+**Code 4 — auth / credential failure**:
+- `jutsu agent test` HTTP driver: `<PROVIDER>_API_KEY` not set in environment
+
+**Stays at exit 1** (long tail):
+- File system / I/O failures not directly wrapped
+- Network failures (connect refused, timeout, DNS)
+- Provider-side errors after the auth preflight (5xx, rate-limit at runtime)
+- Internal panic recovery
+- "Multi-model consent not granted" — see note in "What stays at code 1 in v0.15" below
+- Anything that hasn't surfaced concrete user friction yet — caller can wrap incrementally
 
 ## Why typed codes
 
@@ -58,11 +77,16 @@ while :; do
 done
 ```
 
-## What stays at code 1 in v0.15
+## What stays at code 1
 
-- Anything that hasn't been explicitly converted via `cli.UsageError` / `NotFoundError` / `AuthError` wrappers — the long tail.
-- Cobra-internal mutually-exclusive-flag enforcement (the `MarkFlagsMutuallyExclusive` machinery emits its error before our cli layer sees it; we may convert this in v0.15.x).
-- "Multi-model consent not granted" (run `jutsu swarm dream --grant-consent` first) — caller-side issue but we keep code 4 tight to provider-credential failures only. May promote to code 2 in a future minor.
+After the v0.15.1 sweep + global cobra-pattern catch:
+
+- Long-tail call sites not yet wired with `cli.UsageError` / `NotFoundError` / `AuthError` — kept at exit 1 by design until concrete user friction earns the conversion.
+- File / I/O failures not directly wrapped; including OS-level `EINVAL` (which would otherwise collide with cobra's "invalid argument" pattern — guarded explicitly).
+- Network failures (connect refused, timeout, DNS) — runtime, not caller misuse.
+- Provider-side errors AFTER auth preflight (5xx, runtime rate-limit) — runtime, not auth.
+- Internal panic recovery.
+- "Multi-model consent not granted" (run `jutsu swarm dream --grant-consent` first) — caller-side, but we keep code 4 tight to provider-credential failures only. May promote to code 2 in a future minor.
 
 ## What's NOT shipping
 

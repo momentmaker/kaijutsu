@@ -20,7 +20,11 @@
 // Reference: docs/exit-codes.md
 package cli
 
-import "errors"
+import (
+	"errors"
+	"strings"
+	"syscall"
+)
 
 // Stable exit codes — public contract from v0.15.0 onwards. Future minor
 // versions may ADD codes, must NEVER renumber or repurpose existing ones.
@@ -85,6 +89,24 @@ func AuthError(err error) error {
 // ExitCode extracts the exit code carried by err, or 1 for any non-nil
 // generic error (cobra default), or 0 for nil. Used by the cmd/jutsu/main
 // runner to bridge cobra's error return to os.Exit.
+//
+// Resolution precedence (first match wins):
+//   1. err carries an *ExitError (or wraps one) — return that code.
+//   2. err is or wraps syscall.EINVAL — return ExitGeneric (1). Without
+//      this guard, the cobra-pattern step below would mis-route real
+//      OS-level "invalid argument" failures (file ops, net dial, etc.)
+//      to exit 2.
+//   3. err.Error() matches a cobra usage-error pattern — return ExitUsage.
+//   4. otherwise — return ExitGeneric (1).
+//
+// Patterns are anchored against the exact cobra output format (verified
+// in unit tests against cobra's emitted messages). Loose substring match
+// would create false positives — bug surfaced by v0.15.0 final pr-review.
+//
+// Callers prefer the typed wrappers (UsageError / NotFoundError /
+// AuthError) — pattern matching exists only to catch cobra-internal
+// failures (mutex enforce, parser errors, dispatcher misses) where the
+// RunE never gets a chance to wrap.
 func ExitCode(err error) int {
 	if err == nil {
 		return ExitSuccess
@@ -93,5 +115,45 @@ func ExitCode(err error) int {
 	if errors.As(err, &exitErr) {
 		return exitErr.Code
 	}
+	// EINVAL guard: syscall.EINVAL.Error() is exactly "invalid argument",
+	// which would otherwise collide with cobra's parser pattern. A file
+	// op / net dial / syscall returning EINVAL is a genuine OS failure,
+	// not caller misuse — keep it at exit 1.
+	if errors.Is(err, syscall.EINVAL) {
+		return ExitGeneric
+	}
+	if isCobraUsageError(err) {
+		return ExitUsage
+	}
 	return ExitGeneric
+}
+
+// cobraUsageMarkers are anchored substrings cobra emits at known positions
+// in error messages for caller-side mistakes. Anchored prefixes / suffixes
+// (with quotes / colons / parens) avoid the loose-substring trap where
+// quoted user input or wrapped sub-errors echo a marker word.
+//
+// Verified against cobra's emitted output as of v1.6+. If cobra reworks
+// any of these, the regression surfaces immediately as a unit test
+// failure (TestExitCode_CobraPatternsMapToUsage).
+var cobraUsageMarkers = []string{
+	"if any flags in the group [", // MarkFlagsMutuallyExclusive
+	"unknown flag: ",              // parser, always followed by flag name
+	"required flag(s) ",           // parser, parens are cobra-specific
+	"flag needs an argument: ",    // parser, always followed by flag name
+	`invalid argument "`,          // parser, always followed by quoted value
+	`unknown command "`,           // dispatcher, always followed by quoted name
+}
+
+func isCobraUsageError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	for _, m := range cobraUsageMarkers {
+		if strings.Contains(msg, m) {
+			return true
+		}
+	}
+	return false
 }

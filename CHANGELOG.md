@@ -4,6 +4,62 @@ All notable changes to kaijutsu (the registry + skills) and `jutsu` (the CLI). T
 
 ## [Unreleased]
 
+## [0.15.1] — 2026-05-09
+
+Whole-conversion follow-up to v0.15.0's typed exit-code subset. v0.15.0 shipped the contract documented in `docs/exit-codes.md` but only wired it at finding-stats + finding-export validation paths; codes 3 and 4 stayed at exit 1 across the rest of the CLI. v0.15.1 closes the gap.
+
+### Added
+
+- **Global cobra-pattern catcher in `cli.ExitCode`** — pattern-matches well-known cobra-emitted error messages and routes them to `ExitUsage` (exit 2) even when the RunE didn't wrap. Caught patterns: `if any flags in the group ...` (MarkFlagsMutuallyExclusive), `unknown flag`, `required flag`, `flag needs an argument`, `invalid argument`, `unknown command`. One-shot fix that converts cobra's mutex enforcement + parser errors + dispatcher misses across the entire CLI.
+
+### Changed — typed exit codes wired across the CLI
+
+Caller-misuse → exit **2** (UsageError):
+- `jutsu agent add` validation (driver flag combos, missing `--driver`, unknown driver kind)
+- `jutsu agent migrate --prefer` enum check
+- `jutsu agent test` unknown driver kind
+- `jutsu autopilot init` config-already-exists guard, `jutsu autopilot run` intent + `--max-cost` + `--yes` validation
+- `jutsu eval skill` skill-path-must-be-directory check
+- `jutsu eval persona|preset|swarm-skill` `--evals` required check
+- `jutsu finding accept|dismiss` non-integer id parse
+- `jutsu finding clear --older-than` malformed duration
+- `jutsu finding seed` `--accepts`/`--dismisses` non-negative + required-flag check
+- `jutsu finding sync-pr` non-positive integer arg
+- `jutsu init` already-initialized guard
+- `jutsu install` invalid version constraint
+- `jutsu suggest` empty task description
+- `jutsu swarm bug-repro` empty description, oversized `--files` content
+- `jutsu swarm code-archaeology` missing `--code`
+- `jutsu swarm doc-review|brainstorm|dream|refactor-plan|security-audit` missing positional / required-flag checks
+- `jutsu swarm dream` `--lenses` parse: unknown lens, empty after parse, oversized topic
+- `jutsu swarm reverse` missing `--spec`
+- `jutsu swarm test-gap` missing `--code`/`--tests`, oversized tests content
+- `jutsu swarm <user-preset>` invalid InputKind stub
+
+Lookup miss → exit **3** (NotFoundError):
+- `jutsu agent test <name>` provider not in catalog
+- `jutsu eval persona` unknown driver / persona registry miss
+- `jutsu finding accept|dismiss <id>` finding-id-not-found
+- `jutsu finding *` no findings store at expected path (run swarm first)
+- `jutsu install` no `kaijutsu.json` in current dir, no lockfile to sync from, skill not found in registry
+- `jutsu lint` no `skills/core` or `skills/community` in cwd
+- `jutsu swarm code-archaeology|reverse` `--code`/`--spec` path doesn't exist
+- `jutsu swarm validate <path>` file-not-found
+
+Auth / credential failure → exit **4** (AuthError):
+- `jutsu agent test` HTTP driver: `<PROVIDER>_API_KEY` not set in environment
+
+### Notes
+
+- The pattern-match approach for cobra errors is intentionally string-based — cobra doesn't emit typed errors for these failures. Patterns are anchored against cobra's exact emitted-message format (quotes / colons / parens included) to avoid loose-substring false positives. Unit tests pin the marker strings against cobra's documented output. The tests don't drive a real cobra `Execute` end-to-end, so a future cobra-internal reword could land silently — track as a v0.15.x cleanup if it ever happens.
+- "Anything else" still exits 1: file-not-found errors that aren't directly wrapped, network failures, internal panics, etc. Per `docs/exit-codes.md` § "What's wired" — this section now lists the full v0.15.1 surface.
+- Generic non-cobra errors (disk full, network timeout, "some random failure") still hit exit 1 — pinned by `TestExitCode_NonCobraGenericStaysOne` to prevent over-broad pattern matching.
+
+### Tests
+
+- `TestExitCode_CobraPatternsMapToUsage` — 6 cobra-emitted error message patterns × ExitUsage.
+- `TestExitCode_NonCobraGenericStaysOne` — 4 unrelated error messages × ExitGeneric (regression guard).
+
 ## [0.15.0] — 2026-05-09
 
 Typed exit codes (minimal subset) + `jutsu finding export` upgrade. Two low-risk agent-ergonomics wins surfaced from parallel `jutsu swarm dream` passes on the v0.14 post-ship candidate set. Both ship together because they're orthogonal + complementary; the single-stage scope kept small.

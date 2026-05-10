@@ -38,7 +38,7 @@ manage agent docs separately).`,
 			lockPath := filepath.Join(cwd, paths.LockfileFile)
 
 			if _, err := os.Stat(manifestPath); err == nil {
-				return errors.New("kaijutsu.json already exists in this directory")
+				return UsageError(errors.New("kaijutsu.json already exists in this directory"))
 			}
 
 			active := detect.Active()

@@ -79,10 +79,10 @@ KAIJUTSU_FINDINGS_DB=...) to scope the writes to a throwaway file.`,
 				return err
 			}
 			if accepts < 0 || dismisses < 0 {
-				return fmt.Errorf("--accepts and --dismisses must be >= 0")
+				return UsageError(fmt.Errorf("--accepts and --dismisses must be >= 0"))
 			}
 			if provider == "" || persona == "" || preset == "" || codebaseFP == "" {
-				return fmt.Errorf("--provider, --persona, --preset, --codebase are required")
+				return UsageError(fmt.Errorf("--provider, --persona, --preset, --codebase are required"))
 			}
 
 			// seed bypasses openFindingsStore's "DB must exist" guard

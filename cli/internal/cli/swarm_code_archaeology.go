@@ -86,9 +86,12 @@ means "trust this theory", not "code-quality severity":
 				return runReplay(ctx, cmd, projectRoot, "code-archaeology", flags.replayKey, flags.synthesizer, flags.perAgentBudget, flags.timeout, false)
 			}
 			if codePath == "" {
-				return errors.New("--code <path> is required")
+				return UsageError(errors.New("--code <path> is required"))
 			}
 			if _, err := os.Stat(codePath); err != nil {
+				if os.IsNotExist(err) {
+					return NotFoundError(fmt.Errorf("--code %s: %w", codePath, err))
+				}
 				return fmt.Errorf("--code %s: %w", codePath, err)
 			}
 
