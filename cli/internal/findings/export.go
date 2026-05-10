@@ -28,6 +28,11 @@ func ExportJSONL(w io.Writer, rows []Row) error {
 		return fmt.Errorf("findings: ExportJSONL: nil writer")
 	}
 	enc := json.NewEncoder(w)
+	// Findings summaries / reasoning routinely contain code with `<`, `>`,
+	// `&`. Default Go json encoder HTML-escapes these to < etc., which
+	// muddies grep / jq / human-eyeball workflows. JSONL is meant for
+	// pipelines, not browsers; turn the escaping off.
+	enc.SetEscapeHTML(false)
 	for i := range rows {
 		if err := enc.Encode(rows[i]); err != nil {
 			return fmt.Errorf("findings: ExportJSONL row %d: %w", i, err)

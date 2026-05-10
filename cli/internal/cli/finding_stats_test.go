@@ -112,6 +112,9 @@ func TestFindingStats_BadByRejected(t *testing.T) {
 	if !strings.Contains(err.Error(), "--by") {
 		t.Errorf("error should name --by; got: %v", err)
 	}
+	if got := ExitCode(err); got != ExitUsage {
+		t.Errorf("ExitCode = %d; want %d (usage)", got, ExitUsage)
+	}
 }
 
 func TestFindingStats_BadSourceRejected(t *testing.T) {
@@ -126,6 +129,9 @@ func TestFindingStats_BadSourceRejected(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "--source") {
 		t.Errorf("error should name --source; got: %v", err)
+	}
+	if got := ExitCode(err); got != ExitUsage {
+		t.Errorf("ExitCode = %d; want %d (usage)", got, ExitUsage)
 	}
 }
 
@@ -142,6 +148,9 @@ func TestFindingStats_SourceWithNonPresetByRejected(t *testing.T) {
 	if !strings.Contains(err.Error(), "--source") || !strings.Contains(err.Error(), "preset") {
 		t.Errorf("error should explain the preset-only constraint; got: %v", err)
 	}
+	if got := ExitCode(err); got != ExitUsage {
+		t.Errorf("ExitCode = %d; want %d (usage)", got, ExitUsage)
+	}
 }
 
 func TestFindingStats_BadSinceRejected(t *testing.T) {
@@ -153,6 +162,9 @@ func TestFindingStats_BadSinceRejected(t *testing.T) {
 	err := cmd.Execute()
 	if err == nil {
 		t.Fatal("expected error for --since 0d")
+	}
+	if got := ExitCode(err); got != ExitUsage {
+		t.Errorf("ExitCode = %d; want %d (usage)", got, ExitUsage)
 	}
 }
 

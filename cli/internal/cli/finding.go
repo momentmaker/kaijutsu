@@ -535,7 +535,7 @@ Examples:
 			}
 			toStdout := format == formatJSONL && (path == "" || path == "-")
 			if format == formatJSON && (path == "" || path == "-") {
-				return UsageError(fmt.Errorf("--format json requires a file path argument (use --format jsonl to stream to stdout)"))
+				return UsageError(fmt.Errorf("--format json requires a file path argument; pass a path or use --format jsonl to stream to stdout"))
 			}
 
 			store, err := openFindingsStore(cmd)
