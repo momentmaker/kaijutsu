@@ -77,11 +77,16 @@ while :; do
 done
 ```
 
-## What stays at code 1 in v0.15
+## What stays at code 1
 
-- Anything that hasn't been explicitly converted via `cli.UsageError` / `NotFoundError` / `AuthError` wrappers — the long tail.
-- Cobra-internal mutually-exclusive-flag enforcement (the `MarkFlagsMutuallyExclusive` machinery emits its error before our cli layer sees it; we may convert this in v0.15.x).
-- "Multi-model consent not granted" (run `jutsu swarm dream --grant-consent` first) — caller-side issue but we keep code 4 tight to provider-credential failures only. May promote to code 2 in a future minor.
+After the v0.15.1 sweep + global cobra-pattern catch:
+
+- Long-tail call sites not yet wired with `cli.UsageError` / `NotFoundError` / `AuthError` — kept at exit 1 by design until concrete user friction earns the conversion.
+- File / I/O failures not directly wrapped; including OS-level `EINVAL` (which would otherwise collide with cobra's "invalid argument" pattern — guarded explicitly).
+- Network failures (connect refused, timeout, DNS) — runtime, not caller misuse.
+- Provider-side errors AFTER auth preflight (5xx, runtime rate-limit) — runtime, not auth.
+- Internal panic recovery.
+- "Multi-model consent not granted" (run `jutsu swarm dream --grant-consent` first) — caller-side, but we keep code 4 tight to provider-credential failures only. May promote to code 2 in a future minor.
 
 ## What's NOT shipping
 

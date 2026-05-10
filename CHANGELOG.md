@@ -51,7 +51,7 @@ Auth / credential failure → exit **4** (AuthError):
 
 ### Notes
 
-- The pattern-match approach for cobra errors is intentionally string-based — cobra doesn't emit typed errors for these failures. The patterns are stable across cobra versions (verified v1.6+ in tests). If cobra ever changes the wording, the regression surfaces immediately as a unit test failure.
+- The pattern-match approach for cobra errors is intentionally string-based — cobra doesn't emit typed errors for these failures. Patterns are anchored against cobra's exact emitted-message format (quotes / colons / parens included) to avoid loose-substring false positives. Unit tests pin the marker strings against cobra's documented output. The tests don't drive a real cobra `Execute` end-to-end, so a future cobra-internal reword could land silently — track as a v0.15.x cleanup if it ever happens.
 - "Anything else" still exits 1: file-not-found errors that aren't directly wrapped, network failures, internal panics, etc. Per `docs/exit-codes.md` § "What's wired" — this section now lists the full v0.15.1 surface.
 - Generic non-cobra errors (disk full, network timeout, "some random failure") still hit exit 1 — pinned by `TestExitCode_NonCobraGenericStaysOne` to prevent over-broad pattern matching.
 

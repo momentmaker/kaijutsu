@@ -80,6 +80,9 @@ column do the gatekeeping. Tune via --confidence-threshold.`,
 
 			testsBody, err := readTestsContent(testPath)
 			if err != nil {
+				if os.IsNotExist(err) {
+					return NotFoundError(fmt.Errorf("--tests %s: %w", testPath, err))
+				}
 				return fmt.Errorf("--tests %s: %w", testPath, err)
 			}
 			if len(testsBody) > MaxTestsContentBytes {
