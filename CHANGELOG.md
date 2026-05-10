@@ -4,6 +4,35 @@ All notable changes to kaijutsu (the registry + skills) and `jutsu` (the CLI). T
 
 ## [Unreleased]
 
+## [0.15.0] — 2026-05-09
+
+Typed exit codes (minimal subset) + `jutsu finding export` upgrade. Two low-risk agent-ergonomics wins surfaced from parallel `jutsu swarm dream` passes on the v0.14 post-ship candidate set. Both ship together because they're orthogonal + complementary; the single-stage scope kept small.
+
+Spec: [`docs/specs/2026-05-09-v0.15.0-exit-codes-and-export.md`](./docs/specs/2026-05-09-v0.15.0-exit-codes-and-export.md). Reference: [`docs/exit-codes.md`](./docs/exit-codes.md).
+
+### Added
+
+- **Typed exit codes — public contract** documented at `docs/exit-codes.md`. Four codes only: `0` success, `2` usage, `3` not-found, `4` auth. Codes `5/6/7/8/9` (api/network, conflict, rate-limit, cost-cap, consent) explicitly NOT shipped — both v0.14 and v0.15 dream passes flagged full-set lock-in as contract risk; codes will be added when concrete user friction surfaces, never preemptively.
+- **`cli.ExitError{Code, Err}`** type + helpers `UsageError(err)` / `NotFoundError(err)` / `AuthError(err)` for wrapping errors at known sites. `cli.ExitCode(err)` extracts the carried code through `errors.As`, surviving arbitrary wrap chains.
+- **`jutsu finding export --format json|jsonl`** — new flag. `json` (default) preserves the v0.7 single-object envelope (back-compat); `jsonl` emits one finding row per line, no envelope, ideal for `| rg` / `| jq` / `| <your-llm>` pipelines.
+- **`jutsu finding export --since <duration>`** — new flag. Accepts `7d` / `4w` / `3mo` / `1y` shorthand + sub-day grain via `time.ParseDuration` fall-through. Empty = all-time. Reuses `findings.ParseSinceDuration` (single source of truth with `finding stats`).
+- **stdout output for `--format jsonl`** — path argument is now optional. Pass `-` (or omit entirely) to stream JSONL to stdout. The original `<path>` form is fully back-compat.
+- **`findings.ExportJSONL(io.Writer, []Row)`** — Go API. Pure helper; nil-writer rejected; empty rows = zero bytes; per-row encoder errors propagate.
+
+### Changed
+
+- **`init_agents_fragment` marker version**: `0.14.0` → `0.15.0`. Older versions still detected via the version-agnostic prefix.
+- **`jutsu finding export <path>`** — `path` arg is now `MaximumNArgs(1)`; previously `ExactArgs(1)`. JSON format still requires the path; jsonl format makes it optional.
+- **`jutsu finding stats` validation errors** now wrap with `UsageError` → exit 2: `--by bogus`, `--source bogus`, `--source <X>` with `--by <not-preset>`, `--since 0d` / `--since -7d`. Previously exit 1.
+- **`jutsu finding export` validation errors** wrap with `UsageError` → exit 2: `--format bogus`, `--since` malformed, `--format json` without a path argument.
+
+### Notes
+
+- **Long tail at exit 1**: only the explicitly-converted call sites carry typed codes in v0.15. Cobra-internal mutually-exclusive-flag enforcement, registry-Find misses on the swarm dispatch path, and provider-credential preflight failures all stay at exit 1 in v0.15. v0.15.x can convert specific paths as concrete user friction surfaces.
+- **Round-trip contract**: jsonl export → re-parse → re-export deep-equals at the **logical-row** level (Go struct compare). Byte-equality is intentionally NOT promised — true byte-stability requires a canonical JSON encoder kaijutsu doesn't ship.
+- **`--compact` flag** considered + dropped from scope — flagged as a presentation-layer hack with short shelf-life (agents move toward MCP / structured channels). The right shape is a future `--format` flag with multiple modes; the half-measure was killed.
+- **Doc-review pass** ran on the spec before implementation: `claim-auditor-deepseek` + `architecture-purist-gemini`, 6 findings, 4 fixed, 1 stays-as-is, 1 false-positive skipped with rationale (see spec § "Doc-review triage").
+
 ## [0.14.0] — 2026-05-09
 
 Persona browse + preset usage tracking + landing page rebuild. Three small surfaces that together close the v0.13 dream's "ghost-town watch" gap (data on whether built-ins dominate vs user presets) and rebuild the kaijutsu.dev landing page around the dream-locked direction (cross-vendor portability as the durable moat). Spec: `docs/specs/2026-05-09-v0.14.0-persona-browse-and-preset-usage.md`.

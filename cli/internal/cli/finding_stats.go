@@ -73,20 +73,20 @@ Output auto-flips to JSON when stdout is piped; force with --json.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			byEnum, err := parseStatsByFlag(by)
 			if err != nil {
-				return err
+				return UsageError(err)
 			}
 			dur, err := findings.ParseSinceDuration(since)
 			if err != nil {
-				return err
+				return UsageError(err)
 			}
 			if err := validateSourceFilter(sourceFilter); err != nil {
-				return err
+				return UsageError(err)
 			}
 			// Source filter is preset-only (built-in vs user makes no
 			// sense for personas / providers). Reject up-front so a
 			// silent zero-effect combo can't surprise the user.
 			if sourceFilter != "all" && byEnum != findings.StatsByPreset {
-				return fmt.Errorf("--source %q is only valid with --by preset (got --by %s)", sourceFilter, byEnum)
+				return UsageError(fmt.Errorf("--source %q is only valid with --by preset (got --by %s)", sourceFilter, byEnum))
 			}
 
 			store, err := openFindingsStore(cmd)
