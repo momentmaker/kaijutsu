@@ -71,13 +71,13 @@ Whole-document pattern audit. These are tells that AI-generated prose leaks into
 
 ### Pattern counts
 
-Run these against the full file (use `grep` + `wc` against the saved file). Thresholds default to the `literary-intelligent-general` voice; see [Voice configs](#voice-configs) to adjust.
+Run these against the full file (use `grep` + `wc` against the saved file). **Always single-quote the path** when shelling out — file names may contain spaces, dashes, or other shell metacharacters that would otherwise be interpreted (e.g. `grep -c '—' 'essays/long form.md'`, never `grep -c — $path`). Thresholds default to the `literary-intelligent-general` voice; see [Voice configs](#voice-configs) to adjust.
 
 - **Em dashes** — count `—` characters per 1,000 words.
   - Threshold: **≤ 5 per 1,000 words** for literary-contemplative register.
   - Above that, propose colon, period, or comma replacement for the lowest-impact instances. Em dashes earn their place when interrupting a live thought. They do not earn it as default sentence connectors.
 - **Negation rhetoric** — count instances of *"is not X. It is Y"* / *"Not X. Y"* / *"is not X — it is Y"* / *"It is not X; it is Y."*
-  - Threshold: **≤ 3 per essay**.
+  - Threshold: **≤ 3 per 3,000 words** (scales with essay length, consistent with em-dash + triplet thresholds).
   - The pattern works once or twice as inversion of expectation. Beyond that it becomes a tic. Flag the weakest instances and rewrite as positive assertion.
 - **Triplet fragments** — three consecutive short sentences (e.g., *"The same energy. The same substance. Two opposite shapes."*).
   - Threshold: **≤ 3 per 3,000 words**.
@@ -206,7 +206,7 @@ The Pilgrim Age / Paul Graham / Tim Urban / contemplative-but-not-precious regis
 | Pattern | Threshold |
 |---|---|
 | Em dashes | ≤ 5 per 1,000 words |
-| Negation rhetoric | ≤ 3 per essay |
+| Negation rhetoric | ≤ 3 per 3,000 words |
 | Triplet fragments | ≤ 3 per 3,000 words |
 | Cliché bigrams | hard reject |
 | Touchstones | ≤ 1–2 per essay, italicized on first use |
@@ -219,7 +219,7 @@ Engineering blog posts. Stripe / Vercel / Tailscale / Fly.io. Short sentences, p
 | Pattern | Threshold |
 |---|---|
 | Em dashes | ≤ 2 per 1,000 words |
-| Negation rhetoric | ≤ 1 per essay |
+| Negation rhetoric | ≤ 1 per 3,000 words |
 | Triplet fragments | rejected |
 | Cliché bigrams | hard reject |
 | Touchstones | rejected |
@@ -233,7 +233,7 @@ Personal blogs, casual newsletters, voice-heavy writing. Internet-native cadence
 | Pattern | Threshold |
 |---|---|
 | Em dashes | ≤ 8 per 1,000 words (conversation breaks more) |
-| Negation rhetoric | ≤ 5 per essay |
+| Negation rhetoric | ≤ 5 per 3,000 words |
 | Triplet fragments | ≤ 5 per 3,000 words |
 | Cliché bigrams | soft reject (only the most LLM-shaped) |
 | Touchstones | welcomed |
@@ -247,7 +247,7 @@ News / longform reporting. The New Yorker / Atlantic / Atavist. Clear, neutral, 
 | Pattern | Threshold |
 |---|---|
 | Em dashes | ≤ 3 per 1,000 words |
-| Negation rhetoric | ≤ 2 per essay |
+| Negation rhetoric | ≤ 2 per 3,000 words |
 | Triplet fragments | rejected |
 | Cliché bigrams | hard reject |
 | Touchstones | rejected |
