@@ -4,6 +4,21 @@ All notable changes to kaijutsu (the registry + skills) and `jutsu` (the CLI). T
 
 ## [Unreleased]
 
+## [0.16.1] — 2026-05-11
+
+Patch: community-tier skills are now installable. Before this fix, `jutsu install editorial-review` and `jutsu info editorial-review` failed with "not found in registry" because the resolver only probed `skills/core/<name>/`, never `skills/community/<name>/`. The `editorial-review` skill shipped in v0.16.0 was visible in the catalog (`kaijutsu.dev`) but unreachable via the CLI — surfaced by smoke-tests immediately after the v0.16.0 cut.
+
+### Fixed
+
+- **Community-tier resolver**: `jutsu install <skill>` and `jutsu info <skill>` now probe both `skills/core/<name>/` and `skills/community/<name>/` in the default kaijutsu monorepo. Previously, fall-through from a missing index entry hardcoded `skills/core/<name>/`, making community skills (e.g. `editorial-review`, `dcg`, `journal`, `security-and-hardening`) invisible to install/info. The probe runs against the default branch before the tag walk, so semver constraints work transparently for either tier.
+- **`--registry <path>` (local dev workflow)**: `loadLocal` now walks both `skills/core/<name>/skill.yaml` and `skills/community/<name>/skill.yaml`, returning whichever exists. Core takes precedence if (defensively) both exist.
+- **Lockfile rehydration** (`jutsu install` with no args): legacy lockfiles without a `path` field now try `skills/community/<name>` after `skills/core/<name>` before falling back to the repo root.
+
+### Notes
+
+- **No new surface, no schema changes.** Community-tier skills were already first-class in the layout and catalog generation; only the install resolver was incomplete. Pure bug fix.
+- **Why two tiers at all.** `skills/core/` is solo-maintained + Sigstore-signed at release. `skills/community/` is the same authoring format with a looser trust contract (per-skill `expected-signer` or unsigned + warning). The tier is layout, not capability — both ship in the same monorepo, both are equally installable.
+
 ## [0.16.0] — 2026-05-11
 
 Instrumentation + precision-routing + editorial-review skill. Six consecutive `jutsu swarm dream` passes converged on "ship zero, instrument first, validate the moat." This release stops bias-laundering past that consensus + delivers what every dream actually said to ship: local-only usage telemetry + exposure of the per-(provider, persona, codebase) precision corpus that's been quietly accumulating in `findings.db`. Plus a generalized long-form-essay review skill.
