@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "total": 46,
+  "total": 47,
   "skills": [
     {
       "name": "api-and-interface-design",
@@ -406,6 +406,37 @@
       "repo": "momentmaker/kaijutsu",
       "path": "skills/core/dream",
       "homepage": "https://kaijutsu.dev/skills/dream",
+      "has_hooks": false,
+      "permissions": {
+        "bash": true,
+        "network": false,
+        "fs_write": "scoped"
+      }
+    },
+    {
+      "name": "editorial-review",
+      "version": "0.1.0",
+      "license": "MIT",
+      "description": "Multi-pass editorial review for long-form essays + articles. Structural / line-level / AI-tells / resonance passes. Voice-configurable (literary-intelligent-general | terse-technical | conversational | journalistic). Composes jutsu swarm doc-review for multi-agent prose review on top.",
+      "agents": [
+        "claude",
+        "codex",
+        "gemini"
+      ],
+      "tags": [
+        "editorial",
+        "writing",
+        "essay",
+        "prose",
+        "review",
+        "ai-tells",
+        "voice"
+      ],
+      "source": "community",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/community/editorial-review",
+      "homepage": "https://kaijutsu.dev/skills/editorial-review",
+      "author": "kaijutsu maintainers (generalized from a project-specific version)",
       "has_hooks": false,
       "permissions": {
         "bash": true,
