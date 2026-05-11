@@ -10,8 +10,8 @@ var Version = "0.1.0-dev"
 func NewRootCmd() *cobra.Command {
 	root := &cobra.Command{
 		Use:           "jutsu",
-		Short:         "Open skills for AI coding agents",
-		Long:          "kaijutsu's CLI. Install, list, and manage AI agent skills across Claude, Codex, and Gemini.",
+		Short:         "Open agent skills + multi-model swarm for any LLM",
+		Long:          "kaijutsu's CLI. Author and install agent skills, dispatch swarm runs across any LLM (Claude, Codex, Gemini, DeepSeek, OpenAI-compat, local Ollama, MCP servers), and route the next run based on a local findings store that learns which models you can trust.",
 		Version:       Version,
 		SilenceUsage:  true,
 		SilenceErrors: false,
