@@ -22,7 +22,7 @@ func TestUsageStats_EmptyLogFriendlyMessage(t *testing.T) {
 func TestUsageStats_GroupsByCommand(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("KAIJUTSU_USAGE_LOG_PATH", filepath.Join(tmp, "u.jsonl"))
-	t.Setenv("KAIJUTSU_USAGE_LOG", "")
+	t.Setenv("KAIJUTSU_USAGE_LOG", "1") // explicit enable; "" works today only because Disabled() matches literal "0"
 
 	usage.Append("jutsu finding stats", 0, 100*time.Millisecond)
 	usage.Append("jutsu finding stats", 0, 120*time.Millisecond)
@@ -56,7 +56,7 @@ func TestUsageStats_BadSinceRejectedExit2(t *testing.T) {
 func TestUsageStats_SinceWindowFilters(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("KAIJUTSU_USAGE_LOG_PATH", filepath.Join(tmp, "u.jsonl"))
-	t.Setenv("KAIJUTSU_USAGE_LOG", "")
+	t.Setenv("KAIJUTSU_USAGE_LOG", "1") // explicit enable; "" works today only because Disabled() matches literal "0"
 
 	// Fresh entry
 	usage.Append("jutsu finding stats", 0, 100*time.Millisecond)

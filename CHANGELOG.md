@@ -28,7 +28,8 @@ Instrumentation + precision-routing + editorial-review skill. Six consecutive `j
 ### Tests
 
 - `cli/internal/usage/log_test.go`: opt-out, append/read round-trip, missing-file empty, malformed-line skip, silent-failure-on-write.
-- `cli/internal/cli/usage_test.go`: empty-log friendly message, grouping by command, `--since` bad-value exit-2, since-window filter. Four passes: structural (arc/transitions/pacing) → line-level (jargon/repetition/density) → AI-tells & voice (em-dash density, triplet fragments, hedge clusters, cliché bigrams, sentence-starter repetition, tense drift) → resonance (naming-the-unnamed, lines-worth-stealing, reader self-recognition, shareability). Voice-configurable: `literary-intelligent-general` (default) / `terse-technical` / `conversational` / `journalistic`. Composes `deslop` as final pass. AI-tells branded as signal-not-verdict per `jutsu swarm dream` finding: Hemingway and McCarthy fail several heuristics; writer voice always wins over generic AI-detection. Generalized from a project-specific version in a separate writing repo. No bundled heuristic detector or AI-classifier in this v0.1.0 — dream pass killed that scope as decay surface (multi-agent moat unnecessary; 4-pass skill is the time-resistant artifact).
+- `cli/internal/cli/usage_test.go`: empty-log friendly message, grouping by command, `--since` bad-value exit-2, since-window filter.
+- `cli/cmd/jutsu/main_test.go`: cobra-resolved `CommandPath` pins the privacy contract — positional args + flag values + content never reach the usage log; cobra's own normalized path is the source of truth.
 
 ## [0.15.1] — 2026-05-09
 

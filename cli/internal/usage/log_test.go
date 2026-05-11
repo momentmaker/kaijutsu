@@ -1,6 +1,7 @@
 package usage
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,7 +26,7 @@ func TestAppend_NoOpWhenDisabled(t *testing.T) {
 func TestAppend_WritesJSONL(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("KAIJUTSU_USAGE_LOG_PATH", filepath.Join(tmp, "u.jsonl"))
-	t.Setenv("KAIJUTSU_USAGE_LOG", "")
+	t.Setenv("KAIJUTSU_USAGE_LOG", "1") // explicit enable
 	Append("jutsu finding stats", 0, 142*time.Millisecond)
 	Append("jutsu finding stats", 2, 5*time.Millisecond)
 	Append("jutsu install no-such-skill", 3, 99*time.Millisecond)
@@ -78,9 +79,48 @@ func TestRead_SkipsMalformedLines(t *testing.T) {
 	}
 }
 
+// TestAppend_LineSchemaPinsPrivacyContract reads back a logged line as
+// a flat map and asserts the JSON keys are EXACTLY {ts, cmd, exit, ms}.
+// Pins the package's documented privacy contract: no flag values, no
+// args, no content. If a future contributor adds a field to Entry (e.g.
+// args, env, file paths) the test fails on the raw JSON shape, not just
+// the typed struct round-trip — catches accidental leaks at the wire
+// level.
+func TestAppend_LineSchemaPinsPrivacyContract(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("KAIJUTSU_USAGE_LOG_PATH", filepath.Join(tmp, "schema.jsonl"))
+	t.Setenv("KAIJUTSU_USAGE_LOG", "1")
+	Append("jutsu agent list", 0, 50*time.Millisecond)
+
+	path, _ := LogPath()
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimRight(string(raw), "\n"), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("expected 1 line; got %d", len(lines))
+	}
+	var asMap map[string]interface{}
+	if err := json.Unmarshal([]byte(lines[0]), &asMap); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	wantKeys := map[string]bool{"ts": true, "cmd": true, "exit": true, "ms": true}
+	for k := range asMap {
+		if !wantKeys[k] {
+			t.Errorf("unexpected key %q in usage log entry — privacy contract violation; keys must be exactly {ts, cmd, exit, ms}", k)
+		}
+	}
+	for k := range wantKeys {
+		if _, ok := asMap[k]; !ok {
+			t.Errorf("missing required key %q in usage log entry", k)
+		}
+	}
+}
+
 func TestAppend_FailureIsSilent(t *testing.T) {
 	t.Setenv("KAIJUTSU_USAGE_LOG_PATH", "/proc/nonexistent/path/u.jsonl")
-	t.Setenv("KAIJUTSU_USAGE_LOG", "")
+	t.Setenv("KAIJUTSU_USAGE_LOG", "1") // explicit enable
 	// Should not panic, return, or block. Telemetry-write failure must not
 	// affect the calling command.
 	Append("jutsu whatever", 0, time.Millisecond)

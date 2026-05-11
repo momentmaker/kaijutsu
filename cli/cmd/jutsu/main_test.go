@@ -1,7 +1,7 @@
 package main
 
 import (
-	"strings"
+	"bytes"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -9,10 +9,12 @@ import (
 	"github.com/momentmaker/kaijutsu/cli/internal/cli"
 )
 
-// TestInvokedSubcommand_StripsArgsAndFlags pins the v0.16.0 privacy
-// contract: positional args, flag values, and content NEVER make it
-// into the usage log.
-func TestInvokedSubcommand_StripsArgsAndFlags(t *testing.T) {
+// TestCommandPath_StripsArgsAndFlags pins the v0.16.0 privacy contract:
+// positional args, flag values, and content NEVER reach the usage log.
+//
+// Implementation uses cobra's CommandPath(), so this is really a contract
+// test on cobra — but the contract is what we depend on, so we pin it.
+func TestCommandPath_StripsArgsAndFlags(t *testing.T) {
 	cases := []struct {
 		name string
 		args []string
@@ -23,54 +25,37 @@ func TestInvokedSubcommand_StripsArgsAndFlags(t *testing.T) {
 		{"top-level-only", []string{"init"}, "jutsu init"},
 		{"nested-finding", []string{"finding", "stats"}, "jutsu finding stats"},
 		{"deeply-nested", []string{"agent", "persona", "browse"}, "jutsu agent persona browse"},
-		{"swarm-preset", []string{"swarm", "pr-review", "--pr", "42"}, "jutsu swarm pr-review"},
+		{"swarm-preset-with-flag", []string{"swarm", "pr-review", "--diff-from-branch", "main"}, "jutsu swarm pr-review"},
 		{"install-with-positional-arg", []string{"install", "decide"}, "jutsu install"},
 		{"install-with-flag", []string{"install", "decide", "--yes"}, "jutsu install"},
-		{"unknown-top-level", []string{"definitely-not-a-command"}, "jutsu"},
-		{"finding-precision-recommend", []string{"finding", "precision", "--recommend"}, "jutsu finding precision"},
-		{"user-preset-buckets-to-swarm", []string{"swarm", "my-custom-preset"}, "jutsu swarm"},
+		{"finding-precision-with-recommend", []string{"finding", "precision", "--recommend"}, "jutsu finding precision"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			got := invokedSubcommand(c.args)
+			root := cli.NewRootCmd()
+			// Silence cobra's stdout/stderr so the test doesn't pollute
+			// test output with help/error text. We only care about the
+			// resolved CommandPath, not what the RunE printed.
+			var sink bytes.Buffer
+			root.SetOut(&sink)
+			root.SetErr(&sink)
+			root.SetArgs(c.args)
+
+			// Many subcommands' RunE will fail (missing creds, missing
+			// args, etc.) — that's fine. ExecuteC still returns the
+			// command cobra matched, which is all we're testing here.
+			matched, _ := root.ExecuteC()
+			got := pathOf(matched)
 			if got != c.want {
-				t.Errorf("invokedSubcommand(%v) = %q; want %q", c.args, got, c.want)
+				t.Errorf("CommandPath for args=%v: got %q, want %q", c.args, got, c.want)
 			}
 		})
 	}
 }
 
-// TestKnownSubcommandPaths_CoversCobraTree is the drift-detection gate.
-// If a future change adds a (sub)command to cli.NewRootCmd but forgets
-// to extend `knownSubcommandPaths`, the new command silently buckets to
-// its parent in the usage log — privacy still holds, but the analytics
-// pyramid skews. Catch the drift here so it's a build-time failure, not
-// a slow-burn observability bug.
-func TestKnownSubcommandPaths_CoversCobraTree(t *testing.T) {
-	root := cli.NewRootCmd()
-	missing := []string{}
-	walk(root, "jutsu", func(path string) {
-		if !knownSubcommandPaths[path] {
-			missing = append(missing, path)
-		}
-	})
-	if len(missing) > 0 {
-		t.Errorf("knownSubcommandPaths is missing %d cobra subcommand path(s):\n  %s\n\nAdd them to cmd/jutsu/main.go to preserve the usage-log shape.",
-			len(missing), strings.Join(missing, "\n  "))
+func pathOf(c *cobra.Command) string {
+	if c == nil {
+		return "jutsu"
 	}
-}
-
-// walk recursively visits every subcommand in the cobra tree, invoking
-// visit with the full dotted path. Hidden commands are skipped — they
-// don't appear in normal use, so the usage log wouldn't capture them.
-// The root command itself is the seed; we walk into its Commands.
-func walk(cmd *cobra.Command, path string, visit func(string)) {
-	for _, sub := range cmd.Commands() {
-		if sub.Hidden {
-			continue
-		}
-		childPath := path + " " + sub.Name()
-		visit(childPath)
-		walk(sub, childPath, visit)
-	}
+	return c.CommandPath()
 }

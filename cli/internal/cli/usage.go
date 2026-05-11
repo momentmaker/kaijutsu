@@ -60,9 +60,15 @@ Empty log → "(no usage recorded yet)" + exit 0.`,
 			}
 			if window > 0 {
 				cutoff := time.Now().UTC().Add(-window)
-				kept := entries[:0]
+				// Allocate a fresh slice rather than reusing the input
+				// backing array via `entries[:0]`. Safe today (Read
+				// returns owned memory) but rules out silent breakage
+				// if Read ever returns cached / shared data.
+				kept := make([]usage.Entry, 0, len(entries))
 				for _, e := range entries {
-					if e.TS.After(cutoff) || e.TS.Equal(cutoff) {
+					// `!Before(cutoff)` is the idiomatic single-call
+					// form for "at or after cutoff".
+					if !e.TS.Before(cutoff) {
 						kept = append(kept, e)
 					}
 				}

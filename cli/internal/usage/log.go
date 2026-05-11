@@ -20,6 +20,7 @@ package usage
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -79,11 +80,17 @@ func Append(cmd string, exit int, duration time.Duration) {
 		Exit: exit,
 		MS:   duration.Milliseconds(),
 	}
-	// Encode failures are silent on purpose — a telemetry write must
-	// never break the user's actual command. Partial-line risk on encode
-	// failure is bounded by Encoder's single-shot Write per call (JSONL
-	// lines are small enough to land in one write).
-	_ = json.NewEncoder(f).Encode(&entry)
+	// Marshal first, then issue a SINGLE Write of the full line. O_APPEND
+	// is atomic for writes up to PIPE_BUF (typically 4096 on POSIX);
+	// JSONL entries here are ~150 bytes, well under that. A single Write
+	// keeps concurrent jutsu invocations from interleaving partial lines.
+	// json.Encoder uses bufio under the hood and may split — we don't
+	// want that on a shared-append file.
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(&entry); err != nil {
+		return
+	}
+	_, _ = f.Write(buf.Bytes())
 }
 
 // Read returns all entries in the log. Missing file = empty slice + nil.

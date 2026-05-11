@@ -348,8 +348,15 @@ func renderRoutingRecommendation(out io.Writer, stats []findings.TupleStats, all
 		fmt.Fprintln(out, "  (insufficient data — every tuple has <10 actioned findings; route by default for now)")
 		return
 	}
+	// Sort by precision desc, but break ties with Actioned desc so that
+	// a 10/10 tuple (P=1.0, n=10) doesn't outrank a 950/1000 tuple
+	// (P=0.95, n=1000). Higher-N rows are statistically stronger even
+	// when their point precision is slightly lower.
 	sort.SliceStable(mature, func(i, j int) bool {
-		return mature[i].Precision > mature[j].Precision
+		if mature[i].Precision != mature[j].Precision {
+			return mature[i].Precision > mature[j].Precision
+		}
+		return mature[i].Actioned > mature[j].Actioned
 	})
 	// Deduplicate per (provider, persona): keep the row across whichever
 	// preset gave the best precision. The routing flag operates at the
@@ -375,11 +382,20 @@ func renderRoutingRecommendation(out io.Writer, stats []findings.TupleStats, all
 	if len(deduped) < max {
 		max = len(deduped)
 	}
+	// Build the persona-flag suggestion by name (not by tuple) and
+	// dedup on the way in — same persona-name across two providers
+	// (e.g. "default" on claude + on gemini) would otherwise produce
+	// `--personas default,default`. `jutsu swarm --personas` keys on
+	// name, so the second instance is redundant + visually confusing.
 	personaList := make([]string, 0, max)
+	personaSeen := map[string]bool{}
 	for i := 0; i < max; i++ {
 		r := deduped[i]
 		fmt.Fprintf(tw, "  %d\t%s\t%s\t%.2f\t%d\n", i+1, r.Provider, r.Persona, r.Precision, r.Actioned)
-		personaList = append(personaList, r.Persona)
+		if !personaSeen[r.Persona] {
+			personaList = append(personaList, r.Persona)
+			personaSeen[r.Persona] = true
+		}
 	}
 	_ = tw.Flush()
 	fmt.Fprintln(out)
