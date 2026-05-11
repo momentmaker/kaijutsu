@@ -39,30 +39,35 @@ type loaded struct {
 }
 
 // loadLocal materializes a skill from a local kaijutsu monorepo checkout.
-// Used by `--registry <path>` (Stage 2 dev workflow).
+// Used by `--registry <path>` (Stage 2 dev workflow). Probes both
+// skills/core/ and skills/community/ — community-tier skills are
+// equally installable; the tier directory is layout, not capability.
 func loadLocal(registryPath, skillName string) (*loaded, error) {
 	if err := skill.ValidateName(skillName); err != nil {
 		return nil, err
 	}
-	dir := filepath.Join(registryPath, "skills", "core", skillName)
-	yamlPath := filepath.Join(dir, "skill.yaml")
-	if _, err := os.Stat(yamlPath); err != nil {
-		return nil, NotFoundError(fmt.Errorf("skill %q not found in registry at %s", skillName, registryPath))
+	for _, tier := range []string{"core", "community"} {
+		dir := filepath.Join(registryPath, "skills", tier, skillName)
+		yamlPath := filepath.Join(dir, "skill.yaml")
+		if _, err := os.Stat(yamlPath); err != nil {
+			continue
+		}
+		sk, err := skill.Load(yamlPath)
+		if err != nil {
+			return nil, err
+		}
+		return &loaded{
+			skill:   sk,
+			dir:     dir,
+			source:  "local",
+			ref:     "local",
+			path:    filepath.ToSlash(filepath.Join("skills", tier, skillName)),
+			version: sk.Version,
+			hash:    "",
+			cleanup: func() {},
+		}, nil
 	}
-	sk, err := skill.Load(yamlPath)
-	if err != nil {
-		return nil, err
-	}
-	return &loaded{
-		skill:   sk,
-		dir:     dir,
-		source:  "local",
-		ref:     "local",
-		path:    filepath.ToSlash(filepath.Join("skills", "core", skillName)),
-		version: sk.Version,
-		hash:    "",
-		cleanup: func() {},
-	}, nil
+	return nil, NotFoundError(fmt.Errorf("skill %q not found in registry at %s (checked skills/core/ and skills/community/)", skillName, registryPath))
 }
 
 // loadRemote fetches + extracts the skill from a GitHub source.
@@ -82,6 +87,21 @@ func loadRemote(ctx context.Context, stderr io.Writer, fetcher *fetch.Fetcher, d
 	res, err := registry.Resolve(idx, defaultRegistry, skillName)
 	if err != nil {
 		return nil, err
+	}
+
+	// registry.Resolve has no filesystem/network access, so when the
+	// index doesn't list <skillName> it falls back to skills/core/<name>.
+	// Community-tier skills (e.g. editorial-review) live under
+	// skills/community/<name>. Probe the default branch for both before
+	// kicking off the tag walk in resolveRef.
+	if !indexContains(idx, skillName) {
+		p, perr := probeKaijutsuTier(ctx, fetcher, res.Source, skillName)
+		switch {
+		case perr == nil:
+			res.Path = p
+		case errors.Is(perr, os.ErrNotExist):
+			return nil, NotFoundError(fmt.Errorf("skill %q not found in %s (checked skills/core/ and skills/community/)", skillName, res.Source))
+		}
 	}
 
 	ref, version, tag, err := resolveRef(ctx, fetcher, res.Source, res.Path, constraint)
@@ -215,6 +235,7 @@ func loadByLockEntry(ctx context.Context, stderr io.Writer, fetcher *fetch.Fetch
 	}
 	candidates = append(candidates,
 		filepath.Join(top, "skills", "core", skillName),
+		filepath.Join(top, "skills", "community", skillName),
 		top,
 	)
 	var skillDir string
@@ -266,6 +287,40 @@ func loadIndex(ctx context.Context, fetcher *fetch.Fetcher, src *source.Source) 
 		return nil, err
 	}
 	return registry.LoadFromBytes(body)
+}
+
+// indexContains reports whether the registry index has an explicit entry
+// for skillName. Used to decide whether registry.Resolve's fallback to
+// skills/core/<name> needs further probing for community-tier layouts.
+func indexContains(idx *registry.Index, skillName string) bool {
+	if idx == nil {
+		return false
+	}
+	_, ok := idx.Skills[skillName]
+	return ok
+}
+
+// probeKaijutsuTier probes the default branch of src for a skill.yaml
+// under skills/core/<name>/ and skills/community/<name>/. Returns the
+// in-repo path of whichever exists, or os.ErrNotExist if neither does.
+// Network/auth errors propagate unchanged so callers can degrade
+// gracefully rather than mask transport failures as "not found".
+func probeKaijutsuTier(ctx context.Context, fetcher *fetch.Fetcher, src *source.Source, skillName string) (string, error) {
+	sha, err := fetcher.DefaultBranchSHA(ctx, src)
+	if err != nil {
+		return "", err
+	}
+	for _, tier := range []string{"core", "community"} {
+		relDir := filepath.ToSlash(filepath.Join("skills", tier, skillName))
+		_, err := fetcher.GetFile(ctx, src, sha, relDir+"/skill.yaml")
+		if err == nil {
+			return relDir, nil
+		}
+		if !errors.Is(err, os.ErrNotExist) {
+			return "", err
+		}
+	}
+	return "", os.ErrNotExist
 }
 
 // resolveRef picks the commit SHA to install based on a semver constraint
