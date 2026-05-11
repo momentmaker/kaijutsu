@@ -19,6 +19,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/momentmaker/kaijutsu/cli/internal/findings"
 	"github.com/momentmaker/kaijutsu/cli/internal/usage"
 )
 
@@ -53,7 +54,7 @@ Empty log → "(no usage recorded yet)" + exit 0.`,
 			if err != nil {
 				return err
 			}
-			window, err := parseUsageSince(sinceStr)
+			window, err := findings.ParseSinceDuration(sinceStr)
 			if err != nil {
 				return UsageError(err)
 			}
@@ -73,58 +74,6 @@ Empty log → "(no usage recorded yet)" + exit 0.`,
 	}
 	cmd.Flags().StringVar(&sinceStr, "since", "", `time window (e.g. 7d, 4w, 30s, 5m, 2h). "" = all-time`)
 	return cmd
-}
-
-// parseUsageSince thin-wraps findings.ParseSinceDuration so the usage
-// subcommand accepts the same shorthand as `jutsu finding stats --since`.
-// Defined here (not aliased) to avoid pulling the findings package into
-// the cli root just for one helper.
-func parseUsageSince(s string) (time.Duration, error) {
-	if s == "" {
-		return 0, nil
-	}
-	// Reuse the existing parser — already pinned by tests in the findings
-	// package and accepts Nd/Nw/Nmo/Ny plus stdlib durations.
-	d, err := parseUsageShorthand(s)
-	if err != nil {
-		return 0, err
-	}
-	return d, nil
-}
-
-// parseUsageShorthand mirrors findings.ParseSinceDuration without the
-// findings import dep. Mirror keeps usage cleanly separable from the
-// findings.db corpus.
-func parseUsageShorthand(s string) (time.Duration, error) {
-	type unit struct {
-		suf string
-		d   time.Duration
-	}
-	for _, u := range []unit{
-		{"mo", 30 * 24 * time.Hour},
-		{"d", 24 * time.Hour},
-		{"w", 7 * 24 * time.Hour},
-		{"y", 365 * 24 * time.Hour},
-	} {
-		if len(s) > len(u.suf) && s[len(s)-len(u.suf):] == u.suf {
-			var n int
-			if _, err := fmt.Sscanf(s, "%d", &n); err != nil {
-				return 0, fmt.Errorf("usage: --since %q: bad count: %w", s, err)
-			}
-			if n <= 0 {
-				return 0, fmt.Errorf("usage: --since %q must be positive", s)
-			}
-			return time.Duration(n) * u.d, nil
-		}
-	}
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		return 0, fmt.Errorf("usage: --since %q: %w (try 7d, 4w, 3mo, 1y, 30s, 5m, 2h)", s, err)
-	}
-	if d <= 0 {
-		return 0, fmt.Errorf("usage: --since %q must be positive", s)
-	}
-	return d, nil
 }
 
 type usageRow struct {

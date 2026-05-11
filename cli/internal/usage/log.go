@@ -79,11 +79,11 @@ func Append(cmd string, exit int, duration time.Duration) {
 		Exit: exit,
 		MS:   duration.Milliseconds(),
 	}
-	if err := json.NewEncoder(f).Encode(&entry); err != nil {
-		// Truncate any partial write so we don't corrupt subsequent reads.
-		// Best-effort; nothing to do if this also fails.
-		_ = f.Sync()
-	}
+	// Encode failures are silent on purpose — a telemetry write must
+	// never break the user's actual command. Partial-line risk on encode
+	// failure is bounded by Encoder's single-shot Write per call (JSONL
+	// lines are small enough to land in one write).
+	_ = json.NewEncoder(f).Encode(&entry)
 }
 
 // Read returns all entries in the log. Missing file = empty slice + nil.
