@@ -34,6 +34,7 @@ func NewRootCmd() *cobra.Command {
 		newDreamCmd(),
 		newEvalCmd(),
 		newAutopilotCmd(),
+		newUsageCmd(),
 	)
 	return root
 }

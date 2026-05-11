@@ -4,9 +4,32 @@ All notable changes to kaijutsu (the registry + skills) and `jutsu` (the CLI). T
 
 ## [Unreleased]
 
+## [0.16.0] — 2026-05-11
+
+Instrumentation + precision-routing + editorial-review skill. Six consecutive `jutsu swarm dream` passes converged on "ship zero, instrument first, validate the moat." This release stops bias-laundering past that consensus + delivers what every dream actually said to ship: local-only usage telemetry + exposure of the per-(provider, persona, codebase) precision corpus that's been quietly accumulating in `findings.db`. Plus a generalized long-form-essay review skill.
+
 ### Added
 
-- **`editorial-review` skill** (community) — multi-pass editorial review for long-form essays + articles. Four passes: structural (arc/transitions/pacing) → line-level (jargon/repetition/density) → AI-tells & voice (em-dash density, triplet fragments, hedge clusters, cliché bigrams, sentence-starter repetition, tense drift) → resonance (naming-the-unnamed, lines-worth-stealing, reader self-recognition, shareability). Voice-configurable: `literary-intelligent-general` (default) / `terse-technical` / `conversational` / `journalistic`. Composes `deslop` as final pass. AI-tells branded as signal-not-verdict per `jutsu swarm dream` finding: Hemingway and McCarthy fail several heuristics; writer voice always wins over generic AI-detection. Generalized from a project-specific version in a separate writing repo. No bundled heuristic detector or AI-classifier in this v0.1.0 — dream pass killed that scope as decay surface (multi-agent moat unnecessary; 4-pass skill is the time-resistant artifact).
+- **Local-only usage log** at `~/.kaijutsu/usage.jsonl`. Every `jutsu` invocation appends one line: `{ts, cmd, exit, ms}`. No flag values, no args, no content. Opt-out via `KAIJUTSU_USAGE_LOG=0`. Telemetry-write failures are silent — never break the actual command. Lives in `cli/internal/usage/`.
+- **`jutsu usage stats`** — frequency table over the usage log. Flags: `--since <duration>` (reuses the `Nd/Nw/Nmo/Ny` shorthand parser from `finding stats`). Empty log prints a friendly `(no usage recorded yet)` message, exit 0.
+- **`jutsu finding precision --recommend`** — appends a per-codebase routing recommendation to the existing precision report. Ranks (provider, persona) tuples by observed precision over mature (≥10 actioned) findings, emits a copy-pasteable `--personas <list>` suggestion. Cold-start + bootstrap tuples explicitly excluded from the ranking. Cleanly handles "insufficient data" with a one-liner pointing the user back to default routing.
+- **`editorial-review` skill** (community) — multi-pass editorial review for long-form essays + articles. Four passes: structural (arc / transitions / pacing) → line-level (jargon / repetition / density) → AI-tells & voice (em-dash density, triplet fragments, hedge clusters, cliché bigrams, sentence-starter repetition, tense drift) → resonance (naming-the-unnamed, lines-worth-stealing, reader self-recognition, shareability). Voice-configurable: `literary-intelligent-general` (default) / `terse-technical` / `conversational` / `journalistic`. Composes `deslop` as final pass. Generalized from a project-specific version. AI-tells branded as signal-not-verdict per dream pass: Hemingway and McCarthy fail several heuristics; writer voice always wins over generic AI-detection.
+
+### Changed
+
+- **`init_agents_fragment` marker version**: `0.15.0` → `0.16.0`.
+
+### Notes
+
+- **Why this scope.** Six dream passes across v0.15.x candidate proposals (root-cause, review-skill, absorb-tiers, editorial-review-detector, adamsreview-tiers, plus the original 6-candidate set) all converged on the same recommendation despite different framings. Each time, "model-shared bias" was flagged on the unanimity. Each time, the recurring answer was used as a reason to override. The most recent dream caught the pattern: discounting recurring inconvenient consensus IS the maintainer-aesthetic failure mode the dream-pass primitive exists to surface. So this release just does what the dreams said: instrument before adding surface.
+- **What stays at exit 1.** The usage log itself never raises errors — write failures are silent. The `usage stats` command's `--since` parsing returns exit 2 on bad input (per v0.15's typed-exit contract).
+- **What's NOT shipping.** `jutsu finding walkthrough` (UX trojan-horse for analytics value, per the v0.16 dream); `swarm pr-review --inject` (prompt-injection vector flagged 3/3 in dream); cheap-then-deep validation gate (anti-moat by construction); auto-revert fix loops (RLHF echo + flaky-test DoS); bundled AI-tells heuristic detector (LLM-integration brittle, Hemingway-screenshot reputation risk, 2-year decay horizon). All five killed in v0.16 dream passes; reasoning preserved in the dream archives.
+
+### Tests
+
+- `cli/internal/usage/log_test.go`: opt-out, append/read round-trip, missing-file empty, malformed-line skip, silent-failure-on-write.
+- `cli/internal/cli/usage_test.go`: empty-log friendly message, grouping by command, `--since` bad-value exit-2, since-window filter.
+- `cli/cmd/jutsu/main_test.go`: cobra-resolved `CommandPath` pins the privacy contract — positional args + flag values + content never reach the usage log; cobra's own normalized path is the source of truth.
 
 ## [0.15.1] — 2026-05-09
 
