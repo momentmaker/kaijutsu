@@ -4,6 +4,10 @@ All notable changes to kaijutsu (the registry + skills) and `jutsu` (the CLI). T
 
 ## [Unreleased]
 
+### Added
+
+- **`editorial-review` skill** (community) — multi-pass editorial review for long-form essays + articles. Four passes: structural (arc/transitions/pacing) → line-level (jargon/repetition/density) → AI-tells & voice (em-dash density, triplet fragments, hedge clusters, cliché bigrams, sentence-starter repetition, tense drift) → resonance (naming-the-unnamed, lines-worth-stealing, reader self-recognition, shareability). Voice-configurable: `literary-intelligent-general` (default) / `terse-technical` / `conversational` / `journalistic`. Composes `deslop` as final pass. AI-tells branded as signal-not-verdict per `jutsu swarm dream` finding: Hemingway and McCarthy fail several heuristics; writer voice always wins over generic AI-detection. Generalized from a project-specific version in a separate writing repo. No bundled heuristic detector or AI-classifier in this v0.1.0 — dream pass killed that scope as decay surface (multi-agent moat unnecessary; 4-pass skill is the time-resistant artifact).
+
 ## [0.15.1] — 2026-05-09
 
 Whole-conversion follow-up to v0.15.0's typed exit-code subset. v0.15.0 shipped the contract documented in `docs/exit-codes.md` but only wired it at finding-stats + finding-export validation paths; codes 3 and 4 stayed at exit 1 across the rest of the CLI. v0.15.1 closes the gap.
