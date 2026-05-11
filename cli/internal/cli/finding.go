@@ -271,6 +271,7 @@ func newFindingPrecisionCmd() *cobra.Command {
 	var (
 		allCodebases  bool
 		codebaseOverr string
+		recommend     bool
 	)
 	cmd := &cobra.Command{
 		Use:   "precision",
@@ -280,7 +281,12 @@ Tuples with fewer than 10 actioned findings show as "(insufficient
 data, default weight: 0.7)" — matching the v0.7 bootstrap state.
 
 Renamed from "stats" in v0.14.0; "stats" now reports preset usage
-counts (run frequency) over a time window.`,
+counts (run frequency) over a time window.
+
+Pass --recommend to append a per-codebase routing recommendation: which
+(provider, persona) tuples earn the highest precision on THIS repo over
+time. Use the output to bias future --personas flags. Cold-start +
+bootstrap-state tuples explicitly excluded from the ranking.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			store, err := openFindingsStore(cmd)
 			if err != nil {
@@ -297,12 +303,90 @@ counts (run frequency) over a time window.`,
 				return err
 			}
 			renderPrecision(cmd.OutOrStdout(), stats, fp, allCodebases)
+			if recommend {
+				renderRoutingRecommendation(cmd.OutOrStdout(), stats, allCodebases)
+			}
 			return nil
 		},
 	}
 	cmd.Flags().BoolVar(&allCodebases, "all-codebases", false, "report across every recorded codebase")
 	cmd.Flags().StringVar(&codebaseOverr, "codebase", "", "override codebase fingerprint")
+	cmd.Flags().BoolVar(&recommend, "recommend", false, "append a routing recommendation based on observed precision")
 	return cmd
+}
+
+// renderRoutingRecommendation emits a per-codebase persona-routing
+// suggestion derived from observed precision. v0.16.0 — closes the gap
+// the 6 prior dream passes flagged: the precision corpus exists but
+// nothing exposes it as routable signal. Bootstrap tuples (< 10 actioned)
+// are excluded; cold-start tuples (0 actioned) too.
+//
+// Output shape: ranked (provider, persona) tuples with mature precision,
+// plus a one-line `--personas` suggestion the user can copy verbatim.
+func renderRoutingRecommendation(out io.Writer, stats []findings.TupleStats, allCodebases bool) {
+	type routeRow struct {
+		Provider  string
+		Persona   string
+		Precision float64
+		Actioned  int
+	}
+	mature := make([]routeRow, 0, len(stats))
+	for _, s := range stats {
+		if s.Actioned() < 10 {
+			continue
+		}
+		mature = append(mature, routeRow{
+			Provider:  s.Provider,
+			Persona:   s.Persona,
+			Precision: s.Precision(),
+			Actioned:  s.Actioned(),
+		})
+	}
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "## Routing recommendation")
+	if len(mature) == 0 {
+		fmt.Fprintln(out, "  (insufficient data — every tuple has <10 actioned findings; route by default for now)")
+		return
+	}
+	sort.SliceStable(mature, func(i, j int) bool {
+		return mature[i].Precision > mature[j].Precision
+	})
+	// Deduplicate per (provider, persona): keep the row across whichever
+	// preset gave the best precision. The routing flag operates at the
+	// `--personas` level, not at the preset level.
+	seen := map[string]bool{}
+	deduped := make([]routeRow, 0, len(mature))
+	for _, r := range mature {
+		key := r.Provider + "/" + r.Persona
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		deduped = append(deduped, r)
+	}
+	scope := "this codebase"
+	if allCodebases {
+		scope = "all recorded codebases"
+	}
+	fmt.Fprintf(out, "  Based on %d mature (≥10 actioned) tuple(s) for %s:\n\n", len(deduped), scope)
+	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(tw, "  RANK\tPROVIDER\tPERSONA\tPRECISION\tACTIONED")
+	max := 5
+	if len(deduped) < max {
+		max = len(deduped)
+	}
+	personaList := make([]string, 0, max)
+	for i := 0; i < max; i++ {
+		r := deduped[i]
+		fmt.Fprintf(tw, "  %d\t%s\t%s\t%.2f\t%d\n", i+1, r.Provider, r.Persona, r.Precision, r.Actioned)
+		personaList = append(personaList, r.Persona)
+	}
+	_ = tw.Flush()
+	fmt.Fprintln(out)
+	fmt.Fprintf(out, "  Suggested flag:\n    --personas %s\n", strings.Join(personaList, ","))
+	if len(deduped) > max {
+		fmt.Fprintf(out, "  (%d more tuples below rank %d; pass --all-codebases for the broader view)\n", len(deduped)-max, max)
+	}
 }
 
 func renderPrecision(out io.Writer, stats []findings.TupleStats, fp string, allCodebases bool) {

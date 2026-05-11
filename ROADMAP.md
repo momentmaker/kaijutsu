@@ -161,10 +161,19 @@ Two low-risk agent-ergonomics wins surfaced from parallel dream passes on v0.14 
 - [x] **Cobra mutually-exclusive flag errors → exit 2** (v0.15.1). Plus all caller-misuse / lookup-miss / auth-failure paths across the CLI now carry typed exit codes.
 - [ ] **Provenance-receipt backfill** on the 22 already-vendored skills (anthropics/skills, addyosmani/agent-skills, obra/superpowers). Surfaced from the v0.14 absorb dream as the "actual gem" inside the killed `jutsu absorb` proposal — apply the trust primitive retroactively without the fetch-from-anywhere infrastructure.
 
-## v0.16+ — Conditional
+## v0.16 — Instrumentation + precision-routing + editorial-review skill
 
-- [ ] **Compound finding queries** (`stale` / `health` / `bottleneck` / `reconcile`). Schema-versioning gap from the dream pass needs a versioning plan first. Conditional on real usage telemetry from `jutsu finding stats`.
-- [ ] **NL→SQL over findings.db** — wild-lens candidate. "Which auth bugs did claude miss but deepseek caught?" Pairs naturally with the JSONL export (export piped through user's own LLM is a 90% workalike).
+Six consecutive `jutsu swarm dream` passes converged on "ship zero, instrument first, validate the moat." This release stops bias-laundering past that consensus.
+
+- [x] **Local-only usage log** at `~/.kaijutsu/usage.jsonl`. Every `jutsu` invocation records `{ts, cmd, exit, ms}`. Opt-out `KAIJUTSU_USAGE_LOG=0`.
+- [x] **`jutsu usage stats`** — frequency table over the usage log with `--since` window.
+- [x] **`jutsu finding precision --recommend`** — per-codebase persona-routing recommendation from the precision corpus.
+- [x] **`editorial-review` skill** (community) — multi-pass review for long-form essays + articles. Voice-configurable.
+
+## v0.17+ — Conditional on v0.16 usage telemetry
+
+- [ ] **Compound finding queries** (`stale` / `health` / `bottleneck` / `reconcile`). Schema-versioning gap from the dream pass needs a versioning plan first. Conditional on real usage telemetry from `jutsu usage stats`.
+- [ ] **NL→SQL over findings.db** — wild-lens candidate. "Which auth bugs did claude miss but deepseek caught?" Pairs naturally with the JSONL export.
 - [ ] **Structured error JSON on stderr** (`{code, message, suggestion, retry-after, doc-url}`). Natural follow-on once typed exit codes earn their keep.
 
 ## v0.20+ — Maybe Persona SDK
