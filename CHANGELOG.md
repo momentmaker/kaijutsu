@@ -4,6 +4,10 @@ All notable changes to kaijutsu (the registry + skills) and `jutsu` (the CLI). T
 
 ## [Unreleased]
 
+## [0.17.0] — 2026-05-20
+
+Breaking: gemini → antigravity provider migration ahead of Google's gemini-cli sunset (2026-06-18). kaijutsu's third native CLI slot is now `antigravity` (binary `agy`) instead of `gemini`. Pre-alpha + no live users at cut time, so no compat shim. See "Verified" subsection for live smoke evidence + "Unverified" follow-ups for known unknowns (Antigravity hooks format, sandbox flag necessity, large-prompt stdin behavior).
+
 ### Changed
 
 - **gemini → antigravity provider migration**. Google announced gemini-cli sunset on **2026-06-18** with **Antigravity CLI** (binary `agy`) as the successor (see [transition notice](https://developers.googleblog.com/an-important-update-transitioning-gemini-cli-to-antigravity-cli/)). kaijutsu's third native CLI provider slot is now `antigravity` (binary `agy`) instead of `gemini`. Breaking changes — pre-alpha; no compat shim:
