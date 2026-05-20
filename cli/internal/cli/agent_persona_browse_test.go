@@ -202,7 +202,7 @@ func TestRenderPersonasYaml_Deterministic(t *testing.T) {
 	// Stable iteration order means yaml output is byte-equal across runs.
 	rows := []agents.BrowseRow{
 		{Name: "z-last", Provider: "claude"},
-		{Name: "a-first", Provider: "gemini"},
+		{Name: "a-first", Provider: "antigravity"},
 		{Name: "m-mid", Provider: "codex"},
 	}
 	var buf1, buf2 bytes.Buffer

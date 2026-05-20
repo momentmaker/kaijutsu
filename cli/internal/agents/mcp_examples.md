@@ -32,12 +32,12 @@ providers:
 
 ```yaml
 # <repo>/.kaijutsu/agents.yaml
-enabled: [claude, codex, gemini, semgrep-mcp]
+enabled: [claude, codex, antigravity, semgrep-mcp]
 ```
 
 ```bash
 $ jutsu swarm security-audit --personas \
-    paranoid-security-claude,pragmatic-codex,default-gemini,default-semgrep-mcp
+    paranoid-security-claude,pragmatic-codex,default-antigravity,default-semgrep-mcp
 ```
 
 LLM peers + semgrep run in parallel. Findings tagged `[deterministic]`

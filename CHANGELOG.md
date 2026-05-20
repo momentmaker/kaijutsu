@@ -4,6 +4,24 @@ All notable changes to kaijutsu (the registry + skills) and `jutsu` (the CLI). T
 
 ## [Unreleased]
 
+### Changed
+
+- **gemini → antigravity provider migration**. Google announced gemini-cli sunset on **2026-06-18** with **Antigravity CLI** (binary `agy`) as the successor (see [transition notice](https://developers.googleblog.com/an-important-update-transitioning-gemini-cli-to-antigravity-cli/)). kaijutsu's third native CLI provider slot is now `antigravity` (binary `agy`) instead of `gemini`. Breaking changes — pre-alpha; no compat shim:
+  - Provider name: `gemini` → `antigravity` (catalog, registry, persona Provider field, agents.yaml `enabled:` lists, `--personas`/`--provider` flag values).
+  - Built-in personas: `default-gemini` → `default-antigravity`, `architecture-purist-gemini` → `architecture-purist-antigravity`, `cross-file-gemini` → `cross-file-antigravity`.
+  - Binary lookup: `gemini` → `agy`.
+  - Driver flags: dropped `--approval-mode plan` (no agy equivalent); antigravityDriver invokes `agy -p` (codex-style). If swarm runs start blocking on tool-call prompts, add `--sandbox`.
+  - Config dir constant: `paths.GeminiDirName = ".gemini"` → `paths.AntigravityDirName = ".gemini/antigravity-cli"`. agy 1.0.0 reuses the Gemini base dir from gemini-cli and stores its CLI-specific state in a nested `antigravity-cli/` subdir (verified on macOS); detect (`jutsu init` / `jutsu doctor`) now probes `~/.gemini/antigravity-cli/`.
+  - Hooks: `cli/internal/hooks/gemini.go` → `antigravity.go`; `InstallGemini`/`RemoveGemini` → `InstallAntigravity`/`RemoveAntigravity`; settings file `installRoot/.gemini/settings.json` → `installRoot/.gemini/antigravity-cli/settings.json`. **Unverified**: Antigravity's actual hooks/plugin format may differ from gemini-cli's settings.json shape — the v1.0.0 antigravity-cli release only ships a README + binary; flag any format mismatches as follow-up.
+  - Skill prompt files: `skills/core/*/prompts/gemini.md` → `skills/core/*/prompts/antigravity.md` (5 presets).
+  - Schemas: `enum: ["claude", "codex", "gemini"]` → `["claude", "codex", "antigravity"]` across skill / lockfile / manifest / swarm JSON schemas.
+- Stale `GEMINI_API_KEY` retained in `sanitize.go` redaction list + `stripNestedAgentEnv` strip list — users migrating from gemini-cli may still have those env vars set in their shell rc; safer to keep the redaction.
+- `docs/multi-agent.md` carries a transition banner; the deep "Google Gemini CLI" reference table is preserved as historical context and explicitly flagged as not reflective of Antigravity's plugin format.
+
+### Verified
+
+- **Smoke test (2026-05-19)**: `jutsu swarm brainstorm "say hello in one word" --personas default-antigravity --yes` exited 0; agy `-p` invocation returned 4 valid findings in 42s at $0.004. End-to-end pipeline confirmed working against agy 1.0.0 on macOS Darwin 25.3.0. Stdin-append contract held for sub-argSafe prompts; full-diff stdin-pipe path not yet exercised — will be confirmed on first real `jutsu swarm pr-review` run.
+
 ## [0.16.1] — 2026-05-11
 
 Patch: community-tier skills are now installable. Before this fix, `jutsu install editorial-review` and `jutsu info editorial-review` failed with "not found in registry" because the resolver only probed `skills/core/<name>/`, never `skills/community/<name>/`. The `editorial-review` skill shipped in v0.16.0 was visible in the catalog (`kaijutsu.dev`) but unreachable via the CLI — surfaced by smoke-tests immediately after the v0.16.0 cut.

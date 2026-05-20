@@ -2,7 +2,7 @@
 
 Pre-tool-use hook that blocks unrecoverable shell commands (`rm -rf /`, `git reset --hard`, `git clean -fd`, force-push to main, `rm` of `.env` / credentials, fork bombs, `shred` / `dd`, etc.) before the agent runs them.
 
-Install registers the hook into all active agents (Claude Code, Codex CLI, Gemini CLI). Removal cleans it up surgically — user-authored hooks are preserved.
+Install registers the hook into all active agents (Claude Code, Codex CLI, Antigravity CLI). Removal cleans it up surgically — user-authored hooks are preserved.
 
 ```sh
 jutsu install -g dcg     # globally — covers every project on this machine

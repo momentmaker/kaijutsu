@@ -18,7 +18,7 @@ func TestInstallCopiesSkillDirToBothFamilies(t *testing.T) {
 	mustWrite(t, filepath.Join(src, "SKILL.md"), "---\nname: decide\n---\nbody")
 	mustWrite(t, filepath.Join(src, "scripts", "x.sh"), "#!/bin/sh")
 
-	sk := &skill.Skill{Name: "decide", Agents: []string{"claude", "codex", "gemini"}}
+	sk := &skill.Skill{Name: "decide", Agents: []string{"claude", "codex", "antigravity"}}
 	root := filepath.Join(tmp, "proj")
 
 	if err := Install(src, root, []string{"claude", "codex"}, sk); err != nil {
@@ -44,7 +44,7 @@ func TestInstallSingleAgentWritesOneDir(t *testing.T) {
 	os.MkdirAll(src, 0755)
 	mustWrite(t, filepath.Join(src, "SKILL.md"), "body")
 
-	sk := &skill.Skill{Name: "demo", Agents: []string{"codex", "gemini"}}
+	sk := &skill.Skill{Name: "demo", Agents: []string{"codex", "antigravity"}}
 	root := filepath.Join(tmp, "proj")
 	if err := Install(src, root, []string{"codex"}, sk); err != nil {
 		t.Fatal(err)
@@ -62,7 +62,7 @@ func TestInstallNoOverlapErrors(t *testing.T) {
 	tmp := t.TempDir()
 	src := filepath.Join(tmp, "skill")
 	os.MkdirAll(src, 0755)
-	sk := &skill.Skill{Name: "demo", Agents: []string{"gemini"}}
+	sk := &skill.Skill{Name: "demo", Agents: []string{"antigravity"}}
 	if err := Install(src, tmp, []string{"claude"}, sk); err == nil {
 		t.Error("expected error for no overlap, got nil")
 	}

@@ -41,7 +41,7 @@ This is intentional. Over-blocking causes alert fatigue; agents start either cir
 |---|---|---|
 | Claude Code | `~/.claude/settings.json` | `PreToolUse` |
 | OpenAI Codex CLI | `~/.codex/config.toml` | `PreToolUse` |
-| Google Gemini CLI | `~/.gemini/settings.json` | `BeforeTool` |
+| Google Antigravity CLI | `~/.antigravity/settings.json` | `BeforeTool` |
 
 Each entry is tagged with `_kaijutsu: skill:dcg:hook:block-destructive-shell` so `jutsu remove dcg` can clean up exactly what we added without disturbing user-authored hooks.
 
@@ -63,7 +63,7 @@ Plus a non-zero exit. Each agent's hook framework propagates this differently:
 
 - **Claude Code**: surfaces `stopReason` to the model so the assistant knows why and can react (apologize, propose a safer alternative).
 - **Codex**: returns the `"blocked"` status to the model.
-- **Gemini**: similar — the `BeforeTool` interception aborts the call.
+- **Antigravity**: similar — the `BeforeTool` interception aborts the call.
 
 In every case the destructive shell never runs.
 

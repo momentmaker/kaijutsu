@@ -6,7 +6,7 @@ description: "Automated post-implementation review-and-fix loop. Up to 4 passes;
 homepage: https://kaijutsu.dev/skills/polish
 repository: https://github.com/momentmaker/kaijutsu
 tags: [review, refactor, workflow]
-agents: [claude, codex, gemini]
+agents: [claude, codex, antigravity]
 deps:
   skills:
     - blunder-hunt@^0.2

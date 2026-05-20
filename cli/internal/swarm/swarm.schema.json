@@ -62,7 +62,7 @@
           "type": "array",
           "items": { "type": "string", "minLength": 1 },
           "default": [],
-          "description": "Persona names to dispatch (resolved against agents.yaml). Empty = legacy auto-detect (claude/codex/gemini). Unknown persona name → cobra error at command time per the v0.10.1 enum-rejection format."
+          "description": "Persona names to dispatch (resolved against agents.yaml). Empty = legacy auto-detect (claude/codex/antigravity). Unknown persona name → cobra error at command time per the v0.10.1 enum-rejection format."
         },
         "confidenceFloor": {
           "type": "number",

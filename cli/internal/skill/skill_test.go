@@ -16,7 +16,7 @@ version: 1.0.0
 license: MIT
 layout: flat
 description: "Reviews a PR."
-agents: [claude, codex, gemini]
+agents: [claude, codex, antigravity]
 permissions:
   bash: true
   network: false

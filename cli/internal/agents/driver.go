@@ -3,7 +3,7 @@
 // and CLI-as-harness wrappers.
 //
 // v0.6 Stage 1 introduces this package as a pure refactor — the only
-// driver kind populated is `cli` (claude / codex / gemini), preserving
+// driver kind populated is `cli` (claude / codex / antigravity), preserving
 // v0.5 byte-identical behavior. Stages 3-6 add http, cli-compat, and
 // mcp drivers.
 //

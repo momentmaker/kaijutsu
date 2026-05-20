@@ -61,6 +61,7 @@ func looksSensitive(name string) bool {
 	// Common bare names.
 	switch upper {
 	case "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY",
+		"ANTIGRAVITY_API_KEY", "AGY_API_KEY",
 		"DEEPSEEK_API_KEY", "GLM_API_KEY", "KIMI_API_KEY":
 		return true
 	}

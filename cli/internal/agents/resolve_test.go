@@ -11,7 +11,7 @@ func TestResolve_LegacyMixWhenBothEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"claude", "codex", "gemini"}
+	want := []string{"claude", "codex", "antigravity"}
 	got := append([]string(nil), r.Enabled...)
 	sort.Strings(got)
 	sort.Strings(want)
@@ -31,11 +31,11 @@ func TestResolve_BuiltinPersonasRegistered(t *testing.T) {
 		t.Fatal(err)
 	}
 	wantNames := []string{
-		"default-claude", "default-codex", "default-gemini",
+		"default-claude", "default-codex", "default-antigravity",
 		"paranoid-security-claude", "pragmatic-codex",
-		"architecture-purist-gemini", "brainstorm-creative-claude",
+		"architecture-purist-antigravity", "brainstorm-creative-claude",
 		// v0.11.0 additions
-		"claim-auditor-claude", "cross-file-gemini", "perf-purist-codex",
+		"claim-auditor-claude", "cross-file-antigravity", "perf-purist-codex",
 	}
 	for _, name := range wantNames {
 		p, ok := r.Personas[name]
@@ -49,14 +49,14 @@ func TestResolve_BuiltinPersonasRegistered(t *testing.T) {
 	}
 	// Default personas must have empty system prompt — preserves
 	// v0.5 cache-key compat.
-	for _, n := range []string{"default-claude", "default-codex", "default-gemini"} {
+	for _, n := range []string{"default-claude", "default-codex", "default-antigravity"} {
 		if r.Personas[n].SystemPrompt != "" {
 			t.Errorf("default persona %q has non-empty system_prompt; cache-key compat broken", n)
 		}
 	}
 	// v0.11.0 additions must have non-empty system_prompts (each is
 	// a distinct lens; an empty prompt would defeat the purpose).
-	for _, n := range []string{"claim-auditor-claude", "cross-file-gemini", "perf-purist-codex"} {
+	for _, n := range []string{"claim-auditor-claude", "cross-file-antigravity", "perf-purist-codex"} {
 		p, ok := r.Personas[n]
 		if !ok {
 			continue // already covered above
@@ -77,9 +77,9 @@ func TestResolve_NewV011BuiltinPersonas(t *testing.T) {
 		t.Fatal(err)
 	}
 	cases := map[string]string{
-		"claim-auditor-claude": "claude",
-		"cross-file-gemini":    "gemini",
-		"perf-purist-codex":    "codex",
+		"claim-auditor-claude":  "claude",
+		"cross-file-antigravity": "antigravity",
+		"perf-purist-codex":     "codex",
 	}
 	for name, wantProvider := range cases {
 		p, ok := r.Personas[name]

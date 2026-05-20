@@ -134,7 +134,7 @@ func readLockPID(path string) (int, error) {
 // stale heuristic falling back on the 2h mtime gate). Build tags
 // keep the syscall-specific code out of cross-platform builds.
 //
-// Rationale per v0.10 swarm pr-review feedback: gemini + deepseek
+// Rationale per v0.10 swarm pr-review feedback: antigravity + deepseek
 // both flagged the original syscall.Signal(0) path as
 // Windows-incompatible. Splitting at the build-tag boundary lets
 // the unix path keep its precision while Windows degrades to

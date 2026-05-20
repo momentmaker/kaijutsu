@@ -44,7 +44,7 @@ func TestFindingExport_DefaultJSONUnchangedBackCompat(t *testing.T) {
 func TestFindingExport_JSONLToStdoutPathless(t *testing.T) {
 	store, _ := setupFindingTest(t)
 	mustRecord(t, store, "r1", "fp1", "pr-review", oneFinding("default-claude", "x"))
-	mustRecord(t, store, "r2", "fp1", "pr-review", oneFinding("default-gemini", "y"))
+	mustRecord(t, store, "r2", "fp1", "pr-review", oneFinding("default-antigravity", "y"))
 	store.Close()
 
 	out, _, err := runCmdCapture(t, "finding", "export", "--codebase", "fp1", "--format", "jsonl")

@@ -6,7 +6,7 @@ description: "Detect README staleness, identify out-of-date sections, propose ta
 homepage: https://kaijutsu.dev/skills/readme-update
 repository: https://github.com/momentmaker/kaijutsu
 tags: [docs, readme, maintenance]
-agents: [claude, codex, gemini]
+agents: [claude, codex, antigravity]
 permissions:
   bash: true
   network: false

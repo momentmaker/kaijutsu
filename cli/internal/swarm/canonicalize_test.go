@@ -100,7 +100,7 @@ func TestMixCacheKeyWithPersonas_LegacyMixDiffersFromBare(t *testing.T) {
 	// the v0.5 default-* names explicitly via --personas is a NEW
 	// cache key — the user opted into the persona path.
 	bare := "abc123"
-	withPersonas := MixCacheKeyWithPersonas("abc123", []string{"default-claude", "default-codex", "default-gemini"})
+	withPersonas := MixCacheKeyWithPersonas("abc123", []string{"default-claude", "default-codex", "default-antigravity"})
 	if bare == withPersonas {
 		t.Error("explicit default-* personas should still differ from bare/no-flag mode (user-intent signal)")
 	}

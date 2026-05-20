@@ -11,14 +11,14 @@ import (
 type AgentName string
 
 const (
-	AgentClaude AgentName = "claude"
-	AgentCodex  AgentName = "codex"
-	AgentGemini AgentName = "gemini"
+	AgentClaude      AgentName = "claude"
+	AgentCodex       AgentName = "codex"
+	AgentAntigravity AgentName = "antigravity"
 )
 
 // AllAgents is the canonical order — used for stable iteration and
 // table-column ordering.
-var AllAgents = []AgentName{AgentClaude, AgentCodex, AgentGemini}
+var AllAgents = []AgentName{AgentClaude, AgentCodex, AgentAntigravity}
 
 // availabilityCache memoizes Available() results within a single
 // process. The codex probe shells out (~1s per call) and there are
@@ -35,9 +35,9 @@ var (
 //   - claude: binary on PATH (the `-p` invocation will fail loudly
 //     with a clear message if there's no auth).
 //   - codex:  `codex auth status` exits 0.
-//   - gemini: binary on PATH (similar to claude — `-p` errors if no auth).
+//   - antigravity: `agy` binary on PATH (similar to claude — `-p` errors if no auth).
 //
-// We deliberately don't probe deeper for claude/gemini because their
+// We deliberately don't probe deeper for claude/antigravity because their
 // auth state lives in user-config dirs that change across versions and
 // re-running a stale probe regularly produces false negatives.
 //
@@ -107,8 +107,8 @@ func probeAvailable(name AgentName) bool {
 		}
 		// codex has a clean auth-status command; use it.
 		return exec.Command("codex", "auth", "status").Run() == nil
-	case AgentGemini:
-		_, err := exec.LookPath("gemini")
+	case AgentAntigravity:
+		_, err := exec.LookPath("agy")
 		return err == nil
 	}
 	return false

@@ -268,7 +268,7 @@ overall, this code block also mentions overall but is fenced
 func TestStripDreamCoda_TakesLastOccurrence(t *testing.T) {
 	draft := `### 2. Cross-lens consensus
 
-Overall ranking: gemini's lens-fit lens converged with claude's gaps lens.
+Overall ranking: antigravity's lens-fit lens converged with claude's gaps lens.
 
 ### 3. Lens-unique findings
 

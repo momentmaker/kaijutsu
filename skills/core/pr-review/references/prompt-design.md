@@ -35,19 +35,19 @@ What codex tends to MISS:
 
 So codex.md cranks the skepticism dial: "stake your reputation on it" framing pushes for concrete failure modes, not vague speculation.
 
-## gemini.md — cross-file patterns + consistency
+## antigravity.md — cross-file patterns + consistency
 
-Gemini's strength is breadth + speed. It tends to do well at:
+Antigravity's strength is breadth + speed. It tends to do well at:
 - Style/idiom drift across many files
 - Naming consistency
 - Detecting "this pattern conflicts with the existing pattern in X"
 - Coverage gaps (which tests exist, which are missing)
 
-What gemini tends to MISS:
+What antigravity tends to MISS:
 - Deep reasoning about a single complex function
 - Subtle invariant violations
 
-So gemini.md leans into pattern-hunting and explicitly OKs an empty review when the diff is a one-off tactical fix.
+So antigravity.md leans into pattern-hunting and explicitly OKs an empty review when the diff is a one-off tactical fix.
 
 ## synthesizer.md — the actual product
 

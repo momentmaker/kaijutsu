@@ -108,7 +108,7 @@ KAIJUTSU_FINDINGS_DB=...) to scope the writes to a throwaway file.`,
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&provider, "provider", "", "provider name (e.g. claude / codex / gemini)")
+	cmd.Flags().StringVar(&provider, "provider", "", "provider name (e.g. claude / codex / antigravity)")
 	cmd.Flags().StringVar(&persona, "persona", "", "persona name (e.g. honest-persona)")
 	cmd.Flags().StringVar(&preset, "preset", "", "preset name (e.g. dream / pr-review)")
 	cmd.Flags().StringVar(&codebaseFP, "codebase", "", "codebase fingerprint")

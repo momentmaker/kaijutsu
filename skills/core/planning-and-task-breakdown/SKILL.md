@@ -120,7 +120,7 @@ Save to `docs/plans/YYYY-MM-DD-<short-slug>.md` (or wherever the project's plan 
 
 ### Step 7: Multi-agent review (DO NOT skip)
 
-Run the plan through `doc-review` — kaijutsu's universal QA gate that orchestrates claude / codex / gemini in parallel with prose-tuned lenses:
+Run the plan through `doc-review` — kaijutsu's universal QA gate that orchestrates claude / codex / antigravity in parallel with prose-tuned lenses:
 
 ```bash
 jutsu swarm doc-review docs/plans/<filename>.md
@@ -131,7 +131,7 @@ jutsu swarm doc-review docs/plans/<filename>.md
 Three lenses each surface different planning failure modes:
 - **claude (completeness)** — missing dependencies between slices, hidden state assumptions, unfalsifiable acceptance criteria
 - **codex (implementability)** — slices that are "actually two", vague success conditions, untestable steps
-- **gemini (consistency)** — drift from the parent spec, contradictions between slice acceptance and DAG order, missing references
+- **antigravity (consistency)** — drift from the parent spec, contradictions between slice acceptance and DAG order, missing references
 
 Iterate findings:
 1. Read the disagreement table FIRST. 1/N findings are conversation-starters worth investigating.

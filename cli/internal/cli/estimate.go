@@ -26,7 +26,7 @@ func runEstimate(stdout, stderr io.Writer, projectRoot string, preset *swarm.Pre
 		return err
 	}
 	if len(projections) == 0 {
-		return fmt.Errorf("--estimate: no providers resolved (legacy mode requires at least one of claude/codex/gemini installed; personas mode requires --personas with valid names)")
+		return fmt.Errorf("--estimate: no providers resolved (legacy mode requires at least one of claude/codex/antigravity installed; personas mode requires --personas with valid names)")
 	}
 
 	// Sort for deterministic output.

@@ -34,9 +34,9 @@ jutsu init && jutsu install pr-review    # try it
 
 ## The 30-second pitch
 
-**Skills are markdown.** A kaijutsu skill is one `SKILL.md` with YAML frontmatter — the [Anthropic Agent Skills](https://agentskills.io) open standard. Same file works in Claude Code, Codex CLI, Gemini CLI, and any agent that reads `.agents/skills/`.
+**Skills are markdown.** A kaijutsu skill is one `SKILL.md` with YAML frontmatter — the [Anthropic Agent Skills](https://agentskills.io) open standard. Same file works in Claude Code, Codex CLI, Antigravity CLI, and any agent that reads `.agents/skills/`.
 
-**Models are swappable.** Declare your providers in one `agents.yaml`: native CLIs (Claude / Codex / Gemini), HTTP endpoints (Anthropic / OpenAI / Google / DeepSeek / Qwen / Kimi / Mistral / any OpenAI-compat), local servers (Ollama / vLLM / llama.cpp), or MCP tool servers. Skills don't change when you swap models.
+**Models are swappable.** Declare your providers in one `agents.yaml`: native CLIs (Claude / Codex / Antigravity), HTTP endpoints (Anthropic / OpenAI / Google / DeepSeek / Qwen / Kimi / Mistral / any OpenAI-compat), local servers (Ollama / vLLM / llama.cpp), or MCP tool servers. Skills don't change when you swap models.
 
 **Routing learns from itself.** Every `jutsu swarm` run logs findings to a local SQLite store. Each finding's outcome (actioned / dismissed) becomes precision signal — per (provider, persona, codebase) tuple. `jutsu finding precision --recommend` tells you which models to dispatch to next time, on this codebase, for this preset. Your data, your disk, no SaaS.
 
@@ -52,7 +52,7 @@ jutsu init && jutsu install pr-review    # try it
    ┌──────────────────────────────────────────────────┐
    │  jutsu swarm pr-review --pr 42                   │
    │    ├─ claude    ──┐                              │
-   │    ├─ gemini    ──┼─► synthesizer                │
+   │    ├─ agy        ──┼─► synthesizer                │
    │    ├─ deepseek  ──┤   + disagreement table       │
    │    └─ your-llm  ──┘                              │
    └────────────────────────┬─────────────────────────┘
@@ -90,7 +90,7 @@ jutsu install pr-review                  # writes to .claude/skills/ AND .agents
 jutsu swarm pr-review --diff-from-branch main --post-comment
 ```
 
-Want the agent to do the setup for you instead? Paste this into Claude / Codex / Gemini:
+Want the agent to do the setup for you instead? Paste this into Claude / Codex / Antigravity:
 
 > "Set up kaijutsu from https://kaijutsu.dev in this repo. Run `jutsu init`, install `pr-review`, and tell me which API keys I still need."
 
@@ -137,7 +137,7 @@ The piece nothing else has. Every swarm run writes its findings to a local SQLit
 ```sh
 jutsu finding stats                              # frequency table by preset / severity
 jutsu finding precision                          # actioned-rate per (provider, persona)
-jutsu finding precision --recommend              # → "use --personas claude,gemini for this repo"
+jutsu finding precision --recommend              # → "use --personas claude,antigravity for this repo"
 jutsu finding export --format jsonl > db.jsonl   # your data, portable
 ```
 
@@ -154,7 +154,7 @@ providers:
   # Native CLIs — use the vendor's own login flow
   claude:    { driver: cli, cmd: claude }
   codex:     { driver: cli, cmd: codex }
-  gemini:    { driver: cli, cmd: gemini, args: ["--approval-mode", "plan"] }
+  antigravity: { driver: cli, cmd: agy }
 
   # HTTP — direct OpenAI-compat or Anthropic-compat, no harness in the path
   deepseek:
@@ -192,7 +192,7 @@ Per-project overrides live in `<repo>/.kaijutsu/agents.yaml`:
 
 ```yaml
 version: 1
-enabled: [claude, gemini, deepseek]    # which providers swarm dispatches to in this repo
+enabled: [claude, antigravity, deepseek]    # which providers swarm dispatches to in this repo
 overrides:
   deepseek: { model: deepseek-v4-pro } # use the heavier reasoning model for this project
 ```
@@ -207,7 +207,7 @@ personas:
     tags: [security]
 ```
 
-Then: `jutsu swarm pr-review --personas paranoid-claude,architecture-purist-gemini --pr 42`.
+Then: `jutsu swarm pr-review --personas paranoid-claude,architecture-purist-antigravity --pr 42`.
 
 Full driver reference + cost model + MCP examples in [`docs/multi-agent.md`](./docs/multi-agent.md).
 
@@ -230,7 +230,7 @@ version: 0.1.0
 license: MIT
 layout: flat
 description: "What this skill does, when to invoke it."
-agents: [claude, codex, gemini]
+agents: [claude, codex, antigravity]
 permissions:
   bash: false
   network: false

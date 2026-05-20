@@ -1,6 +1,6 @@
-# CLAUDE.md
+# ANTIGRAVITY.md
 
-Claude Code: read [`AGENTS.md`](./AGENTS.md). It is the canonical contributor guidance for any AI agent working on kaijutsu itself, kept in sync across Claude / Codex / Antigravity.
+Antigravity CLI (`agy`): read [`AGENTS.md`](./AGENTS.md). It is the canonical contributor guidance for any AI agent working on kaijutsu itself, kept in sync across Claude / Codex / Antigravity.
 
 The bullet that matters most when in doubt:
 

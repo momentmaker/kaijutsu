@@ -1,6 +1,6 @@
 ---
 name: doc-review
-description: Universal multi-agent QA gate for markdown artifacts (specs, plans, decision records, RFCs, design docs). Wraps `jutsu swarm doc-review <path>` to run claude / codex / gemini in parallel with tailored lenses (claude=completeness, codex=implementability, gemini=consistency), synthesizes into a single review with a disagreement table. Designed to be the final-review pass for any artifact-producing skill (spec-driven-development, planning-and-task-breakdown). Use when the user says "review this spec", "review this plan", "check this RFC", or invokes /doc-review. Prints to stdout; cache + replay supported.
+description: Universal multi-agent QA gate for markdown artifacts (specs, plans, decision records, RFCs, design docs). Wraps `jutsu swarm doc-review <path>` to run claude / codex / antigravity in parallel with tailored lenses (claude=completeness, codex=implementability, antigravity=consistency), synthesizes into a single review with a disagreement table. Designed to be the final-review pass for any artifact-producing skill (spec-driven-development, planning-and-task-breakdown). Use when the user says "review this spec", "review this plan", "check this RFC", or invokes /doc-review. Prints to stdout; cache + replay supported.
 ---
 
 # doc-review
@@ -24,7 +24,7 @@ doc-review/
 ├── prompts/
 │   ├── claude.md                completeness lens
 │   ├── codex.md                 implementability lens
-│   ├── gemini.md                consistency lens
+│   ├── antigravity.md                consistency lens
 │   ├── synthesizer.md           cluster + render markdown
 │   └── debate.md                Pass-2 critique template
 ├── references/
@@ -86,7 +86,7 @@ jutsu swarm doc-review --replay <key>
 - API/CLI/data-shape claims that contradict the rest of the document
 - Numerical thresholds, timeouts, or limits left unquantified
 
-**gemini — consistency**
+**antigravity — consistency**
 - Phrases or terms used differently in different sections
 - References to other documents/sections/issues that don't resolve
 - Contradictions between locked-decisions tables and stage-detail sections

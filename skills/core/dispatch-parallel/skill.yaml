@@ -6,7 +6,7 @@ description: "Fan out N independent tasks to parallel subagents, collect, synthe
 homepage: https://kaijutsu.dev/skills/dispatch-parallel
 repository: https://github.com/momentmaker/kaijutsu
 tags: [primitive, parallelism, subagents]
-agents: [claude, codex, gemini]
+agents: [claude, codex, antigravity]
 permissions:
   bash: false
   network: false

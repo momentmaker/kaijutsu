@@ -9,7 +9,7 @@ Three canonical files define a kaijutsu skill ecosystem:
 JSON Schema files are in [`schemas/`](./schemas/). The descriptions below are the human reference; the schemas are authoritative.
 
 > **Why this is simpler than you'd expect**
-> Claude Code, OpenAI Codex CLI, and Google Gemini CLI all converge on the [Anthropic Agent Skills](https://agentskills.io) open standard: a directory `<name>/SKILL.md` with a YAML frontmatter block (`name`, `description`). Codex and Gemini both read `.agents/skills/<name>/`; Claude reads `.claude/skills/<name>/`. So a kaijutsu skill is just a single `SKILL.md` plus the metadata wrapper described here. See [`docs/multi-agent.md`](./docs/multi-agent.md) for source citations.
+> Claude Code, OpenAI Codex CLI, and Google Antigravity CLI all converge on the [Anthropic Agent Skills](https://agentskills.io) open standard: a directory `<name>/SKILL.md` with a YAML frontmatter block (`name`, `description`). Codex and Antigravity both read `.agents/skills/<name>/`; Claude reads `.claude/skills/<name>/`. So a kaijutsu skill is just a single `SKILL.md` plus the metadata wrapper described here. See [`docs/multi-agent.md`](./docs/multi-agent.md) for source citations.
 
 ---
 
@@ -72,7 +72,7 @@ homepage: https://kaijutsu.dev/skills/pr-review     # optional
 repository: https://github.com/momentmaker/kaijutsu # optional
 tags: [git, review, pull-request]                   # optional, used by `jutsu search`
 
-agents: [claude, codex, gemini]          # required, list of supported agents
+agents: [claude, codex, antigravity]          # required, list of supported agents
 
 permissions:                             # required
   bash: true                             # skill executes shell commands
@@ -99,7 +99,7 @@ trust:                                   # optional
 - **`agents`**: only agents listed here will be installed when a user runs `jutsu install`. The intersection of `kaijutsu.json:agents` and `skill.yaml:agents` determines actual install targets.
 - **`permissions`**: declared upfront so the CLI can prompt before install.
   - `fs-write: false` — read-only.
-  - `fs-write: scoped` — writes are limited to the user's project tree and the agent state directories (`~/.claude/`, `~/.codex/`, `~/.gemini/`, `~/.agents/`), but not arbitrary system paths.
+  - `fs-write: scoped` — writes are limited to the user's project tree and the agent state directories (`~/.claude/`, `~/.codex/`, `~/.agy/`, `~/.agents/`), but not arbitrary system paths.
   - `fs-write: full` — unrestricted writes anywhere on disk.
 
 There is no `entry:` field. The CLI installs the entire skill directory and the agent picks up `SKILL.md` automatically. Use `overrides/<agent>/` for rare per-agent splits.
@@ -125,7 +125,7 @@ Lives at the root of any project that uses kaijutsu. Created by `jutsu init`.
 }
 ```
 
-- **`agents`** is auto-detected by `jutsu init` based on which agent config dirs exist (`~/.claude`, `~/.codex`, `~/.gemini`). User can edit.
+- **`agents`** is auto-detected by `jutsu init` based on which agent config dirs exist (`~/.claude`, `~/.codex`, `~/.agy`). User can edit.
 - **`dependencies`** uses semver ranges. `jutsu install <skill>` adds an entry here.
 - **`registry.default`** is the canonical kaijutsu monorepo. **`registry.extra`** allows additional registries (community forks, private mirrors).
 
@@ -183,7 +183,7 @@ Pinned, reproducible resolution. Committed to source control. Updated by `jutsu 
 | Family | User scope | Project scope |
 | ------ | ---------- | ------------- |
 | Claude Code | `~/.claude/skills/<name>/` | `<project>/.claude/skills/<name>/` |
-| Codex + Gemini | `~/.agents/skills/<name>/` | `<project>/.agents/skills/<name>/` |
+| Codex + Antigravity | `~/.agents/skills/<name>/` | `<project>/.agents/skills/<name>/` |
 
 A single write to `~/.agents/skills/` covers both Codex and Gemini, per the [Agent Skills standard](https://agentskills.io). Claude Code is the only agent that needs its own directory.
 
@@ -203,7 +203,7 @@ Per-repo configuration for `jutsu swarm pr-review`. The `allow-multi-model` fiel
 allow-multi-model: true
 
 # Optional overrides — all default to the CLI flag values otherwise.
-agents: [claude, codex, gemini]   # subset to use; empty = all available
+agents: [claude, codex, antigravity]   # subset to use; empty = all available
 mode: quick                        # quick | full
 max_cost_usd: 1.00                 # warn-then-abort estimate cap
 exclude_paths:                     # paths to strip from the diff

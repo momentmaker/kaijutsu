@@ -80,7 +80,7 @@ docs/specs/YYYY-MM-DD-<short-slug>.md
 
 ### Step 6: Multi-agent review (DO NOT skip)
 
-Run the spec through `doc-review` — kaijutsu's universal QA gate that orchestrates claude / codex / gemini in parallel with prose-tuned lenses (completeness, implementability, consistency):
+Run the spec through `doc-review` — kaijutsu's universal QA gate that orchestrates claude / codex / antigravity in parallel with prose-tuned lenses (completeness, implementability, consistency):
 
 ```bash
 jutsu swarm doc-review docs/specs/<filename>.md

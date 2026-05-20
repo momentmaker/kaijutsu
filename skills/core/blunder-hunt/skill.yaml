@@ -6,7 +6,7 @@ description: "Multi-pass adversarial critique. Run a skeptic review N times in f
 homepage: https://kaijutsu.dev/skills/blunder-hunt
 repository: https://github.com/momentmaker/kaijutsu
 tags: [primitive, review, adversarial]
-agents: [claude, codex, gemini]
+agents: [claude, codex, antigravity]
 deps:
   skills:
     - dispatch-parallel@^0.2

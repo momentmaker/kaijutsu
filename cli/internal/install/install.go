@@ -94,7 +94,7 @@ func Remove(installRoot, skillName string, agents []string) error {
 	return nil
 }
 
-// destinations dedupes per family — claude has its own dir, codex+gemini share .agents/.
+// destinations dedupes per family — claude has its own dir, codex+antigravity share .agents/.
 func destinations(root string, agents []string) []string {
 	seen := map[string]bool{}
 	var out []string

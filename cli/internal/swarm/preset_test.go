@@ -41,7 +41,7 @@ func TestPromptFor_FallsBackToClaudeWhenNoDefault(t *testing.T) {
 		Name: "test",
 		PerAgent: map[AgentName]string{
 			AgentClaude: "claude-template",
-			AgentGemini: "gemini-template",
+			AgentAntigravity: "antigravity-template",
 		},
 	}
 	got, ok := p.PromptFor("deepseek")
@@ -61,17 +61,17 @@ func TestPromptFor_NoMatchReturnsFalse(t *testing.T) {
 	}
 }
 
-// TestGeminiPromptToolsPolicyInSync asserts that the TOOLS POLICY
+// TestAntigravityPromptToolsPolicyInSync asserts that the TOOLS POLICY
 // paragraph is byte-identical between the in-binary fallback prompt
-// (preset.PerAgent[AgentGemini] in preset.go) and the skill-shipped
-// override (skills/core/<preset>/prompts/gemini.md).
+// (preset.PerAgent[AgentAntigravity] in preset.go) and the skill-shipped
+// override (skills/core/<preset>/prompts/antigravity.md).
 //
 // Background: Phase-2 round-3 review caught us editing one without
 // the other. This test fails fast on drift so the next editor
 // notices at CI rather than at runtime. Generalized in Stage 7
-// polish to cover every preset that ships a gemini.md in its
+// polish to cover every preset that ships an antigravity.md in its
 // skill — drift surface scales with preset count.
-func TestGeminiPromptToolsPolicyInSync(t *testing.T) {
+func TestAntigravityPromptToolsPolicyInSync(t *testing.T) {
 	const marker = "CRITICAL — TOOLS POLICY"
 	cases := []struct {
 		preset *Preset
@@ -88,18 +88,18 @@ func TestGeminiPromptToolsPolicyInSync(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.preset.Name, func(t *testing.T) {
-			inBinary := tc.preset.PerAgent[AgentGemini]
+			inBinary := tc.preset.PerAgent[AgentAntigravity]
 			if !strings.Contains(inBinary, marker) {
-				t.Fatalf("%s: in-binary gemini prompt missing TOOLS POLICY marker — did the prompt get rewritten?", tc.preset.Name)
+				t.Fatalf("%s: in-binary antigravity prompt missing TOOLS POLICY marker — did the prompt get rewritten?", tc.preset.Name)
 			}
 
-			skillPath := skillPromptPathFromTest(t, tc.skillDir, "gemini.md")
+			skillPath := skillPromptPathFromTest(t, tc.skillDir, "antigravity.md")
 			disk, err := os.ReadFile(skillPath)
 			if err != nil {
 				t.Skipf("skill prompt not at expected dev-checkout path %s: %v (skipping; CI/dev usually has it)", skillPath, err)
 			}
 			if !strings.Contains(string(disk), marker) {
-				t.Fatalf("%s: disk gemini prompt missing TOOLS POLICY marker at %s", tc.preset.Name, skillPath)
+				t.Fatalf("%s: disk antigravity prompt missing TOOLS POLICY marker at %s", tc.preset.Name, skillPath)
 			}
 
 			inBinaryPolicy := extractParagraphFrom(inBinary, marker)

@@ -12,7 +12,7 @@ Your job:
    steps first, big-invariant steps last. When reviewers disagree
    on ordering, surface that as a callout.
 3. For each step, include a "Risk:" line drawn from the codex
-   reviewer's reasoning (or synthesized from claude+gemini if
+   reviewer's reasoning (or synthesized from claude+antigravity if
    codex didn't flag it).
 
 Output a markdown report:

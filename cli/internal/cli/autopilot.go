@@ -94,18 +94,18 @@ gates:
 
 brainstorm:
   preset: dream
-  personas: [brainstorm-creative-claude, architecture-purist-gemini, claim-auditor-claude]
+  personas: [brainstorm-creative-claude, architecture-purist-antigravity, claim-auditor-claude]
   mode: full
   lenses: all                # 8-lens canonical cycle
 
 spec_review:
   preset: doc-review
-  personas: [architecture-purist-gemini, paranoid-security-claude, claim-auditor-claude]
+  personas: [architecture-purist-antigravity, paranoid-security-claude, claim-auditor-claude]
   mode: quick
 
 plan_review:
   preset: doc-review
-  personas: [perf-purist-codex, claim-auditor-claude, cross-file-gemini]
+  personas: [perf-purist-codex, claim-auditor-claude, cross-file-antigravity]
   mode: quick
 
 per_stage_polish:
@@ -113,7 +113,7 @@ per_stage_polish:
 
 final_review:
   preset: pr-review
-  personas: [paranoid-security-claude, architecture-purist-gemini, perf-purist-codex, claim-auditor-claude]
+  personas: [paranoid-security-claude, architecture-purist-antigravity, perf-purist-codex, claim-auditor-claude]
   mode: full
   strict: true
 

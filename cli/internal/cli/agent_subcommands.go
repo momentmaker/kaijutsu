@@ -55,7 +55,7 @@ func newAgentAddCmd() *cobra.Command {
 
 Two paths:
 - catalog: 'jutsu agent add deepseek' — uses the vendored default
-  config for the named provider (currently claude/codex/gemini).
+  config for the named provider (currently claude/codex/antigravity).
 - non-catalog: 'jutsu agent add <name> --driver http --protocol ...'
   — fully user-supplied. All driver-specific flags are optional but
   the loader will reject the resulting entry if required fields for
@@ -87,7 +87,7 @@ Two paths:
 	cmd.Flags().StringVar(&baseURL, "base-url", "", "http driver: API base URL")
 	cmd.Flags().StringVar(&model, "model", "", "http driver: model name")
 	cmd.Flags().StringVar(&apiKeyEnv, "api-key-env", "", "http / cli-compat driver: env-var name holding the API key")
-	cmd.Flags().StringVar(&baseCLI, "base-cli", "", "cli-compat driver: underlying CLI to wrap (claude | codex | gemini)")
+	cmd.Flags().StringVar(&baseCLI, "base-cli", "", "cli-compat driver: underlying CLI to wrap (claude | codex | antigravity)")
 	cmd.Flags().StringSliceVar(&envPairs, "env", nil, "cli-compat driver: literal env override KEY=VALUE (repeatable)")
 	cmd.Flags().StringSliceVar(&envKeyP, "env-key", nil, "cli-compat driver: indirect env VAR=ENV_NAME — VAR is set on child to value of ENV_NAME at invoke (repeatable)")
 	return cmd
@@ -235,7 +235,7 @@ func toggleEnabled(out io.Writer, name string, enable bool) error {
 		}
 		// First-time enable on an empty list seeds the legacy v0.5
 		// mix to avoid the "agent add deepseek + agent enable
-		// deepseek silently dropped my claude/codex/gemini" UX trap.
+		// deepseek silently dropped my claude/codex/antigravity" UX trap.
 		// Resolve was reading an absent enabled list as "fall back to
 		// legacy mix"; the moment the user wrote a single entry, the
 		// legacy mix evaporated. Now the first enable explicitly

@@ -234,7 +234,7 @@ func TestRemoveFromProject_DropsProviderAndEnabled(t *testing.T) {
 		t.Fatal(err)
 	}
 	yamlIn := `version: 1
-enabled: [claude, deepseek, gemini]
+enabled: [claude, deepseek, antigravity]
 providers:
   deepseek:
     driver: http

@@ -1,6 +1,6 @@
 ---
 name: security-audit
-description: Multi-agent security audit. Runs claude / codex / gemini in parallel through three CVSS-aligned lenses (claude=auth+data flow, codex=injection+priv-esc, gemini=dep+supply-chain). Wraps `jutsu swarm security-audit --pr <n>` (diff mode) or `jutsu swarm security-audit <path>...` (files mode). Output is a threat model with attack vectors + prioritized mitigations. --full mode defaults ON because security findings are high-stakes; the Pass-2 debate filters false-positives that would erode trust. Use when the user says "audit this for security", "threat model", "check for vulns", "review the auth flow", or invokes /security-audit.
+description: Multi-agent security audit. Runs claude / codex / antigravity in parallel through three CVSS-aligned lenses (claude=auth+data flow, codex=injection+priv-esc, antigravity=dep+supply-chain). Wraps `jutsu swarm security-audit --pr <n>` (diff mode) or `jutsu swarm security-audit <path>...` (files mode). Output is a threat model with attack vectors + prioritized mitigations. --full mode defaults ON because security findings are high-stakes; the Pass-2 debate filters false-positives that would erode trust. Use when the user says "audit this for security", "threat model", "check for vulns", "review the auth flow", or invokes /security-audit.
 ---
 
 # security-audit
@@ -13,7 +13,7 @@ Adversarial multi-agent security review. Different from pr-review's broad code r
 |---|---|---|
 | **Auth + data flow** | claude | Trust boundaries, identity propagation, authorization vs authentication, data flow to sinks |
 | **Injection + priv-esc** | codex | SQL/command/XSS injection, path traversal, SSRF, race conditions, crypto misuse |
-| **Dependency + supply-chain** | gemini | Known CVEs, version drift, transitive trust, license compatibility |
+| **Dependency + supply-chain** | antigravity | Known CVEs, version drift, transitive trust, license compatibility |
 
 Severity vocab (CVSS-aligned):
 - **critical** — RCE, auth bypass, privilege escalation
@@ -78,11 +78,11 @@ Persists `allow-multi-model: true` to `.kaijutsu/security-audit.yaml`. Diffs/fil
 #### SQL injection in search query — high (2/3 reviewers)
 - ...
 
-#### Stale dependency with active CVE — medium (1/3 reviewers, gemini)
+#### Stale dependency with active CVE — medium (1/3 reviewers, antigravity)
 - ...
 
 ### Disagreements
-- 1/N rows are usually the highest-leverage. The gemini-only finding
+- 1/N rows are usually the highest-leverage. The antigravity-only finding
   on the stale dep would have been missed by single-lens review.
 ```
 

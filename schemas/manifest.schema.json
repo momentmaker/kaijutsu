@@ -10,7 +10,7 @@
     "version": { "const": 1 },
     "agents": {
       "type": "array",
-      "items": { "enum": ["claude", "codex", "gemini"] },
+      "items": { "enum": ["claude", "codex", "antigravity"] },
       "minItems": 1,
       "uniqueItems": true
     },

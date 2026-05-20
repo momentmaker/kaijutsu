@@ -15,7 +15,7 @@ import (
 // The resolveScriptPath function maps a skill-relative script path
 // (e.g. "hooks/dcg.sh") to the absolute path on disk where install.go
 // has just placed the script. Different agents see different paths
-// because Claude installs to .claude/skills/<name>/ and Codex/Gemini
+// because Claude installs to .claude/skills/<name>/ and Codex/Antigravity
 // install to .agents/skills/<name>/.
 func InstallForSkill(stderr io.Writer, installRoot string, agents []string, sk *skill.Skill) error {
 	if len(sk.Hooks) == 0 {
@@ -36,12 +36,12 @@ func InstallForSkill(stderr io.Writer, installRoot string, agents []string, sk *
 			script = func(name, h string) string {
 				return filepath.Join(installRoot, ".claude", "skills", name, h)
 			}
-		case "codex", "gemini":
-			// Both codex + gemini share .agents/skills/<name>/
+		case "codex", "antigravity":
+			// Both codex + antigravity share .agents/skills/<name>/
 			if ag == "codex" {
 				agent = Codex
 			} else {
-				agent = Gemini
+				agent = Antigravity
 			}
 			script = func(name, h string) string {
 				return filepath.Join(installRoot, ".agents", "skills", name, h)
@@ -59,8 +59,8 @@ func InstallForSkill(stderr io.Writer, installRoot string, agents []string, sk *
 			err = InstallClaude(installRoot, entries)
 		case Codex:
 			err = InstallCodex(installRoot, entries)
-		case Gemini:
-			err = InstallGemini(installRoot, entries)
+		case Antigravity:
+			err = InstallAntigravity(installRoot, entries)
 		}
 		if err != nil {
 			return Errorf("install hooks for %s on %s: %w", sk.Name, ag, err)
@@ -79,8 +79,8 @@ func RemoveForSkill(installRoot string, agents []string, skillName string) error
 			err = RemoveClaude(installRoot, skillName)
 		case "codex":
 			err = RemoveCodex(installRoot, skillName)
-		case "gemini":
-			err = RemoveGemini(installRoot, skillName)
+		case "antigravity":
+			err = RemoveAntigravity(installRoot, skillName)
 		}
 		if err != nil {
 			return Errorf("remove hooks for %s on %s: %w", skillName, ag, err)

@@ -19,14 +19,14 @@ func TestTranslate(t *testing.T) {
 	}{
 		{"pre-tool-use", Claude, "PreToolUse", true},
 		{"pre-tool-use", Codex, "PreToolUse", true},
-		{"pre-tool-use", Gemini, "BeforeTool", true},
+		{"pre-tool-use", Antigravity, "BeforeTool", true},
 		{"session-end", Claude, "Stop", true},
-		{"session-end", Gemini, "SessionEnd", true},
+		{"session-end", Antigravity, "SessionEnd", true},
 		{"notification", Codex, "", false},
 		{"permission-request", Claude, "", false},
 		{"permission-request", Codex, "PermissionRequest", true},
 		{"before-agent", Claude, "", false},
-		{"before-agent", Gemini, "BeforeAgent", true},
+		{"before-agent", Antigravity, "BeforeAgent", true},
 		{"bogus-event", Claude, "", false},
 	}
 	for _, c := range cases {
@@ -167,7 +167,7 @@ func TestCodexTOMLRoundTrip(t *testing.T) {
 	}
 }
 
-func TestGeminiRoundTripWithMillisecondTimeout(t *testing.T) {
+func TestAntigravityRoundTripWithMillisecondTimeout(t *testing.T) {
 	root := t.TempDir()
 	entries := []Entry{{
 		SkillName: "dcg",
@@ -175,10 +175,10 @@ func TestGeminiRoundTripWithMillisecondTimeout(t *testing.T) {
 		NativeEvent: "BeforeTool",
 		ScriptPath:  "/abs/dcg.sh",
 	}}
-	if err := InstallGemini(root, entries); err != nil {
+	if err := InstallAntigravity(root, entries); err != nil {
 		t.Fatal(err)
 	}
-	body, _ := os.ReadFile(filepath.Join(root, ".gemini", "settings.json"))
+	body, _ := os.ReadFile(filepath.Join(root, ".gemini", "antigravity-cli", "settings.json"))
 	var got map[string]interface{}
 	json.Unmarshal(body, &got)
 	before := got["hooks"].(map[string]interface{})["BeforeTool"].([]interface{})
@@ -186,7 +186,7 @@ func TestGeminiRoundTripWithMillisecondTimeout(t *testing.T) {
 		t.Fatalf("expected 1 entry, got %d", len(before))
 	}
 	entry := before[0].(map[string]interface{})
-	// Gemini timeout is in ms — 5s -> 5000ms.
+	// Antigravity timeout is in ms — 5s -> 5000ms.
 	if entry["timeout"].(float64) != 5000 {
 		t.Errorf("expected timeout 5000ms, got %v", entry["timeout"])
 	}

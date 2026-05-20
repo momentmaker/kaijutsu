@@ -6,7 +6,7 @@ description: "Pre-implementation interrogation primitive. Walks any topic throug
 homepage: https://kaijutsu.dev/skills/dream
 repository: https://github.com/momentmaker/kaijutsu
 tags: [primitive, exploration, ideation, pre-implementation]
-agents: [claude, codex, gemini]
+agents: [claude, codex, antigravity]
 shared: [prompts]
 permissions:
   bash: true

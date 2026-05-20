@@ -13,7 +13,7 @@ func TestResolvePersonaProvider_PhaseAPerPersona(t *testing.T) {
 		PerPersona: map[string][]string{"honest": {"claude"}},
 	}
 	got, err := ResolvePersonaProvider(hint, "honest",
-		[]string{"claude", "codex", "gemini"},
+		[]string{"claude", "codex", "antigravity"},
 		nil, false)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -27,11 +27,11 @@ func TestResolvePersonaProvider_PhaseAPerPersona(t *testing.T) {
 // per-persona miss → default fallback (Phase A step 2).
 func TestResolvePersonaProvider_PhaseADefaultFallback(t *testing.T) {
 	hint := &RoutingHint{
-		PerPersona: map[string][]string{"other": {"gemini"}},
+		PerPersona: map[string][]string{"other": {"antigravity"}},
 		Default:    []string{"codex"},
 	}
 	got, err := ResolvePersonaProvider(hint, "honest",
-		[]string{"claude", "codex", "gemini"},
+		[]string{"claude", "codex", "antigravity"},
 		nil, false)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -46,16 +46,16 @@ func TestResolvePersonaProvider_PhaseADefaultFallback(t *testing.T) {
 // empty → use the registry callback.
 func TestResolvePersonaProvider_PhaseARegistryFallback(t *testing.T) {
 	registry := func(persona string) []string {
-		return []string{"gemini"}
+		return []string{"antigravity"}
 	}
 	got, err := ResolvePersonaProvider(nil, "honest",
-		[]string{"claude", "codex", "gemini"},
+		[]string{"claude", "codex", "antigravity"},
 		registry, false)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	if got != "gemini" {
-		t.Errorf("got %q, want gemini (registry fallback)", got)
+	if got != "antigravity" {
+		t.Errorf("got %q, want antigravity (registry fallback)", got)
 	}
 }
 
@@ -65,10 +65,10 @@ func TestResolvePersonaProvider_PhaseARegistryFallback(t *testing.T) {
 func TestResolvePersonaProvider_PhaseBPicksFirstAvailable(t *testing.T) {
 	hint := &RoutingHint{
 		PerPersona: map[string][]string{
-			"honest": {"gemini", "codex", "claude"}, // walk in order
+			"honest": {"antigravity", "codex", "claude"}, // walk in order
 		},
 	}
-	// gemini unavailable; codex available → pick codex.
+	// antigravity unavailable; codex available → pick codex.
 	got, err := ResolvePersonaProvider(hint, "honest",
 		[]string{"codex", "claude"},
 		nil, false)
@@ -84,10 +84,10 @@ func TestResolvePersonaProvider_PhaseBPicksFirstAvailable(t *testing.T) {
 // strict=true path: no preferred provider available → error.
 func TestResolvePersonaProvider_StrictRoutingHardFails(t *testing.T) {
 	hint := &RoutingHint{
-		PerPersona: map[string][]string{"honest": {"gemini"}},
+		PerPersona: map[string][]string{"honest": {"antigravity"}},
 	}
 	_, err := ResolvePersonaProvider(hint, "honest",
-		[]string{"claude", "codex"}, // no gemini
+		[]string{"claude", "codex"}, // no antigravity
 		nil, true)
 	if err == nil {
 		t.Fatal("expected strict=true to hard-fail")
@@ -104,10 +104,10 @@ func TestResolvePersonaProvider_StrictRoutingHardFails(t *testing.T) {
 // non-strict drop: returns ("", nil) so caller can drop + warn.
 func TestResolvePersonaProvider_NonStrictDropsPersona(t *testing.T) {
 	hint := &RoutingHint{
-		PerPersona: map[string][]string{"honest": {"gemini"}},
+		PerPersona: map[string][]string{"honest": {"antigravity"}},
 	}
 	got, err := ResolvePersonaProvider(hint, "honest",
-		[]string{"claude", "codex"}, // no gemini
+		[]string{"claude", "codex"}, // no antigravity
 		nil, false)
 	if err != nil {
 		t.Errorf("non-strict should not error; got: %v", err)
@@ -147,13 +147,13 @@ func TestResolvePersonaProvider_EmptyListsEquivalent(t *testing.T) {
 // TestResolvePersonaProvider_NilHintFallsThrough covers the nil-hint
 // case: skills without a routing block at all.
 func TestResolvePersonaProvider_NilHintFallsThrough(t *testing.T) {
-	registry := func(persona string) []string { return []string{"gemini"} }
+	registry := func(persona string) []string { return []string{"antigravity"} }
 	got, err := ResolvePersonaProvider(nil, "any",
-		[]string{"gemini"}, registry, false)
+		[]string{"antigravity"}, registry, false)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	if got != "gemini" {
+	if got != "antigravity" {
 		t.Errorf("nil hint should use registry; got %q", got)
 	}
 }

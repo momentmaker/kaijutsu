@@ -20,7 +20,7 @@ func newSwarmCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "swarm <preset>",
 		Short: "Run multiple agents in parallel against a shared task and aggregate findings",
-		Long: `Orchestrate claude / codex / gemini in parallel against the same input
+		Long: `Orchestrate claude / codex / antigravity in parallel against the same input
 and aggregate their structured findings.
 
 Phase 2 ships pr-review (diff input) and doc-review (markdown
@@ -195,14 +195,14 @@ func newSwarmBrainstormCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "brainstorm <prompt>",
 		Short: "Multi-agent ideation against a free-form prompt",
-		Long: `Run claude / codex / gemini in parallel against a single
+		Long: `Run claude / codex / antigravity in parallel against a single
 free-form prompt with three different ideation lenses, then return
 a ranked list of options.
 
 Lenses:
   - claude: long-horizon framing — ideal end-state, ambition gap
   - codex:  code-pattern grounding — concrete patterns + libraries
-  - gemini: cross-domain analogy — adjacent fields + prior art
+  - antigravity: cross-domain analogy — adjacent fields + prior art
 
 The prompt is a positional arg. Quote it. Cap is 8 KB; longer
 prompts abort with a "shorten" hint.
@@ -415,7 +415,7 @@ func newSwarmRefactorPlanCmd() *cobra.Command {
 each contribute steps from a different angle:
   - claude: architectural decomposition (right new shape)
   - codex:  stepwise risk (order minimizes regression risk)
-  - gemini: pattern consistency (matches existing repo idioms)
+  - antigravity: pattern consistency (matches existing repo idioms)
 
 Output: ordered step list with per-step risk assessment + ordering-
 disagreement callouts.
@@ -469,7 +469,7 @@ func newSwarmSecurityAuditCmd() *cobra.Command {
 		Long: `Audit a code change OR file set for security issues. Three lenses:
   - claude: auth + data flow (boundaries, identity, trust)
   - codex:  injection + privilege escalation (concrete attack vectors)
-  - gemini: dependency + supply-chain (third-party trust, version drift)
+  - antigravity: dependency + supply-chain (third-party trust, version drift)
 
 Severity vocabulary is CVSS-aligned (critical | high | medium | low |
 informational), distinct from pr-review's blocker/issue/minor/info.
@@ -722,7 +722,7 @@ func runReplay(ctx context.Context, cmd *cobra.Command, projectRoot, presetName,
 	}
 	synthAgent := pickSynthesizer(synthesizer, results)
 	if synthAgent == nil {
-		return errors.New("--replay: no synthesizer agent available; install claude/codex/gemini first")
+		return errors.New("--replay: no synthesizer agent available; install claude/codex/antigravity first")
 	}
 	// --replay re-uses cached results without invoking models. We
 	// intentionally pass empty SynthOpts so replays remain reproducible

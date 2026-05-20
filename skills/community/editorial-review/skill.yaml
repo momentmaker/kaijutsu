@@ -8,7 +8,7 @@ homepage: https://kaijutsu.dev/skills/editorial-review
 repository: https://github.com/momentmaker/kaijutsu
 tags: [editorial, writing, essay, prose, review, ai-tells, voice]
 
-agents: [claude, codex, gemini]
+agents: [claude, codex, antigravity]
 
 permissions:
   bash: true

@@ -1,13 +1,14 @@
 # Multi-agent skill installation
 
-How `jutsu` installs skills for the three CLI agents kaijutsu currently targets:
-Claude Code, OpenAI Codex CLI, and Google Gemini CLI.
+> [!WARNING]
+> **In transition (2026-05).** Google announced gemini-cli sunset on **2026-06-18**; the successor is **Antigravity CLI** (binary `agy`, install via `curl -fsSL https://antigravity.google/cli/install.sh | bash`). kaijutsu now binds the third CLI slot to `agy` rather than `gemini`. Sections below describing the **Gemini CLI** layout (`.gemini/` paths, `gemini-extension.json`, etc.) are kept as historical reference for users still on gemini-cli — they do **not** reflect Antigravity CLI's plugin format, which is still being characterized. Tracking issue: validate `.agy/` paths + plugin/skill format against Antigravity docs before relying on this file. See also [README](../README.md) for current install instructions.
 
-The good news: all three converge on the **Anthropic Agent Skills** layout
-(`<name>/SKILL.md` directory with YAML frontmatter), and Codex and Gemini both
-explicitly recognize `.agents/skills/` as a cross-tool alias path. kaijutsu can
-install one canonical skill folder and have it picked up by every agent with
-near-zero per-agent special-casing.
+How `jutsu` installs skills for the three CLI agents kaijutsu currently targets:
+Claude Code, OpenAI Codex CLI, and Google Antigravity CLI (formerly Gemini CLI).
+
+The good news (claude/codex baseline still holds): all converge on the **Anthropic Agent Skills** layout
+(`<name>/SKILL.md` directory with YAML frontmatter), and Codex
+explicitly recognizes `.agents/skills/` as a cross-tool alias path. kaijutsu installs one canonical skill folder for those two agents. Antigravity's parity with `.agents/skills/` is **unverified** — first-run testing will tell.
 
 ## Claude Code (baseline, already supported)
 

@@ -163,7 +163,7 @@ dispatch:
 	for _, e := range evals {
 		// Race-safe slot acquisition: the SAME select must cover
 		// both abort + semaphore so we don't block on a full
-		// semaphore while abortCh is closed (gemini pr-review
+		// semaphore while abortCh is closed (antigravity pr-review
 		// finding). If abortCh fires while waiting, exit cleanly.
 		wg.Add(1)
 		select {

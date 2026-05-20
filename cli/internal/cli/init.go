@@ -43,7 +43,7 @@ manage agent docs separately).`,
 
 			active := detect.Active()
 			if len(active) == 0 {
-				fmt.Fprintln(cmd.ErrOrStderr(), "warning: no AI agent config dirs detected (~/.claude, ~/.codex, ~/.gemini); defaulting to [claude]")
+				fmt.Fprintln(cmd.ErrOrStderr(), "warning: no AI agent config dirs detected (~/.claude, ~/.codex, ~/.antigravity); defaulting to [claude]")
 				active = []string{"claude"}
 			}
 

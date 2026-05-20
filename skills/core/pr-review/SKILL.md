@@ -1,6 +1,6 @@
 ---
 name: pr-review
-description: Adversarial multi-agent pull-request review. Runs claude / codex / gemini in parallel via `jutsu swarm pr-review`, each with a tailored prompt (claude=architecture+correctness, codex=edge cases, gemini=cross-file patterns), then synthesizes into a single markdown review with a disagreement table. --full mode adds a Pass-2 round-robin debate where agents critique each other. --strict adds a lie-to-them filter on the synthesis draft. Posts the result as a PR comment when --post-comment is set; edits prior kaijutsu-pr-review comments in place. Use when the user says "review this PR", "code review", "review the diff", "look at PR #N", or invokes /pr-review. Refuses to send the diff unless `.kaijutsu/pr-review.yaml` has `allow-multi-model: true` (first-run prompt persists this). Hard-blocks on a pre-flight secrets scan unless --allow-secrets is passed.
+description: Adversarial multi-agent pull-request review. Runs claude / codex / antigravity in parallel via `jutsu swarm pr-review`, each with a tailored prompt (claude=architecture+correctness, codex=edge cases, antigravity=cross-file patterns), then synthesizes into a single markdown review with a disagreement table. --full mode adds a Pass-2 round-robin debate where agents critique each other. --strict adds a lie-to-them filter on the synthesis draft. Posts the result as a PR comment when --post-comment is set; edits prior kaijutsu-pr-review comments in place. Use when the user says "review this PR", "code review", "review the diff", "look at PR #N", or invokes /pr-review. Refuses to send the diff unless `.kaijutsu/pr-review.yaml` has `allow-multi-model: true` (first-run prompt persists this). Hard-blocks on a pre-flight secrets scan unless --allow-secrets is passed.
 ---
 
 # pr-review
@@ -20,7 +20,7 @@ pr-review/
 ├── prompts/
 │   ├── claude.md                "high-level architecture + correctness"
 │   ├── codex.md                 "be brutal on edge cases"
-│   ├── gemini.md                "cross-file pattern hunt + consistency"
+│   ├── antigravity.md                "cross-file pattern hunt + consistency"
 │   ├── synthesizer.md           cluster, dedupe, render markdown
 │   └── debate.md                Pass-2 critique template
 ├── references/
@@ -31,7 +31,7 @@ pr-review/
     └── interpreting-output.md   what each section of the comment means
 ```
 
-The CLI loads prompts from this skill's `prompts/` directory at runtime; if a file is missing it falls back to the built-in default. So authors can override one lens (e.g. add domain-specific rules to gemini.md) without recompiling jutsu.
+The CLI loads prompts from this skill's `prompts/` directory at runtime; if a file is missing it falls back to the built-in default. So authors can override one lens (e.g. add domain-specific rules to antigravity.md) without recompiling jutsu.
 
 ## How agents collaborate
 
@@ -105,7 +105,7 @@ When the user says "review this PR", "/pr-review #42", or similar:
 
 ### Disagreement Table
 
-| Finding | Severity | Consensus | claude | codex | gemini |
+| Finding | Severity | Consensus | claude | codex | antigravity |
 |---|---|---|---|---|---|
 | `auth.go:88` — race in token refresh | blocker | 3/3 | ✓ (blocker) | ✓ (issue) | ✓ (blocker) |
 | `cache.go:42` — TTL not honored | issue | 1/3 | — | ✓ (issue) | — |
@@ -117,13 +117,13 @@ The change introduces ... (synthesizer's prose) ...
 
 ### Disagreements
 
-- **cache.go:42** — codex flagged this as a TTL bug; claude+gemini did not.
+- **cache.go:42** — codex flagged this as a TTL bug; claude+antigravity did not.
   Worth a closer look.
 
 <details><summary>Per-agent stats</summary>
 - **claude** — 4 finding(s) · 14s · est $0.082
 - **codex** — 5 finding(s) · 18s · est $0.094
-- **gemini** — 3 finding(s) · 9s · est $0.041
+- **antigravity** — 3 finding(s) · 9s · est $0.041
 </details>
 
 <!-- kaijutsu-pr-review:run-id=20260505T153022Z sha=abc1234 -->
@@ -135,7 +135,7 @@ Per-repo `.kaijutsu/pr-review.yaml`:
 
 ```yaml
 allow-multi-model: true              # required gate
-agents: [claude, gemini]             # opt-out of codex if not auth'd
+agents: [claude, antigravity]             # opt-out of codex if not auth'd
 mode: quick                          # default mode for `/pr-review`
 max_cost_usd: 1.00
 exclude_paths: [pnpm-lock.yaml, vendor/]

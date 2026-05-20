@@ -115,7 +115,7 @@ func anyFindings(results []swarm.AgentResult) bool {
 // providerMap builds the {persona-name: provider-name} map RecordRun
 // uses to populate the `provider` column. Legacy v0.5 mode passes nil
 // adapters; RecordRun then falls back to using the agent name as the
-// provider, which is correct for native CLIs (claude/codex/gemini).
+// provider, which is correct for native CLIs (claude/codex/antigravity).
 func providerMap(personas []*swarm.PersonaAdapter) map[string]string {
 	if len(personas) == 0 {
 		return nil

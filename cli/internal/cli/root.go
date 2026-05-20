@@ -11,7 +11,7 @@ func NewRootCmd() *cobra.Command {
 	root := &cobra.Command{
 		Use:           "jutsu",
 		Short:         "Open agent skills + multi-model swarm for any LLM",
-		Long:          "kaijutsu's CLI. Author and install agent skills, dispatch swarm runs across any LLM (Claude, Codex, Gemini, DeepSeek, OpenAI-compat, local Ollama, MCP servers), and route the next run based on a local findings store that learns which models you can trust.",
+		Long:          "kaijutsu's CLI. Author and install agent skills, dispatch swarm runs across any LLM (Claude, Codex, Antigravity, DeepSeek, OpenAI-compat, local Ollama, MCP servers), and route the next run based on a local findings store that learns which models you can trust.",
 		Version:       Version,
 		SilenceUsage:  true,
 		SilenceErrors: false,

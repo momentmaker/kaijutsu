@@ -14,7 +14,7 @@ func TestClusterFindings_ConsensusAndOrder(t *testing.T) {
 		{Agent: "codex", Findings: []Finding{
 			{Severity: SeverityIssue, File: "a.go", LineRange: "10", Summary: "race (different wording)"},
 		}},
-		{Agent: "gemini", Findings: []Finding{
+		{Agent: "antigravity", Findings: []Finding{
 			{Severity: SeverityIssue, File: "c.go", LineRange: "5", Summary: "lone wolf"},
 		}},
 	}
@@ -50,16 +50,16 @@ func TestClusterFindings_ConsensusAndOrder(t *testing.T) {
 
 func TestRenderDisagreementTable_OrdersAgentsCanonically(t *testing.T) {
 	results := []AgentResult{
-		{Agent: "gemini", Findings: []Finding{{Severity: SeverityIssue, File: "x", LineRange: "1", Summary: "s"}}},
+		{Agent: "antigravity", Findings: []Finding{{Severity: SeverityIssue, File: "x", LineRange: "1", Summary: "s"}}},
 		{Agent: "claude", Findings: []Finding{{Severity: SeverityIssue, File: "x", LineRange: "1", Summary: "s"}}},
 	}
 	clusters := clusterFindings(results, nil)
 	table := renderDisagreementTable(results, clusters, nil, false)
-	// claude column header must appear before gemini (canonical order).
+	// claude column header must appear before antigravity (canonical order).
 	cIdx := strings.Index(table, "claude")
-	gIdx := strings.Index(table, "gemini")
+	gIdx := strings.Index(table, "antigravity")
 	if cIdx < 0 || gIdx < 0 || cIdx > gIdx {
-		t.Fatalf("expected claude before gemini, got table:\n%s", table)
+		t.Fatalf("expected claude before antigravity, got table:\n%s", table)
 	}
 }
 
@@ -122,8 +122,8 @@ func TestRenderDisagreementTable_EmptyOnNoClusters(t *testing.T) {
 // TestClusterFindings_ConsensusAndOrder above for that contract.
 func TestClusterFindings_WeightedSortPromotesHighWeight(t *testing.T) {
 	results := []AgentResult{
-		// gemini high-weight: lone finding at issue severity.
-		{Agent: "gemini", Findings: []Finding{
+		// antigravity high-weight: lone finding at issue severity.
+		{Agent: "antigravity", Findings: []Finding{
 			{Severity: SeverityIssue, File: "z.go", LineRange: "1", Summary: "lone trustworthy"},
 		}},
 		// claude+codex low-weight chorus at same severity, different file.
@@ -135,7 +135,7 @@ func TestClusterFindings_WeightedSortPromotesHighWeight(t *testing.T) {
 		}},
 	}
 	weights := map[string]float64{
-		"gemini": 1.0, // perfect record
+		"antigravity": 1.0, // perfect record
 		"claude": 0.10,
 		"codex":  0.10,
 	}
@@ -143,11 +143,11 @@ func TestClusterFindings_WeightedSortPromotesHighWeight(t *testing.T) {
 	if len(clusters) != 2 {
 		t.Fatalf("want 2 clusters, got %d", len(clusters))
 	}
-	// gemini's weighted_consensus = 1.0; claude+codex chorus = 0.20.
-	// So gemini's cluster should sort FIRST despite ConsensusOf=1
+	// antigravity's weighted_consensus = 1.0; claude+codex chorus = 0.20.
+	// So antigravity's cluster should sort FIRST despite ConsensusOf=1
 	// vs the chorus's ConsensusOf=2.
 	if clusters[0].Key != "z.go:1" {
-		t.Errorf("expected gemini's z.go:1 first under weighted sort, got %s",
+		t.Errorf("expected antigravity's z.go:1 first under weighted sort, got %s",
 			clusters[0].Key)
 	}
 }
@@ -164,13 +164,13 @@ func TestClusterFindings_ColdStartMatchesV06(t *testing.T) {
 		{Agent: "codex", Findings: []Finding{
 			{Severity: SeverityIssue, File: "a.go", LineRange: "1", Summary: "chorus"},
 		}},
-		{Agent: "gemini", Findings: []Finding{
+		{Agent: "antigravity", Findings: []Finding{
 			{Severity: SeverityIssue, File: "a.go", LineRange: "1", Summary: "chorus"},
 		}},
 	}
 	// nil weights and all-cold weights MUST produce same ordering.
 	nilSorted := clusterFindings(results, nil)
-	coldSorted := clusterFindings(results, map[string]float64{"claude": 1.0, "codex": 1.0, "gemini": 1.0})
+	coldSorted := clusterFindings(results, map[string]float64{"claude": 1.0, "codex": 1.0, "antigravity": 1.0})
 	if nilSorted[0].Key != coldSorted[0].Key {
 		t.Errorf("cold-start divergence: nil=%s, all-cold=%s",
 			nilSorted[0].Key, coldSorted[0].Key)

@@ -34,23 +34,23 @@ What codex tends to MISS:
 
 codex.md cranks the practitioner's-hat dial: real names, real failure modes.
 
-## gemini — cross-domain analogy
+## antigravity — cross-domain analogy
 
-Gemini's strength is breadth across domains. Best at:
+Antigravity's strength is breadth across domains. Best at:
 - "How does ops/SRE / queueing theory / distrib-systems / biology solve this shape of problem?"
 - Citing RFCs, papers, well-known products
 - Counterintuitive options the inside-this-codebase view would miss
 
-What gemini tends to MISS:
+What antigravity tends to MISS:
 - Tight code-grounded recommendations (it's biased toward concepts vs implementations)
 
-gemini.md leans into adjacent-fields + prior-art.
+antigravity.md leans into adjacent-fields + prior-art.
 
 ## Synthesizer
 
 Different shape from pr-review/doc-review's synthesizer. Brainstorm's synthesizer:
 
-1. Groups options that point at the same APPROACH across reviewers (cross-lens convergence is signal — if claude AND codex AND gemini independently proposed Redis sliding-window, that's a strong signal).
+1. Groups options that point at the same APPROACH across reviewers (cross-lens convergence is signal — if claude AND codex AND antigravity independently proposed Redis sliding-window, that's a strong signal).
 2. Ranks by severity (recommended > alternative > risky > speculative) with reviewer-count as tiebreaker.
 3. Surfaces "cross-cuts" — themes that appeared in multiple options. Often more useful than any single option.
 

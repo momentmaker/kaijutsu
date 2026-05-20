@@ -41,7 +41,7 @@ type Preset struct {
 	// provider that has no PerAgent entry (e.g. deepseek/glm/kimi —
 	// any new HTTP provider added via `jutsu agent add`). Without
 	// this, the persona pipeline errored out for non-claude/codex/
-	// gemini providers per the Stage 3b note. Falls back to PerAgent
+	// antigravity providers per the Stage 3b note. Falls back to PerAgent
 	// [AgentClaude] when DefaultPrompt is empty.
 	DefaultPrompt string
 	// Synthesizer prompt template. Consumes the marshalled per-agent
@@ -73,7 +73,7 @@ type Preset struct {
 // template exists — caller errors with a clear hint.
 //
 // Resolution order (highest priority first):
-//  1. PerAgent[AgentName(name)]   — exact match for claude/codex/gemini
+//  1. PerAgent[AgentName(name)]   — exact match for claude/codex/antigravity
 //  2. DefaultPrompt               — preset's generalist fallback
 //  3. PerAgent[AgentClaude]       — implicit fallback for presets
 //                                    that didn't author a Default
@@ -147,12 +147,12 @@ findings you'd stake your reputation on.
 
 %s
 `,
-		// Note: the gemini lens prompt is duplicated in
-		// skills/core/pr-review/prompts/gemini.md so the skill-shipped
+		// Note: the antigravity lens prompt is duplicated in
+		// skills/core/pr-review/prompts/antigravity.md so the skill-shipped
 		// override stays in sync with this fallback. When editing
 		// either, update the other in the same change. A future polish
 		// pass should add a sync-test asserting the bytes match.
-		AgentGemini: prReviewSharedHeader + `
+		AgentAntigravity: prReviewSharedHeader + `
 
 You are doing a cross-file pattern + consistency review. Focus on:
 - Diff introducing a pattern that conflicts with existing patterns
@@ -285,7 +285,7 @@ DIFF:`
 // record, RFC, design doc) with three lenses tuned for prose:
 //   - claude: completeness — missing edge cases, ambiguity, scope creep
 //   - codex: implementability — vague success criteria, unspecified rules
-//   - gemini: consistency — drift, broken refs, contradictions across sections
+//   - antigravity: consistency — drift, broken refs, contradictions across sections
 // File field maps to the markdown path; line_range maps to line numbers
 // in the file. Severity vocab + assembler reuse pr-review's flow —
 // only the per-agent lens prompts differ.
@@ -326,7 +326,7 @@ guidance. Only emit findings you'd flag in a design review.
 
 %s
 `,
-		AgentGemini: docReviewSharedHeader + `
+		AgentAntigravity: docReviewSharedHeader + `
 
 You are doing a consistency + cross-reference review. Focus on:
 - Phrases or terms used differently in different sections
@@ -357,12 +357,12 @@ solely from the ARTIFACT text and return ONLY a JSON array of findings.
 // user prompt. Each agent contributes from a different angle:
 //   - claude: long-horizon framing (ideal end-state, ambition)
 //   - codex: code-pattern grounding (concrete patterns, libraries)
-//   - gemini: cross-domain analogy (related fields, prior art)
+//   - antigravity: cross-domain analogy (related fields, prior art)
 // Severity vocab is brainstorm-specific (recommended | alternative |
 // risky | speculative) — recommended = high-confidence go, speculative
 // = wild idea worth recording. The synthesizer ranks options across
 // reviewers; the disagreement table shows which agent proposed what
-// (so the user sees "claude proposed Redis sliding-window; gemini
+// (so the user sees "claude proposed Redis sliding-window; antigravity
 // proposed CRDT-based limiter — both 1/3").
 var brainstormPreset = Preset{
 	Name:          "brainstorm",
@@ -404,7 +404,7 @@ or-hobby tier).
 
 %s
 `,
-		AgentGemini: brainstormSharedHeader + `
+		AgentAntigravity: brainstormSharedHeader + `
 
 You are doing cross-domain analogy. Focus on:
 - How adjacent fields (other languages, ops/SRE, networking, distrib-
@@ -483,7 +483,7 @@ PEERS' OPTIONS:
 // problems through three lenses:
 //   - claude: auth + data flow (boundaries, identity, trust)
 //   - codex: injection + privilege escalation (concrete attack vectors)
-//   - gemini: dependency + supply-chain (third-party trust, version drift)
+//   - antigravity: dependency + supply-chain (third-party trust, version drift)
 // Severity vocab is CVSS-aligned (critical | high | medium | low |
 // informational). The preset accepts either an InputDiff (PR mode
 // via --pr / --diff-from-branch) OR an InputFiles (positional file
@@ -542,7 +542,7 @@ adjacent code path).
 
 %s
 `,
-		AgentGemini: securityAuditSharedHeader + `
+		AgentAntigravity: securityAuditSharedHeader + `
 
 You are doing a dependency + supply-chain review. Focus on:
 - Third-party dependencies introduced or upgraded — known CVEs?
@@ -671,7 +671,7 @@ INPUT:`
 // different angle:
 //   - claude: architectural decomposition (right new shape)
 //   - codex: stepwise risk (order minimizes regression)
-//   - gemini: pattern consistency (matches existing repo idioms)
+//   - antigravity: pattern consistency (matches existing repo idioms)
 // Severity vocab is brainstorm-style (recommended | alternative |
 // risky | speculative) — 4 levels per locked-decisions. The
 // synthesizer assembles an ordered step list with risk per step.
@@ -719,7 +719,7 @@ regression-prone — needs explicit test coverage), speculative
 
 %s
 `,
-		AgentGemini: refactorPlanSharedHeader + `
+		AgentAntigravity: refactorPlanSharedHeader + `
 
 You are doing pattern consistency. Focus on:
 - Existing patterns in the repo the refactor should follow (don't
@@ -759,7 +759,7 @@ Your job:
    steps first, big-invariant steps last. When reviewers disagree
    on ordering, surface that as a callout.
 3. For each step, include a "Risk:" line drawn from the codex
-   reviewer's reasoning (or synthesized from claude+gemini if
+   reviewer's reasoning (or synthesized from claude+antigravity if
    codex didn't flag it).
 
 Output a markdown report:
@@ -905,7 +905,7 @@ ARTIFACT:`
 //
 //   1. skills/core/dream/prompts/{base,extras}/*.md — used by the
 //      STANDALONE skill ("/dream <topic>" invoked inside a Claude /
-//      Codex / Gemini session). Output schema is the lens-shaped
+//      Codex / Antigravity session). Output schema is the lens-shaped
 //      JSON: {lens, thought, load_bearing, confidence}. Loaded by the
 //      agent harness directly, not by jutsu.
 //

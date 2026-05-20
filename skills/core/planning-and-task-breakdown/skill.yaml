@@ -9,7 +9,7 @@ repository: https://github.com/momentmaker/kaijutsu
 upstream: https://github.com/addyosmani/agent-skills/blob/main/skills/planning-and-task-breakdown
 tags: [planning, tasks, breakdown, plan, addyosmani]
 
-agents: [claude, codex, gemini]
+agents: [claude, codex, antigravity]
 
 permissions:
   bash: true

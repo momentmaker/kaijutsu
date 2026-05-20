@@ -22,7 +22,7 @@ Each agent platform has its own per-project memory directory. Skills should abst
 | --- | --- |
 | Claude Code | `~/.claude/projects/<encoded-project-path>/memory/` |
 | Codex CLI | `~/.codex/projects/<encoded-project-path>/memory/` (or platform equivalent) |
-| Gemini CLI | `~/.gemini/projects/<encoded-project-path>/memory/` (or platform equivalent) |
+| Antigravity CLI | `~/.antigravity/projects/<encoded-project-path>/memory/` (or platform equivalent) |
 
 `<encoded-project-path>` is the URL-safe encoding of the project's absolute filesystem path. Each agent runtime auto-resolves this differently; kaijutsu skills should call into the agent's native primitive when available rather than computing the path manually.
 
@@ -32,7 +32,7 @@ Each agent platform has its own per-project memory directory. Skills should abst
 |---|---|---|
 | Claude Code | Yes — auto-memory writes to `~/.claude/projects/<encoded>/memory/` | n/a |
 | OpenAI Codex CLI | Partial — stateful via `AGENTS.md` but no per-project key/value store | Write to `<project>/.kaijutsu/memory/` and document path in AGENTS.md |
-| Google Gemini CLI | Partial — extensions can ship state but no first-class memory primitive | Same fallback as Codex |
+| Google Antigravity CLI | Partial — extensions can ship state but no first-class memory primitive | Same fallback as Codex |
 
 When writing skills that touch memory, prefer the native primitive when present, and fall back to a project-local `.kaijutsu/memory/` directory otherwise. Document the chosen path in the project's `AGENTS.md` so subsequent sessions can find it.
 

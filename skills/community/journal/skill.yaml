@@ -6,7 +6,7 @@ description: "Periodic development journal — read git/PRs/decisions/memory; pr
 homepage: https://kaijutsu.dev/skills/journal
 repository: https://github.com/momentmaker/kaijutsu
 tags: [journal, retrospective, reporting]
-agents: [claude, codex, gemini]
+agents: [claude, codex, antigravity]
 permissions:
   bash: true
   network: true

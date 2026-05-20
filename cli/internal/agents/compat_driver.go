@@ -8,7 +8,7 @@ import (
 	"sync"
 )
 
-// cliCompatDriver invokes a native CLI (claude / codex / gemini) with
+// cliCompatDriver invokes a native CLI (claude / codex / antigravity) with
 // override env vars injected — the canonical use case is "route claude
 // CLI through DeepSeek by setting ANTHROPIC_BASE_URL". This is opt-in
 // per spec D6 because the harness CLI may still leak metadata to its
@@ -17,12 +17,12 @@ import (
 // that risk explicit.
 //
 // Constructed via BuildDriver from a Provider with Driver=DriverCLICompat.
-// BaseCLI names the underlying CLI (claude/codex/gemini); Env declares
+// BaseCLI names the underlying CLI (claude/codex/antigravity); Env declares
 // literal env vars; EnvKey declares env-var indirection (header value
 // is the NAME of an env var to look up at invoke time).
 type cliCompatDriver struct {
 	provider *Provider
-	base     AgentDriver // claude/codex/gemini singleton — dispatches the actual CLI
+	base     AgentDriver // claude/codex/antigravity singleton — dispatches the actual CLI
 }
 
 func (d *cliCompatDriver) Name() string       { return d.provider.Name }

@@ -34,19 +34,19 @@ What codex tends to MISS:
 
 codex.md cranks the implementer's-hat dial: "stake your reputation on it" framing pushes for concrete gaps, not vague concerns.
 
-## gemini — consistency
+## antigravity — consistency
 
-Gemini's strength is breadth + cross-reference. It tends to do well at:
+Antigravity's strength is breadth + cross-reference. It tends to do well at:
 - Same term used differently across sections
 - References to other docs/sections that don't resolve
 - Heading hierarchy gaps
 - Drift between locked-decisions and stage-detail
 
-What gemini tends to MISS:
+What antigravity tends to MISS:
 - Deep reasoning about a single complex section
 - Subtle implementability gaps
 
-gemini.md leans into pattern-hunting and explicitly OKs an empty review when the artifact is internally consistent.
+antigravity.md leans into pattern-hunting and explicitly OKs an empty review when the artifact is internally consistent.
 
 ## Synthesizer
 

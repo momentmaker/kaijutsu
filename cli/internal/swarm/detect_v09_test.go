@@ -12,13 +12,13 @@ func TestIsAgentDisabledByEnv(t *testing.T) {
 		disabled bool
 	}{
 		{"", AgentClaude, false},
-		{"gemini", AgentGemini, true},
-		{"gemini", AgentClaude, false},
+		{"antigravity", AgentAntigravity, true},
+		{"antigravity", AgentClaude, false},
 		{"claude,codex", AgentClaude, true},
 		{"claude,codex", AgentCodex, true},
-		{"claude,codex", AgentGemini, false},
-		{"  gemini  ,  codex  ", AgentGemini, true}, // whitespace-tolerant
-		{"  gemini  ,  codex  ", AgentClaude, false},
+		{"claude,codex", AgentAntigravity, false},
+		{"  antigravity  ,  codex  ", AgentAntigravity, true}, // whitespace-tolerant
+		{"  antigravity  ,  codex  ", AgentClaude, false},
 		{"unknown", AgentClaude, false},
 	}
 	for _, tc := range cases {
@@ -35,8 +35,8 @@ func TestIsAgentDisabledByEnv(t *testing.T) {
 // the env-var short-circuits Available to false so dispatch + tests
 // can simulate "this agent isn't available".
 func TestAvailable_HonorsKaijutsuDisableAgents(t *testing.T) {
-	t.Setenv("KAIJUTSU_DISABLE_AGENTS", "gemini")
-	if Available(AgentGemini) {
-		t.Error("Available(gemini) should respect KAIJUTSU_DISABLE_AGENTS")
+	t.Setenv("KAIJUTSU_DISABLE_AGENTS", "antigravity")
+	if Available(AgentAntigravity) {
+		t.Error("Available(antigravity) should respect KAIJUTSU_DISABLE_AGENTS")
 	}
 }

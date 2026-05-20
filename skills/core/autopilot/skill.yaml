@@ -7,7 +7,7 @@ author: "rubberduck <zendosoul@gmail.com>"
 homepage: https://kaijutsu.dev/skills/autopilot
 repository: https://github.com/momentmaker/kaijutsu
 
-agents: [claude, codex, gemini]
+agents: [claude, codex, antigravity]
 
 shared: [references, runbooks]
 

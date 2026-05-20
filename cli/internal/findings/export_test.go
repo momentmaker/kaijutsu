@@ -28,7 +28,7 @@ func TestExportJSONL_Empty(t *testing.T) {
 func TestExportJSONL_OnePerLine(t *testing.T) {
 	rows := []Row{
 		{ID: 1, RunID: "r1", Preset: "pr-review", Provider: "claude", Persona: "default-claude", Severity: "issue", File: "a.go", LineRange: "1", Summary: "f1"},
-		{ID: 2, RunID: "r1", Preset: "pr-review", Provider: "gemini", Persona: "default-gemini", Severity: "minor", File: "b.go", LineRange: "2", Summary: "f2"},
+		{ID: 2, RunID: "r1", Preset: "pr-review", Provider: "antigravity", Persona: "default-antigravity", Severity: "minor", File: "b.go", LineRange: "2", Summary: "f2"},
 	}
 	var buf bytes.Buffer
 	if err := ExportJSONL(&buf, rows); err != nil {

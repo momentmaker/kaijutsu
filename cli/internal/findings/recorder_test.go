@@ -22,7 +22,7 @@ func TestRecordRun_HappyPath(t *testing.T) {
 			},
 		},
 		{
-			Agent: "default-gemini",
+			Agent: "default-antigravity",
 			Findings: []swarm.Finding{
 				{Severity: "issue", File: "main.go", LineRange: "5", Summary: "race"},
 			},
@@ -34,7 +34,7 @@ func TestRecordRun_HappyPath(t *testing.T) {
 		Preset:     "pr-review",
 		ProviderForPersona: map[string]string{
 			"paranoid-security-claude": "claude",
-			"default-gemini":           "gemini",
+			"default-antigravity":           "antigravity",
 		},
 	}
 
@@ -126,7 +126,7 @@ func TestRecordRun_SkipsErrors(t *testing.T) {
 
 	results := []swarm.AgentResult{
 		{Agent: "claude", Err: "rate limit"},
-		{Agent: "gemini", Findings: []swarm.Finding{
+		{Agent: "antigravity", Findings: []swarm.Finding{
 			{Severity: "info", File: "x.go", LineRange: "1", Summary: "ok"},
 		}},
 	}

@@ -6,7 +6,7 @@ description: "Mid-task scope mirror with cost-tier classification (plan/bead/cod
 homepage: https://kaijutsu.dev/skills/scope-check
 repository: https://github.com/momentmaker/kaijutsu
 tags: [workflow, focus, planning]
-agents: [claude, codex, gemini]
+agents: [claude, codex, antigravity]
 permissions:
   bash: true
   network: false

@@ -265,7 +265,7 @@ News / longform reporting. The New Yorker / Atlantic / Atavist. Clear, neutral, 
 ## Composes
 
 - [`deslop`](https://kaijutsu.dev/skills/deslop) — final user-facing-prose pass at Step 4
-- `jutsu swarm doc-review --personas claim-auditor-deepseek,architecture-purist-gemini` — optional multi-agent review on the same essay after this skill completes its passes
+- `jutsu swarm doc-review --personas claim-auditor-deepseek,architecture-purist-antigravity` — optional multi-agent review on the same essay after this skill completes its passes
 
 ## When NOT to use
 

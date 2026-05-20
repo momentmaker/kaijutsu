@@ -42,28 +42,32 @@ func (codexDriver) Invoke(ctx context.Context, prompt string, opts InvokeOpts) (
 	return runCLI(ctx, opts, "codex", []string{"-p"}, prompt)
 }
 
-// geminiDriver invokes `gemini --approval-mode plan -p`. For prompts
-// under argSafe bytes the entire prompt rides as the -p arg. For
-// larger prompts (real PR diffs easily exceed 64KB) we keep a stub
-// instruction in -p and pipe the bulk via stdin — Gemini's `-p` doc
-// states stdin is APPENDED to the prompt arg in non-interactive mode.
+// antigravityDriver invokes `agy -p`. For prompts under argSafe bytes
+// the entire prompt rides as the -p arg. For larger prompts (real PR
+// diffs easily exceed 64KB) we keep a stub instruction in -p and pipe
+// the bulk via stdin — assumes agy's `-p` follows the Go-flag
+// convention shared with gemini-cli where stdin is APPENDED to the
+// prompt arg in non-interactive mode. Verify on first live run.
 //
-// --approval-mode plan: read-only mode. Auto-approves reads, blocks
-// writes/shell. Without this, gemini's default approval-mode prompts
-// for confirmation on every tool call, blocking on stdin (no tty) and
-// ultimately timing out.
-type geminiDriver struct{}
+// agy's default `-p` mode is non-interactive print; unlike gemini-cli
+// it does not require an explicit --approval-mode flag to suppress
+// tool-call confirmation prompts. If swarm runs start blocking, add
+// --sandbox (safer than --dangerously-skip-permissions).
+//
+// gemini-cli sunset: 2026-06-18. Migrated to Antigravity CLI per
+// developers.googleblog.com transition notice.
+type antigravityDriver struct{}
 
-func (geminiDriver) Name() string       { return "gemini" }
-func (geminiDriver) Driver() DriverKind { return DriverCLI }
+func (antigravityDriver) Name() string       { return "antigravity" }
+func (antigravityDriver) Driver() DriverKind { return DriverCLI }
 
-func (geminiDriver) Invoke(ctx context.Context, prompt string, opts InvokeOpts) (Result, error) {
-	base := []string{"--approval-mode", "plan", "-p"}
+func (antigravityDriver) Invoke(ctx context.Context, prompt string, opts InvokeOpts) (Result, error) {
+	base := []string{"-p"}
 	if len(prompt) < argSafe {
-		return runCLI(ctx, opts, "gemini", append(base, prompt), "")
+		return runCLI(ctx, opts, "agy", append(base, prompt), "")
 	}
 	stub := "Read the full prompt + DIFF on stdin. Follow the instructions in it exactly. Return ONLY the JSON array described."
-	return runCLI(ctx, opts, "gemini", append(base, stub), prompt)
+	return runCLI(ctx, opts, "agy", append(base, stub), prompt)
 }
 
 // runCLI executes name with args and prompt piped to stdin. Returns
@@ -86,7 +90,7 @@ func runCLI(ctx context.Context, opts InvokeOpts, name string, args []string, st
 	// Build child env: strip nested-agent markers so the spawned CLI
 	// doesn't take a different code path when it detects it's running
 	// inside another agent's session. Empirically this is the
-	// difference between "claude/gemini works from inside Claude Code"
+	// difference between "claude/agy works from inside Claude Code"
 	// and "errors with no obvious cause" — both CLIs have logic that
 	// refuses or behaves differently when they see CLAUDECODE=1 etc.
 	parentEnv := stripNestedAgentEnv(os.Environ())
@@ -165,16 +169,18 @@ func runCLIOnce(ctx context.Context, name string, args []string, stdin string, e
 // accept that trade-off because (a) the parent ctx already enforces
 // per-agent timeout + opts.MaxBudgetUSD when set, (b) jutsu's swarm
 // pipeline already has aggregate --max-cost limits, and (c) the
-// failure mode being fixed (claude/gemini erroring inside Claude
+// failure mode being fixed (claude/agy erroring inside Claude
 // Code) was a hard regression with no workaround. If a future vendor
 // adds a recursion-protection feature jutsu wants to honor, gate
 // stripping behind a JUTSU_ALLOW_NESTED_AGENT=0 opt-out.
 //
 // Strip-list policy: exact-match for canonical session markers,
 // prefix-strip ONLY for "CLAUDE_CODE_" (clearly session-scoped
-// namespace). Avoid CODEX_/GEMINI_ prefix-strip because users put
-// real secrets there (CODEX_API_KEY, GEMINI_API_KEY). Future codex/
-// gemini session markers must be added explicitly.
+// namespace). Avoid CODEX_/ANTIGRAVITY_ prefix-strip because users put
+// real secrets there (CODEX_API_KEY, ANTIGRAVITY_API_KEY). Future codex/
+// agy session markers must be added explicitly. Legacy GEMINI_*
+// markers retained because users migrating from gemini-cli may still
+// have those vars set in their shell rc.
 func stripNestedAgentEnv(in []string) []string {
 	stripExact := map[string]struct{}{
 		"CLAUDECODE":             {},
@@ -186,6 +192,10 @@ func stripNestedAgentEnv(in []string) []string {
 		"GEMINI_SESSION":         {},
 		"GEMINI_SESSION_ID":      {},
 		"GEMINI_AGENT_SESSION":   {},
+		"ANTIGRAVITY_SESSION":    {},
+		"ANTIGRAVITY_SESSION_ID": {},
+		"AGY_SESSION":            {},
+		"AGY_SESSION_ID":         {},
 	}
 	stripPrefix := []string{
 		"CLAUDE_CODE_", // session-scoped namespace; no API_KEY collision
@@ -224,7 +234,7 @@ func stripNestedAgentEnv(in []string) []string {
 //
 // Permanent errors fail the same way twice; transient ones (subprocess
 // wait races, brief network blips, lockfile contention with a sibling
-// claude/gemini process) clear up on retry.
+// claude/agy process) clear up on retry.
 func isTransientCLIError(msg string) bool {
 	lower := strings.ToLower(msg)
 	switch {

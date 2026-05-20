@@ -1,6 +1,6 @@
 # AGENTS.md — Contributor guidance for AI coding agents
 
-This file is read by OpenAI Codex CLI and is the canonical contributor guidance for any AI agent working **on** kaijutsu itself (not for users of the published `jutsu` CLI). Claude Code reads `CLAUDE.md` and Gemini CLI reads `GEMINI.md`; both point here.
+This file is read by OpenAI Codex CLI and is the canonical contributor guidance for any AI agent working **on** kaijutsu itself (not for users of the published `jutsu` CLI). Claude Code reads `CLAUDE.md`. (Gemini CLI sunset 2026-06-18 — Antigravity CLI is the successor.)
 
 ## Project at a glance
 
@@ -17,7 +17,7 @@ kaijutsu is an MIT-licensed, agent-agnostic registry and CLI for AI coding agent
 
 - 17 core skills + 6 community + 8 third-party registry pointers (~46 catalog entries on kaijutsu.dev).
 - 6 swarm presets shipping: pr-review, doc-review, brainstorm, refactor-plan, security-audit, dream.
-- v0.6 multi-provider swarm (driver abstraction + agents.yaml + personas) — claude/codex/gemini cli + http (deepseek/glm/kimi/ollama-local) + cli-compat + mcp.
+- v0.6 multi-provider swarm (driver abstraction + agents.yaml + personas) — claude/codex/antigravity cli + http (deepseek/glm/kimi/ollama-local) + cli-compat + mcp.
 - v0.7 quality fingerprinting (local SQLite store at `~/.kaijutsu/findings.db`) + confidence-weighted synthesizer.
 - v0.8 dream skill + swarm dream preset (pre-implementation interrogation through 4-8 cognitive lenses).
 - v0.8.1 patch ships dream Wild lens %!s(MISSING) fix + 28→17 core curation.
@@ -56,7 +56,7 @@ If a new command / output / behavior fails the lens, push back. The Why-line in 
 - **Skill layout**: see [`SCHEMA.md`](./SCHEMA.md). Single `SKILL.md` per skill (Anthropic Agent Skills standard, works for all three target agents). Per-agent overrides only when behavior must genuinely differ — drop them under `overrides/<agent>/`.
 - **Install paths**:
   - Claude Code → `.claude/skills/<name>/`
-  - Codex + Gemini → `.agents/skills/<name>/` (single write covers both)
+  - Codex + Antigravity → `.agents/skills/<name>/` (single write covers both)
 - **License**: MIT (or compatible: BSD-2/3, ISC, Apache-2.0). Each source file should carry an SPDX header where applicable.
 - **CLI language**: Go. Single static binary. Reuse `cobra`, `spf13/afero`, `go-git`. Shell out to `cosign` for verification, `gh` for PR creation, `goreleaser` for cross-compile + Homebrew tap.
 - **Trust**: core skills are Sigstore-signed in CI on tag. Authors do not self-assert `signed: true` in `skill.yaml`; the CLI derives it from a successful `cosign verify-blob` against the declared `expected-signer`.
@@ -83,7 +83,7 @@ If a new command / output / behavior fails the lens, push back. The Why-line in 
 - **Don't add `kind: hook` artifacts to the install path.** Hooks are agent-specific (Claude Code's PreToolUse, Codex's etc.). Users wire them themselves; jutsu doesn't auto-install hook configs. dcg ships in `skills/community/` as documentation + script the user manually wires.
 - **Don't reach for MCP server work yet.** v0.8 dream session on the MCP idea (2026-05-07) found the premise ("self-discovery via MCP") was partially false (users still hand-configure MCP per client). Status quo (CLI + AGENTS.md fragment + JSON outputs) reaches more clients with less risk. Revisit in 6-12 months when MCP protocol stabilizes.
 - **Don't conflate `kaijutsu.json` with `.kaijutsu/agents.yaml`.** Different files, different scopes:
-  - `kaijutsu.json` (root, JSON) = which agent platforms (claude/codex/gemini) the project ships skills for + skill dependencies + lockfile.
+  - `kaijutsu.json` (root, JSON) = which agent platforms (claude/codex/antigravity) the project ships skills for + skill dependencies + lockfile.
   - `.kaijutsu/agents.yaml` (subdir, YAML) = swarm provider catalog (deepseek/glm/kimi/etc.) + persona declarations. Loaded by `jutsu swarm`.
 
 ## Recent design decisions worth knowing
@@ -91,5 +91,5 @@ If a new command / output / behavior fails the lens, push back. The Why-line in 
 - **agent-first, human-friendly** (this AGENTS.md, 2026-05-07): every output format auto-flips JSON-on-pipe / pretty-on-TTY. `jutsu describe` exists for fresh-agent self-discovery. `jutsu init` writes the AGENTS.md fragment.
 - **dream skill + swarm dream preset** (v0.8.0, see `docs/specs/2026-05-07-v0.8.0-dream-skill-and-preset.md`): pre-implementation interrogation through 8 lenses. First dream-of-self caught a real bug in the dream prompt template (recursive correctness check works).
 - **Quality fingerprinting** (v0.7.0, see `docs/specs/2026-05-06-v0.7.0-quality-fingerprinting.md`): per-(provider, persona, preset, codebase) precision tracking via local SQLite. Synthesizer downweights noisy tuples on next swarm.
-- **Multi-provider swarm** (v0.6.0, see `docs/specs/2026-05-05-v0.6.0-multi-provider-agents.md`): driver abstraction + agents.yaml + personas. Not locked to claude/codex/gemini anymore.
+- **Multi-provider swarm** (v0.6.0, see `docs/specs/2026-05-05-v0.6.0-multi-provider-agents.md`): driver abstraction + agents.yaml + personas. Not locked to claude/codex/antigravity anymore.
 - **Core skill curation** (v0.8.1, 2026-05-07): 28 → 17 core. Moved code-simplification / security-and-hardening / journal / session-retro / readme-update / dcg to `skills/community/`. Deleted decide / agent-doctor / multi-model-synth / lie-to-them / project-memory (the schema doc lives at `docs/project-memory.md`).

@@ -21,30 +21,30 @@ func (f *fakeDriver) Invoke(_ context.Context, _ string, _ agents.InvokeOpts) (a
 func TestPickPersonaSynthesizer_PrefersWantWhenMatchingAndNoErr(t *testing.T) {
 	personas := []*PersonaAdapter{
 		{PersonaName: "default-claude", Driver: &fakeDriver{name: "claude", kind: agents.DriverCLI}},
-		{PersonaName: "default-gemini", Driver: &fakeDriver{name: "gemini", kind: agents.DriverCLI}},
+		{PersonaName: "default-antigravity", Driver: &fakeDriver{name: "antigravity", kind: agents.DriverCLI}},
 	}
 	results := []AgentResult{
 		{Agent: "default-claude", Err: ""},
-		{Agent: "default-gemini", Err: ""},
+		{Agent: "default-antigravity", Err: ""},
 	}
-	got := PickPersonaSynthesizer("default-gemini", results, personas)
-	if got == nil || string(got.Name()) != "default-gemini" {
-		t.Errorf("synthesizer = %v, want default-gemini", got)
+	got := PickPersonaSynthesizer("default-antigravity", results, personas)
+	if got == nil || string(got.Name()) != "default-antigravity" {
+		t.Errorf("synthesizer = %v, want default-antigravity", got)
 	}
 }
 
 func TestPickPersonaSynthesizer_FallsBackOnWantErrored(t *testing.T) {
 	personas := []*PersonaAdapter{
 		{PersonaName: "default-claude", Driver: &fakeDriver{name: "claude", kind: agents.DriverCLI}},
-		{PersonaName: "default-gemini", Driver: &fakeDriver{name: "gemini", kind: agents.DriverCLI}},
+		{PersonaName: "default-antigravity", Driver: &fakeDriver{name: "antigravity", kind: agents.DriverCLI}},
 	}
 	results := []AgentResult{
 		{Agent: "default-claude", Err: "boom"},
-		{Agent: "default-gemini", Err: ""},
+		{Agent: "default-antigravity", Err: ""},
 	}
 	got := PickPersonaSynthesizer("default-claude", results, personas)
-	if got == nil || string(got.Name()) != "default-gemini" {
-		t.Errorf("synthesizer = %v, want default-gemini fallback", got)
+	if got == nil || string(got.Name()) != "default-antigravity" {
+		t.Errorf("synthesizer = %v, want default-antigravity fallback", got)
 	}
 }
 

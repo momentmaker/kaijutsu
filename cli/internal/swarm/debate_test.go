@@ -37,13 +37,13 @@ func TestPeerFindings_ExcludesSelfAndErrored(t *testing.T) {
 	all := []AgentResult{
 		{Agent: "claude", Findings: []Finding{{Summary: "c"}}},
 		{Agent: "codex", Err: "auth-failed"},
-		{Agent: "gemini", Findings: []Finding{{Summary: "g"}}},
+		{Agent: "antigravity", Findings: []Finding{{Summary: "g"}}},
 	}
 	peers := peerFindings(all, "claude")
 	if len(peers) != 1 {
-		t.Fatalf("want 1 peer (gemini only), got %d", len(peers))
+		t.Fatalf("want 1 peer (antigravity only), got %d", len(peers))
 	}
-	if peers[0]["agent"] != "gemini" {
-		t.Errorf("expected gemini, got %v", peers[0]["agent"])
+	if peers[0]["agent"] != "antigravity" {
+		t.Errorf("expected antigravity, got %v", peers[0]["agent"])
 	}
 }

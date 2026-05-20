@@ -50,7 +50,7 @@ func agentResult(agent string, n int) []swarm.AgentResult {
 func TestStats_CountsByPreset(t *testing.T) {
 	s := openStatsStore(t)
 	mustRecordRun(t, s, "r1", "fp1", "pr-review", agentResult("default-claude", 3))
-	mustRecordRun(t, s, "r2", "fp1", "polish", agentResult("default-gemini", 2))
+	mustRecordRun(t, s, "r2", "fp1", "polish", agentResult("default-antigravity", 2))
 	mustRecordRun(t, s, "r3", "fp1", "pr-review", agentResult("default-claude", 1))
 
 	rows, err := Stats(s, StatsOpts{By: StatsByPreset, AllCodebases: true})
@@ -91,7 +91,7 @@ func TestStats_HonorsSinceWindow(t *testing.T) {
 func TestStats_GroupByPersona(t *testing.T) {
 	s := openStatsStore(t)
 	mustRecordRun(t, s, "r1", "fp1", "pr-review", agentResult("default-claude", 2))
-	mustRecordRun(t, s, "r2", "fp1", "pr-review", agentResult("default-gemini", 5))
+	mustRecordRun(t, s, "r2", "fp1", "pr-review", agentResult("default-antigravity", 5))
 
 	rows, err := Stats(s, StatsOpts{By: StatsByPersona, AllCodebases: true})
 	if err != nil {
@@ -100,8 +100,8 @@ func TestStats_GroupByPersona(t *testing.T) {
 	if len(rows) != 2 {
 		t.Fatalf("rows = %d; want 2", len(rows))
 	}
-	if rows[0].Group != "default-gemini" || rows[0].Count != 5 {
-		t.Errorf("rows[0] = %+v; want {default-gemini 5}", rows[0])
+	if rows[0].Group != "default-antigravity" || rows[0].Count != 5 {
+		t.Errorf("rows[0] = %+v; want {default-antigravity 5}", rows[0])
 	}
 }
 

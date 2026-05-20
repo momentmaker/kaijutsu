@@ -30,7 +30,7 @@ func ValidateSHA(sha string) error {
 //	<projectRoot>/.kaijutsu/<preset.cachePathSegment()>/<key>/
 //	  claude.json
 //	  codex.json
-//	  gemini.json
+//	  antigravity.json
 //	  synthesis.md
 //
 // Used by --replay <key> to re-render markdown without re-calling

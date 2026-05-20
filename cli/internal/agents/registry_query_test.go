@@ -65,13 +65,13 @@ func TestBrowsePersonas_TagFilter(t *testing.T) {
 
 func TestBrowsePersonas_ProviderFilter(t *testing.T) {
 	r, g, p := makeResolved(t, nil, nil)
-	rows := BrowsePersonas(r, g, p, BrowseFilters{Provider: "gemini"})
+	rows := BrowsePersonas(r, g, p, BrowseFilters{Provider: "antigravity"})
 	if len(rows) == 0 {
-		t.Fatal("expected at least one gemini persona")
+		t.Fatal("expected at least one antigravity persona")
 	}
 	for _, row := range rows {
-		if row.Provider != "gemini" {
-			t.Errorf("persona %q surfaced under --provider gemini but provider = %q", row.Name, row.Provider)
+		if row.Provider != "antigravity" {
+			t.Errorf("persona %q surfaced under --provider antigravity but provider = %q", row.Name, row.Provider)
 		}
 	}
 }
@@ -126,7 +126,7 @@ func TestBrowsePersonas_ProjectShadowsHome(t *testing.T) {
 		"shared-name": {Provider: "claude", SystemPrompt: "from home"},
 	}
 	projectPersonas := map[string]*Persona{
-		"shared-name": {Provider: "gemini", SystemPrompt: "from project"},
+		"shared-name": {Provider: "antigravity", SystemPrompt: "from project"},
 	}
 	r, g, p := makeResolved(t, homePersonas, projectPersonas)
 	rows := BrowsePersonas(r, g, p, BrowseFilters{Source: "user:project"})
@@ -137,8 +137,8 @@ func TestBrowsePersonas_ProjectShadowsHome(t *testing.T) {
 			if row.Source != "user:project" {
 				t.Errorf("source = %q; want user:project", row.Source)
 			}
-			if row.Provider != "gemini" {
-				t.Errorf("provider = %q; want gemini (project should shadow home)", row.Provider)
+			if row.Provider != "antigravity" {
+				t.Errorf("provider = %q; want antigravity (project should shadow home)", row.Provider)
 			}
 			if row.SystemPrompt != "from project" {
 				t.Errorf("system_prompt mismatch; got %q", row.SystemPrompt)

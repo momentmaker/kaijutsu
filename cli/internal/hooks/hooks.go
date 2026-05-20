@@ -27,7 +27,7 @@ type Agent string
 const (
 	Claude Agent = "claude"
 	Codex  Agent = "codex"
-	Gemini Agent = "gemini"
+	Antigravity Agent = "antigravity"
 )
 
 // Entry is one hook-to-install mapping after canonical-event translation.
@@ -49,19 +49,19 @@ type Skipped struct {
 // EventTable maps the kaijutsu canonical event name to the agent-native
 // event name. An empty string means "this agent has no equivalent".
 var EventTable = map[string]map[Agent]string{
-	"pre-tool-use":          {Claude: "PreToolUse", Codex: "PreToolUse", Gemini: "BeforeTool"},
-	"post-tool-use":         {Claude: "PostToolUse", Codex: "PostToolUse", Gemini: "AfterTool"},
-	"session-start":         {Claude: "SessionStart", Codex: "SessionStart", Gemini: "SessionStart"},
-	"session-end":           {Claude: "Stop", Codex: "Stop", Gemini: "SessionEnd"},
-	"notification":          {Claude: "Notification", Codex: "", Gemini: "Notification"},
-	"user-prompt-submit":    {Claude: "UserPromptSubmit", Codex: "UserPromptSubmit", Gemini: ""},
-	"pre-compact":           {Claude: "PreCompact", Codex: "", Gemini: "PreCompress"},
-	"permission-request":    {Claude: "", Codex: "PermissionRequest", Gemini: ""},
-	"before-agent":          {Claude: "", Codex: "", Gemini: "BeforeAgent"},
-	"after-agent":           {Claude: "", Codex: "", Gemini: "AfterAgent"},
-	"before-model":          {Claude: "", Codex: "", Gemini: "BeforeModel"},
-	"after-model":           {Claude: "", Codex: "", Gemini: "AfterModel"},
-	"before-tool-selection": {Claude: "", Codex: "", Gemini: "BeforeToolSelection"},
+	"pre-tool-use":          {Claude: "PreToolUse", Codex: "PreToolUse", Antigravity: "BeforeTool"},
+	"post-tool-use":         {Claude: "PostToolUse", Codex: "PostToolUse", Antigravity: "AfterTool"},
+	"session-start":         {Claude: "SessionStart", Codex: "SessionStart", Antigravity: "SessionStart"},
+	"session-end":           {Claude: "Stop", Codex: "Stop", Antigravity: "SessionEnd"},
+	"notification":          {Claude: "Notification", Codex: "", Antigravity: "Notification"},
+	"user-prompt-submit":    {Claude: "UserPromptSubmit", Codex: "UserPromptSubmit", Antigravity: ""},
+	"pre-compact":           {Claude: "PreCompact", Codex: "", Antigravity: "PreCompress"},
+	"permission-request":    {Claude: "", Codex: "PermissionRequest", Antigravity: ""},
+	"before-agent":          {Claude: "", Codex: "", Antigravity: "BeforeAgent"},
+	"after-agent":           {Claude: "", Codex: "", Antigravity: "AfterAgent"},
+	"before-model":          {Claude: "", Codex: "", Antigravity: "BeforeModel"},
+	"after-model":           {Claude: "", Codex: "", Antigravity: "AfterModel"},
+	"before-tool-selection": {Claude: "", Codex: "", Antigravity: "BeforeToolSelection"},
 }
 
 // Translate maps a canonical event to the agent-native event name, or

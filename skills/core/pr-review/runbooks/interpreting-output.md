@@ -43,14 +43,14 @@ Lists 1/N findings with one-line summaries. THESE ARE THE HIGH-VALUE ROWS. The l
 Common patterns:
 - **codex catches a race the others missed** — codex is trained heavily on bug-fix data; trust this more often than not.
 - **claude flags an architectural smell the others didn't** — claude's lens is high-level; verify by reading the cited file in full.
-- **gemini flags a cross-file consistency issue the others didn't** — likely correct; gemini's strength is breadth.
+- **antigravity flags a cross-file consistency issue the others didn't** — likely correct; antigravity's strength is breadth.
 
 ## Per-agent stats footer
 
 ```
 - claude — 4 finding(s) · 14s · est $0.082
 - codex  — 5 finding(s) · 18s · est $0.094
-- gemini — 3 finding(s) · 9s  · est $0.041
+- antigravity — 3 finding(s) · 9s  · est $0.041
 ```
 
 Use this to:

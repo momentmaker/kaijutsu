@@ -112,7 +112,7 @@ func newEvalSkillCmd() *cobra.Command {
 			}
 
 			// Resolve target + judge against available agents. Stage 1
-			// ships claude/codex/gemini via the v0.6 driver layer;
+			// ships claude/codex/antigravity via the v0.6 driver layer;
 			// Stage 2's swarm-shape subcommands honor persona names.
 			target, err := resolveEvalAgent(targetName, "target", perAgentBudget, timeout)
 			if err != nil {
@@ -299,7 +299,7 @@ func newEvalSkillCmd() *cobra.Command {
 	return cmd
 }
 
-// resolveEvalAgent maps a name (claude/codex/gemini, or empty for
+// resolveEvalAgent maps a name (claude/codex/antigravity, or empty for
 // auto-detect) to a TargetAgent / JudgeAgent. v0.6 driver layer is
 // reused; Stage 2 adds persona-name resolution.
 func resolveEvalAgent(name, role string, budget float64, timeout time.Duration) (eval.TargetAgent, error) {
@@ -308,7 +308,7 @@ func resolveEvalAgent(name, role string, budget float64, timeout time.Duration) 
 		for _, a := range swarm.AvailableAgents() {
 			return makeEvalAgent(a, budget, timeout), nil
 		}
-		return nil, fmt.Errorf("no agents available for %s; install at least one of: claude, codex, gemini OR pass --%s explicitly", role, role)
+		return nil, fmt.Errorf("no agents available for %s; install at least one of: claude, codex, antigravity OR pass --%s explicitly", role, role)
 	}
 	an := swarm.AgentName(strings.ToLower(name))
 	if !swarm.Available(an) {
@@ -337,7 +337,7 @@ func makeEvalAgent(name swarm.AgentName, budget float64, timeout time.Duration) 
 }
 
 // nativeCliEvalAgent dispatches via the agents-package CLI driver.
-// Stage 1 covers claude/codex/gemini; Stage 2 routes through the
+// Stage 1 covers claude/codex/antigravity; Stage 2 routes through the
 // full driver registry (http / mcp / cli-compat) for persona-named
 // targets.
 type nativeCliEvalAgent struct {

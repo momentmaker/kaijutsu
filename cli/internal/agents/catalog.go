@@ -27,11 +27,10 @@ func BuiltinProviders() map[string]*Provider {
 			Driver: DriverCLI,
 			Cmd:    "codex",
 		},
-		"gemini": {
-			Name:   "gemini",
+		"antigravity": {
+			Name:   "antigravity",
 			Driver: DriverCLI,
-			Cmd:    "gemini",
-			Args:   []string{"--approval-mode", "plan"},
+			Cmd:    "agy",
 		},
 		// HTTP providers (opt-in via `jutsu agent add`). Cost rates
 		// reflect publicly-listed prices as of builtinRateCardDate;
@@ -101,5 +100,5 @@ func BuiltinProviders() map[string]*Provider {
 // `enabled:` when both global and project config are absent — preserves
 // v0.5 behavior for users who never write agents.yaml.
 func LegacyEnabledMix() []string {
-	return []string{"claude", "codex", "gemini"}
+	return []string{"claude", "codex", "antigravity"}
 }

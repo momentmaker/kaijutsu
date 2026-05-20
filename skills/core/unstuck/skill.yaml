@@ -6,7 +6,7 @@ description: "Guided problem articulation when you're stuck — agent-side evide
 homepage: https://kaijutsu.dev/skills/unstuck
 repository: https://github.com/momentmaker/kaijutsu
 tags: [debugging, problem-solving, workflow]
-agents: [claude, codex, gemini]
+agents: [claude, codex, antigravity]
 deps:
   skills:
     - blunder-hunt@^0.2

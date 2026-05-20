@@ -253,7 +253,7 @@ func buildCatalog(repoRoot string) (*catalog, error) {
 				Source:      "third-party",
 				Repo:        entry.Source,
 				Path:        entry.Path,
-				Agents:      []string{"claude", "codex", "gemini"},
+				Agents:      []string{"claude", "codex", "antigravity"},
 			})
 		}
 	}

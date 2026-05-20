@@ -13,6 +13,7 @@
 /.claude/
 /.codex/
 /.gemini/
+.antigravitycli/
 kaijutsu.lock.json
 kaijutsu.json
 

@@ -81,7 +81,7 @@ func TestRenderStatsTable_EmptyEmitsFriendlyMessage(t *testing.T) {
 func TestFindingStats_GroupByPersona(t *testing.T) {
 	store, _ := setupFindingTest(t)
 	mustRecord(t, store, "r1", "fp1", "pr-review", oneFinding("default-claude", "x"))
-	mustRecord(t, store, "r2", "fp1", "pr-review", oneFinding("default-gemini", "y"))
+	mustRecord(t, store, "r2", "fp1", "pr-review", oneFinding("default-antigravity", "y"))
 	store.Close()
 
 	out := runCmd(t, "finding", "stats", "--codebase", "fp1", "--by", "persona", "--json")
@@ -90,7 +90,7 @@ func TestFindingStats_GroupByPersona(t *testing.T) {
 		t.Fatalf("not JSON: %v\n%s", err, out)
 	}
 	if len(rows) != 2 {
-		t.Errorf("rows = %d; want 2 (default-claude + default-gemini)", len(rows))
+		t.Errorf("rows = %d; want 2 (default-claude + default-antigravity)", len(rows))
 	}
 	for _, r := range rows {
 		if _, has := r["source"]; has {

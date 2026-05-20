@@ -184,7 +184,7 @@ func RunPipeline(ctx context.Context, opts PipelineOpts) (*Result, error) {
 	} else {
 		available := AvailableAgents()
 		if len(available) == 0 {
-			return nil, errors.New("no agent CLI available. Install at least one of: claude, codex, gemini, then re-run (or pass --personas to dispatch via agents.yaml)")
+			return nil, errors.New("no agent CLI available. Install at least one of: claude, codex, agy (Antigravity), then re-run (or pass --personas to dispatch via agents.yaml)")
 		}
 		if cerr := EnsureConsent(opts.ProjectRoot, preset, stdin, stderr, available, opts.Yes); cerr != nil {
 			return nil, cerr

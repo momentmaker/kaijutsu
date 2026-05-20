@@ -37,7 +37,7 @@ If you can't write a one-paragraph brief for a subtask, it's not decomposed enou
 | --- | --- |
 | Claude Code | `Task` tool with `subagent_type: general-purpose` (or specialized) — multiple Task calls in a single response run in parallel |
 | OpenAI Codex CLI | `codex agents spawn` (where supported) or sequential with explicit context resets |
-| Google Gemini CLI | `activate_skill` + delegated subtasks where supported; otherwise sequential |
+| Google Antigravity CLI | `activate_skill` + delegated subtasks where supported; otherwise sequential |
 
 When the platform supports parallel calls in a single turn, use them. Otherwise, fall back to sequential — still apply the decompose/collect pattern, just lose the wall-clock win.
 

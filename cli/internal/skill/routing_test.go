@@ -18,7 +18,7 @@ version: 1.0.0
 license: MIT
 layout: flat
 description: "x"
-agents: [claude, codex, gemini]
+agents: [claude, codex, antigravity]
 permissions:
   bash: false
   network: false
@@ -26,8 +26,8 @@ permissions:
 routing:
   per-persona:
     honest: [claude]
-    adversary: [claude, codex, gemini]
-  default: [claude, codex, gemini]
+    adversary: [claude, codex, antigravity]
+  default: [claude, codex, antigravity]
 `
 	if err := os.WriteFile(p, []byte(body), 0644); err != nil {
 		t.Fatalf("write: %v", err)
@@ -42,11 +42,11 @@ routing:
 	if got := s.Routing.PerPersona["honest"]; !reflect.DeepEqual(got, []string{"claude"}) {
 		t.Errorf("PerPersona[honest] = %v, want [claude]", got)
 	}
-	if got := s.Routing.PerPersona["adversary"]; !reflect.DeepEqual(got, []string{"claude", "codex", "gemini"}) {
-		t.Errorf("PerPersona[adversary] = %v, want [claude codex gemini]", got)
+	if got := s.Routing.PerPersona["adversary"]; !reflect.DeepEqual(got, []string{"claude", "codex", "antigravity"}) {
+		t.Errorf("PerPersona[adversary] = %v, want [claude codex antigravity]", got)
 	}
-	if got := s.Routing.Default; !reflect.DeepEqual(got, []string{"claude", "codex", "gemini"}) {
-		t.Errorf("Default = %v, want [claude codex gemini]", got)
+	if got := s.Routing.Default; !reflect.DeepEqual(got, []string{"claude", "codex", "antigravity"}) {
+		t.Errorf("Default = %v, want [claude codex antigravity]", got)
 	}
 }
 

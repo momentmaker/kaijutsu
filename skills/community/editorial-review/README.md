@@ -19,7 +19,7 @@ jutsu install editorial-review
 
 # Layer multi-agent on top (optional)
 jutsu swarm doc-review content/my-essay.md \
-  --personas claim-auditor-deepseek,architecture-purist-gemini
+  --personas claim-auditor-deepseek,architecture-purist-antigravity
 ```
 
 ## Voice configs

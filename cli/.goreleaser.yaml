@@ -72,7 +72,7 @@ brews:
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     homepage: https://kaijutsu.dev
-    description: "Open skills for AI coding agents — install, list, and manage skills across Claude, Codex, and Gemini."
+    description: "Open skills for AI coding agents — install, list, and manage skills across Claude, Codex, and Antigravity."
     license: MIT
     test: |
       system "#{bin}/jutsu --version"

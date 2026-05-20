@@ -22,7 +22,7 @@ func TestRecordRun_WritesLensAndPosition(t *testing.T) {
 			},
 		},
 		{
-			Agent: "default-gemini",
+			Agent: "default-antigravity",
 			Findings: []swarm.Finding{
 				{Severity: "info", File: "y.go", LineRange: "3", Summary: "[lens:wild] take 3", Reasoning: "load_bearing: false"},
 			},
@@ -34,7 +34,7 @@ func TestRecordRun_WritesLensAndPosition(t *testing.T) {
 		Preset:     "dream",
 		ProviderForPersona: map[string]string{
 			"default-claude": "claude",
-			"default-gemini": "gemini",
+			"default-antigravity": "antigravity",
 		},
 	}
 

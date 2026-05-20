@@ -6,7 +6,7 @@ description: "End-of-session retrospective. Mines the current conversation for l
 homepage: https://kaijutsu.dev/skills/session-retro
 repository: https://github.com/momentmaker/kaijutsu
 tags: [retrospective, memory, learning]
-agents: [claude, codex, gemini]
+agents: [claude, codex, antigravity]
 deps:
   skills:
     - convergence-detect@^0.2

@@ -2,10 +2,10 @@ package agents
 
 // BuiltinPersonas returns the 7 personas the CLI registers by default
 // before any user YAML is layered in:
-//   - 3 default personas (default-claude / default-codex / default-gemini)
+//   - 3 default personas (default-claude / default-codex / default-antigravity)
 //     with empty system_prompt — reproduce v0.5 cache-key behavior.
 //   - 4 reference flavored personas — paranoid-security-claude /
-//     pragmatic-codex / architecture-purist-gemini /
+//     pragmatic-codex / architecture-purist-antigravity /
 //     brainstorm-creative-claude — show the persona-authoring pattern.
 //
 // User-declared personas with the same name override these.
@@ -21,9 +21,9 @@ func BuiltinPersonas() map[string]*Persona {
 			Provider:     "codex",
 			SystemPrompt: "",
 		},
-		"default-gemini": {
-			Name:         "default-gemini",
-			Provider:     "gemini",
+		"default-antigravity": {
+			Name:         "default-antigravity",
+			Provider:     "antigravity",
 			SystemPrompt: "",
 		},
 		"paranoid-security-claude": {
@@ -40,9 +40,9 @@ positives at minor severity over silent passes on real risks.`,
 			SystemPrompt: "Prefer small, reversible refactor steps over invariant-breaking ones. Flag steps where rollback is hard.",
 			Tags:         []string{"pragmatic"},
 		},
-		"architecture-purist-gemini": {
-			Name:         "architecture-purist-gemini",
-			Provider:     "gemini",
+		"architecture-purist-antigravity": {
+			Name:         "architecture-purist-antigravity",
+			Provider:     "antigravity",
 			SystemPrompt: "You are an architecture purist. Flag any change that violates layer boundaries, leaks abstractions, or introduces circular dependencies.",
 			Tags:         []string{"architecture"},
 		},
@@ -56,7 +56,7 @@ positives at minor severity over silent passes on real risks.`,
 		// v0.11.0 additions — round out the built-in lens set so
 		// autopilot v2 has full multi-agent coverage without requiring
 		// agents.yaml configuration. All 3 are CLI-backed (claude /
-		// gemini / codex providers) so users without HTTP API keys
+		// antigravity / codex providers) so users without HTTP API keys
 		// still get the full lens spread.
 		"claim-auditor-claude": {
 			Name:     "claim-auditor-claude",
@@ -75,9 +75,9 @@ The artifact is ASSERTING things. Your job: which assertions rest
 on shaky ground.`,
 			Tags: []string{"audit", "claims", "reasoning"},
 		},
-		"cross-file-gemini": {
-			Name:     "cross-file-gemini",
-			Provider: "gemini",
+		"cross-file-antigravity": {
+			Name:     "cross-file-antigravity",
+			Provider: "antigravity",
 			SystemPrompt: `You are a cross-file-consistency reviewer. Find every
 public-API surface change in the diff. Trace every call site (in
 the diff and outside). Flag contract violations, type narrowing,

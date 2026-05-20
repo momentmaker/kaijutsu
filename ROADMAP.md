@@ -7,7 +7,7 @@ Working consume-and-author loop. No bells, no eval gate, no static site.
 - [x] Repo scaffolding, LICENSE, README, CONTRIBUTING, SECURITY
 - [x] JSON schemas: skill, lockfile, project manifest
 - [x] Domain placeholders for `kaijutsu.dev` and `kaijutsu.org`
-- [x] `docs/multi-agent.md` — confirmed install paths for Claude, Codex, Gemini
+- [x] `docs/multi-agent.md` — confirmed install paths for Claude, Codex, Antigravity
 - [x] `jutsu` CLI MVP: `init`, `install`, `list`, `remove`
 - [x] Lockfile + `upgrade` + remote source resolution via GitHub tarball API
 - [x] 9 seed skills under `skills/core/`: `pr-review`, `readme-update`, `decide`, `journal`, `polish`, `unstuck`, `scope-check`, `session-retro`, `agent-doctor`
@@ -37,8 +37,8 @@ Working consume-and-author loop. No bells, no eval gate, no static site.
 - [x] **Hooks as first-class artifacts**: extend `skill.yaml` with a `hooks` block; install translates and registers hooks into `~/.<agent>/settings.json`; remove cleans them up. First user: a destructive-command-guard (DCG) hook bundle.
 - [x] **`jutsu eval`**: shipped v0.10.0 (single-skill parity with agent-skills-eval upstream + 3 kaijutsu-native swarm-shape extensions: persona, preset, swarm-skill). Stateful `--strict` via `--baseline-from <git-ref>` against prior tag's `eval-baseline.json`. CI workflow `eval-skills.yml` runs as harness gate (Go tests + cobra wiring + JSON parse-check). v0.10.1 polish patch added `--dry-run` to install/upgrade/remove/publish + error-message enumeration sweep. v0.11.0 replaced the v0.10 Stage 2 stubs (preset / swarm-skill) with real `swarm.RunPipeline` integration; the extraction also enables autopilot v2.
 - [x] **`autopilot` v2 skill**: shipped v0.11.0. Distributed via `jutsu install autopilot`. 6-phase intent-to-PR pipeline (BRAINSTORM → SPEC → PLAN → BUILD → SHIP → LEARN), 2 gates (post-brainstorm + GitHub PR review), multi-agent adversarial review at every artifact stage, anti-sycophancy via `jutsu swarm dream` at brainstorm, reverse-drift gate before PR opens, layered cost cap ($20 soft / $100 hard ceiling / per-shell env override). Replaces the user-scope v1 skill at `~/.claude/skills/autopilot`; install pipeline archives any pre-existing SKILL.md to a sibling `.archived/` dir. New `jutsu autopilot init|status|abort|resume|run` cobra group.
-- [x] **3 new built-in personas** (v0.11.0): `claim-auditor-claude`, `cross-file-gemini`, `perf-purist-codex`. CLI-backed; available without HTTP API keys.
-- [x] **`agent-doctor` rich-layout port**: ships `scripts/{lib,doctor,cleanup}.sh`, `references/{directory-map,cleanup-tiers,protected-paths}.md`, `runbooks/recover-from-trash.md`. Generalized for ~/.claude, ~/.codex, ~/.gemini, ~/.agents.
+- [x] **3 new built-in personas** (v0.11.0): `claim-auditor-claude`, `cross-file-antigravity`, `perf-purist-codex`. CLI-backed; available without HTTP API keys.
+- [x] **`agent-doctor` rich-layout port**: ships `scripts/{lib,doctor,cleanup}.sh`, `references/{directory-map,cleanup-tiers,protected-paths}.md`, `runbooks/recover-from-trash.md`. Generalized for ~/.claude, ~/.codex, ~/.agy, ~/.agents.
 - [x] **Cascade-aware `jutsu remove`**: dynamically computes the dep graph by walking each installed skill's on-disk `skill.yaml`. Refuses to remove a skill another depends on; `--cascade` removes orphans transitively.
 - [x] **`jutsu publish` automation**: `--auto` shells out to `gh` for fork + clone + branch + push + PR. Default still prints manual steps.
 - [x] **Trigger-conflict lint**: `jutsu lint` reports cross-skill overlaps in trigger phrases (slash commands + quoted phrases) extracted from descriptions. `jutsu list --conflicts` checks installed skills.
@@ -48,7 +48,7 @@ Working consume-and-author loop. No bells, no eval gate, no static site.
 
 ## v0.4 — multi-agent flagship + community + telemetry
 
-- [x] **`jutsu swarm` primitive + multi-agent `pr-review`** (Phase 1): orchestrates claude/codex/gemini in parallel with tailored per-agent prompts, optional Pass-2 round-robin debate (`--full`), lie-to-them filter on synthesis (`--strict`), disagreement-table output, edit-in-place PR comment via `gh` (`--post-comment`), pre-flight secrets scan, per-repo consent gate (`.kaijutsu/pr-review.yaml` `allow-multi-model: true`), `--replay <sha>` from cache. pr-review skill bumps to v1.0.0 rich layout with overrideable per-agent prompts.
+- [x] **`jutsu swarm` primitive + multi-agent `pr-review`** (Phase 1): orchestrates claude/codex/antigravity in parallel with tailored per-agent prompts, optional Pass-2 round-robin debate (`--full`), lie-to-them filter on synthesis (`--strict`), disagreement-table output, edit-in-place PR comment via `gh` (`--post-comment`), pre-flight secrets scan, per-repo consent gate (`.kaijutsu/pr-review.yaml` `allow-multi-model: true`), `--replay <sha>` from cache. pr-review skill bumps to v1.0.0 rich layout with overrideable per-agent prompts.
 - [ ] **`jutsu swarm` Phase 2**: pluggable presets — `brainstorm`, `refactor-plan`, `security-audit` on the same primitive.
 - [ ] `skills/community/` opens for PRs (auto-merge on green CI + maintainer approval)
 - [ ] CODEOWNERS by category for trusted maintainers
@@ -61,14 +61,14 @@ Working consume-and-author loop. No bells, no eval gate, no static site.
 
 Spec: `docs/specs/2026-05-05-v0.6.0-multi-provider-agents.md`. ADR: `docs/decisions/2026-05-05-driver-abstraction.md`.
 
-- [x] **`AgentDriver` interface** + 4 concrete drivers: `cli` (claude/codex/gemini singletons), `http` (OpenAI-compat + Anthropic-compat with prompt-cache awareness), `cli-compat` (wraps a native CLI with env override + telemetry-kill), `mcp` (JSON-RPC stdio against MCP servers).
+- [x] **`AgentDriver` interface** + 4 concrete drivers: `cli` (claude/codex/antigravity singletons), `http` (OpenAI-compat + Anthropic-compat with prompt-cache awareness), `cli-compat` (wraps a native CLI with env override + telemetry-kill), `mcp` (JSON-RPC stdio against MCP servers).
 - [x] **`agents.yaml` two-layer config**: `~/.kaijutsu/agents.yaml` (global catalog) + `<repo>/.kaijutsu/agents.yaml` (project enabled list + overrides). `version: 1` schema.
-- [x] **Personas as first-class**: 7 built-ins (3 default-* with empty system_prompt for v0.5 cache compat + 4 reference flavored: paranoid-security-claude, pragmatic-codex, architecture-purist-gemini, brainstorm-creative-claude). Auto-synth of `default-<provider>` for any enabled provider lacking one.
+- [x] **Personas as first-class**: 7 built-ins (3 default-* with empty system_prompt for v0.5 cache compat + 4 reference flavored: paranoid-security-claude, pragmatic-codex, architecture-purist-antigravity, brainstorm-creative-claude). Auto-synth of `default-<provider>` for any enabled provider lacking one.
 - [x] **`--personas` flag** wired into all 5 swarm subcommands (pr-review, doc-review, brainstorm, refactor-plan, security-audit). Personas dispatched in parallel, system prompts prepended via sentinel split by HTTP driver into protocol's first-class system field.
 - [x] **`--estimate` dry-run**: char-count tokenizer (±20% accuracy), per-persona cost projection table, TOTAL row, stale-rate-card warning at 90+ days.
 - [x] **`--no-telemetry-warning`** suppression flag for the cli-compat one-shot warning.
 - [x] **`jutsu agent` subcommand group**: list (with `--personas`), doctor (driver-aware probes: cli `--version`, http `/models`, mcp stub), add (catalog + non-catalog paths), enable, disable, remove (with cross-repo scan via `JUTSU_REPO_SCAN_ROOTS`), test (driver-aware: cli/cli-compat `--version`, http `/models` + 1-token completion fallback), migrate (kaijutsu.json → agents.yaml with `--prefer legacy|yaml|merge`).
-- [x] **Vendored provider catalog**: claude/codex/gemini cli + deepseek/glm/kimi/ollama-local http with rate cards.
+- [x] **Vendored provider catalog**: claude/codex/antigravity cli + deepseek/glm/kimi/ollama-local http with rate cards.
 - [x] **Stub MCP server** in `cli/internal/agents/testdata/stub_mcp_server/main.go` for driver tests; semgrep-mcp config doc-only in `cli/internal/agents/mcp_examples.md`.
 - [x] **Cache-key compat**: legacy v0.5 mix produces byte-identical keys; non-default mix salted with driver+persona identity.
 
@@ -179,7 +179,7 @@ Six consecutive `jutsu swarm dream` passes converged on "ship zero, instrument f
 ## v0.20+ — Maybe Persona SDK
 
 Conditional on:
-1. **A/B evidence** that cross-corpus diversity (claude+gemini+deepseek with same system_prompt) outperforms multi-persona-on-one-provider. Dream flagged this premise as untested + possibly self-confirming bias from RLHF-aligned reviewers.
+1. **A/B evidence** that cross-corpus diversity (claude+antigravity+deepseek with same system_prompt) outperforms multi-persona-on-one-provider. Dream flagged this premise as untested + possibly self-confirming bias from RLHF-aligned reviewers.
 2. **User data** showing persona authoring (not routing) is the bottleneck. v0.14 `finding stats` provides the data: ship Persona SDK only if user presets dominate vs built-ins over a meaningful sample window.
 3. **Behavioral lint** infrastructure (not token-only regex) for catching self-defeating user prompts. Token-only lint = false safety per dream's gaps+adversary cross-lens consensus.
 
@@ -191,7 +191,7 @@ If those hold, scope:
 ## v1 — maturity
 
 - [ ] Skill DNA / fingerprinting for semantic dedup
-- [ ] Full multi-agent eval matrix in CI (Claude + Codex + Gemini per release)
+- [ ] Full multi-agent eval matrix in CI (Claude + Codex + Antigravity per release)
 - [ ] Skill remix (fork-with-lineage, derived skills track ancestry)
 - [ ] Bounty board — "wanted: skill that does X" issues with rewards
 

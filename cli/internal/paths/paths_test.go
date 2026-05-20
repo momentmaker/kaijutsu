@@ -8,7 +8,7 @@ func TestAgentSkillsDir(t *testing.T) {
 	}{
 		{"/proj", "claude", "/proj/.claude/skills"},
 		{"/proj", "codex", "/proj/.agents/skills"},
-		{"/proj", "gemini", "/proj/.agents/skills"},
+		{"/proj", "antigravity", "/proj/.agents/skills"},
 		{"/proj", "unknown", ""},
 		{"/home/u", "claude", "/home/u/.claude/skills"},
 	}

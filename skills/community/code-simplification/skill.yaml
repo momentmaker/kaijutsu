@@ -9,7 +9,7 @@ repository: https://github.com/momentmaker/kaijutsu
 upstream: https://github.com/addyosmani/agent-skills/blob/main/skills/code-simplification
 tags: [simplification, refactor, dead-code, chesterton, addyosmani]
 
-agents: [claude, codex, gemini]
+agents: [claude, codex, antigravity]
 
 permissions:
   bash: true

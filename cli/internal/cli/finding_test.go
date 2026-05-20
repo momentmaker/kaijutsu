@@ -223,7 +223,7 @@ func TestFindingClear_DryRunByDefault(t *testing.T) {
 func TestFindingClear_YesActuallyDeletes(t *testing.T) {
 	store, _ := setupFindingTest(t)
 	mustRecord(t, store, "r1", "fp1", "pr-review", oneFinding("claude", "x"))
-	mustRecord(t, store, "r2", "fp2", "pr-review", oneFinding("gemini", "y"))
+	mustRecord(t, store, "r2", "fp2", "pr-review", oneFinding("antigravity", "y"))
 	store.Close()
 
 	out := runCmd(t, "finding", "clear", "--codebase", "fp1", "--yes")

@@ -6,7 +6,7 @@ description: "Detect when an iterative loop has stopped producing new signal. Qu
 homepage: https://kaijutsu.dev/skills/convergence-detect
 repository: https://github.com/momentmaker/kaijutsu
 tags: [primitive, iteration, signal]
-agents: [claude, codex, gemini]
+agents: [claude, codex, antigravity]
 permissions:
   bash: true
   network: false

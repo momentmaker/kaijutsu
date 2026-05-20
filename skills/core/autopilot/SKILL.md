@@ -54,7 +54,7 @@ Above the ceiling without env var → error. Pre-flight `jutsu swarm <preset> --
 
 ### Phase 1: BRAINSTORM (interactive)
 
-Interactive conversation with the user about the intent. Anti-sycophancy enabled by default: invoke `jutsu swarm dream --mode full --strict --personas brainstorm-creative-claude,architecture-purist-gemini,claim-auditor-claude` against the leading direction. User sees the design ALREADY ARGUED AGAINST before approving Gate 1.
+Interactive conversation with the user about the intent. Anti-sycophancy enabled by default: invoke `jutsu swarm dream --mode full --strict --personas brainstorm-creative-claude,architecture-purist-antigravity,claim-auditor-claude` against the leading direction. User sees the design ALREADY ARGUED AGAINST before approving Gate 1.
 
 **Step 1: Read project context** (parallel):
 - `CLAUDE.md` (project rules + constraints)
@@ -91,7 +91,7 @@ Wait for user response. **Approve** → Phase 2. **Revise** → re-explore. **Re
 
 **Step 1**: Write spec to `docs/specs/<date>-<slug>.md` following the brainstorming spec format.
 
-**Step 2**: Run `jutsu swarm doc-review --personas architecture-purist-gemini,paranoid-security-claude,claim-auditor-claude <spec-path>`.
+**Step 2**: Run `jutsu swarm doc-review --personas architecture-purist-antigravity,paranoid-security-claude,claim-auditor-claude <spec-path>`.
 
 **Step 3**: Findings printed to stderr inline + appended to `<workspace>/findings.md`. **Findings are report-only** (per spec Decision #2). Autopilot does NOT mutate the spec automatically. User can apply specific findings via re-run after editing.
 
@@ -101,7 +101,7 @@ Wait for user response. **Approve** → Phase 2. **Revise** → re-explore. **Re
 
 **Step 1**: Write `IMPLEMENTATION_PLAN.md` following the writing-plans skill format — bite-sized stages with exact file paths + test commands.
 
-**Step 2**: Run `jutsu swarm doc-review --personas perf-purist-codex,claim-auditor-claude,cross-file-gemini <plan-path>`.
+**Step 2**: Run `jutsu swarm doc-review --personas perf-purist-codex,claim-auditor-claude,cross-file-antigravity <plan-path>`.
 
 **Step 3**: Findings report-only (same as spec).
 
@@ -118,7 +118,7 @@ Track cost across all stages. Pause at 50% of soft cap; abort at hard ceiling wi
 
 ### Phase 5: SHIP
 
-**Step 1: Final swarm pr-review** (full lens) — `jutsu swarm pr-review --diff-from-branch main --strict --personas paranoid-security-claude,architecture-purist-gemini,perf-purist-codex,claim-auditor-claude --mode full`. Apply load-bearing findings; defensible-skip the rest.
+**Step 1: Final swarm pr-review** (full lens) — `jutsu swarm pr-review --diff-from-branch main --strict --personas paranoid-security-claude,architecture-purist-antigravity,perf-purist-codex,claim-auditor-claude --mode full`. Apply load-bearing findings; defensible-skip the rest.
 
 **Step 2: Reverse-drift gate** — `jutsu swarm reverse --spec <state.approved_spec_path> --diff origin/main...HEAD`. Drift findings appended to PR description as `<details>` block. PR labeled `autopilot-drift` if drift surfaced.
 

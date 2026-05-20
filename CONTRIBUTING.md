@@ -76,7 +76,7 @@ version: 0.1.0
 license: MIT
 layout: flat
 description: "One sentence describing what this skill does."
-agents: [claude, codex, gemini]   # which agents you've tested it with
+agents: [claude, codex, antigravity]   # which agents you've tested it with
 permissions:
   bash: false
   network: false

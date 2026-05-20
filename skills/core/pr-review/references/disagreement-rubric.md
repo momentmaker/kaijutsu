@@ -5,7 +5,7 @@ The disagreement table is the headline output. Read it before reading the prose 
 ## Anatomy
 
 ```
-| Finding | Severity | Consensus | claude | codex | gemini |
+| Finding | Severity | Consensus | claude | codex | antigravity |
 |---|---|---|---|---|---|
 | `auth.go:88` — race in token refresh | blocker | 3/3 | ✓ (blocker) | ✓ (issue) | ✓ (blocker) |
 | `cache.go:42` — TTL not honored | issue | 1/3 | — | ✓ (issue) | — |

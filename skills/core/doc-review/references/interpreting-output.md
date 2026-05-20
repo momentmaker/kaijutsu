@@ -5,7 +5,7 @@ Same structure as `pr-review`. Brief recap with doc-specific notes.
 ## Disagreement table
 
 ```
-| Finding | Severity | Consensus | claude | codex | gemini |
+| Finding | Severity | Consensus | claude | codex | antigravity |
 |---|---|---|---|---|---|
 | `SPEC.md:42-58` — Acceptance Criteria untestable as written | issue | 3/3 | ✓ | ✓ | ✓ |
 | `SPEC.md:130` — "scope" used inconsistently | minor | 2/3 | ✓ | — | ✓ |
@@ -29,7 +29,7 @@ Explicit callout of 1/N findings. Read these FIRST after the table. They're the 
 ```
 - claude — 5 finding(s) · 1m20s · est $0.04
 - codex  — 3 finding(s) · 45s · est $0.02
-- gemini — 7 finding(s) · 22s · est $0.01
+- antigravity — 7 finding(s) · 22s · est $0.01
 ```
 
 Use to detect:

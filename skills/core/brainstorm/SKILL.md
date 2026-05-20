@@ -1,6 +1,6 @@
 ---
 name: brainstorm
-description: Multi-agent ideation against a free-form prompt. Wraps `jutsu swarm brainstorm "<prompt>"` to run claude / codex / gemini in parallel with three different angles (claude=long-horizon framing, codex=code-pattern grounding, gemini=cross-domain analogy), synthesizes into a ranked list of approaches with tradeoffs. Use when the user says "brainstorm", "ideas for", "how should we approach", "options for", or invokes /brainstorm. Designed to feed into `decide` (for ADR capture of the picked option) or `refactor-plan` (for execution of the picked option).
+description: Multi-agent ideation against a free-form prompt. Wraps `jutsu swarm brainstorm "<prompt>"` to run claude / codex / antigravity in parallel with three different angles (claude=long-horizon framing, codex=code-pattern grounding, antigravity=cross-domain analogy), synthesizes into a ranked list of approaches with tradeoffs. Use when the user says "brainstorm", "ideas for", "how should we approach", "options for", or invokes /brainstorm. Designed to feed into `decide` (for ADR capture of the picked option) or `refactor-plan` (for execution of the picked option).
 ---
 
 # brainstorm
@@ -15,7 +15,7 @@ This skill wraps `jutsu swarm brainstorm`. Free-form prompt input, ranked-list o
 |---|---|---|
 | **Long-horizon framing** | claude | Ideal end-state, ambition gap, bold-but-defensible moves |
 | **Code-pattern grounding** | codex | Existing patterns, concrete libraries, real-world failure modes |
-| **Cross-domain analogy** | gemini | Adjacent fields, prior art, RFC/paper precedents |
+| **Cross-domain analogy** | antigravity | Adjacent fields, prior art, RFC/paper precedents |
 
 Severity vocab differs from pr-review/doc-review. Brainstorm options use:
 
@@ -37,7 +37,7 @@ brainstorm/
 ├── prompts/
 │   ├── claude.md       long-horizon lens
 │   ├── codex.md        code-pattern lens
-│   ├── gemini.md       cross-domain lens
+│   ├── antigravity.md       cross-domain lens
 │   ├── synthesizer.md  ranked-list assembler
 │   └── debate.md       Pass-2 critique template
 └── references/
@@ -81,10 +81,10 @@ Same structure as pr-review/doc-review but the disagreement table shows each rev
 - **Token bucket per-API-key** (codex) — battle-tested, library exists ...
 
 ## Alternatives worth considering
-- **CRDT-based limiter** (gemini, speculative→alternative after debate) — ...
+- **CRDT-based limiter** (antigravity, speculative→alternative after debate) — ...
 
 ## Speculative
-- **Probabilistic admission control** (gemini) — paper-tier idea, ...
+- **Probabilistic admission control** (antigravity) — paper-tier idea, ...
 
 ## Cross-cuts
 - All three reviewers mentioned graceful degradation under burst.

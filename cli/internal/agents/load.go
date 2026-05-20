@@ -74,7 +74,7 @@ func loadGlobal(path string) (*GlobalConfig, error) {
 
 // LoadProjectConfig parses <root>/.kaijutsu/agents.yaml. Returns a
 // zero-value ProjectConfig on absent file (loader synthesizes legacy
-// `enabled: [claude, codex, gemini]` downstream when both project and
+// `enabled: [claude, codex, antigravity]` downstream when both project and
 // global are empty, preserving v0.5 behavior).
 func LoadProjectConfig(projectRoot string) (*ProjectConfig, error) {
 	return loadProject(ProjectConfigPath(projectRoot))

@@ -4,7 +4,7 @@ Why each agent gets a different prompt for refactor-plan.
 
 ## Principle: orthogonal angles on the same refactor
 
-Three agents, three different mental hats. Without the asymmetry, you'd get three overlapping step lists. With it, the synthesizer has more material to work with — claude's "right new shape" + codex's "what order minimizes risk" + gemini's "what existing pattern to match" combine into a richer plan than any single voice produces.
+Three agents, three different mental hats. Without the asymmetry, you'd get three overlapping step lists. With it, the synthesizer has more material to work with — claude's "right new shape" + codex's "what order minimizes risk" + antigravity's "what existing pattern to match" combine into a richer plan than any single voice produces.
 
 ## claude — architectural decomposition
 
@@ -28,14 +28,14 @@ What codex tends to MISS:
 - High-level architectural critique
 - Cross-file pattern matching
 
-## gemini — pattern consistency
+## antigravity — pattern consistency
 
 Best at:
 - Detecting when a proposed shape doesn't match how similar concerns are factored elsewhere in the repo
 - Naming + idiom consistency
 - Catching unnecessary novelty (the refactor invents a new abstraction when an existing one would work)
 
-What gemini tends to MISS:
+What antigravity tends to MISS:
 - Stepwise risk
 - Deep architectural reasoning on a single complex function
 

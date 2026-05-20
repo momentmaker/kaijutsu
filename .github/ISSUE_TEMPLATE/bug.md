@@ -16,7 +16,7 @@ labels: bug
 - OS:
 - Shell:
 - `jutsu --version`:
-- Agent(s) installed: Claude / Codex / Gemini
+- Agent(s) installed: Claude / Codex / Antigravity
 
 ## Logs
 

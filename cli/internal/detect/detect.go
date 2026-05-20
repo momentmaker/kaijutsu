@@ -10,7 +10,7 @@ import (
 )
 
 // Active returns the list of agent names whose user-config dirs exist
-// under $HOME. Returns names in stable order: claude, codex, gemini.
+// under $HOME. Returns names in stable order: claude, codex, antigravity.
 // If $HOME cannot be determined, returns an empty slice.
 func Active() []string {
 	home, err := paths.HomeDir()
@@ -23,7 +23,7 @@ func Active() []string {
 // ActiveAt is Active scoped to a specific home directory (testable).
 func ActiveAt(home string) []string {
 	out := []string{}
-	for _, agent := range []string{"claude", "codex", "gemini"} {
+	for _, agent := range []string{"claude", "codex", "antigravity"} {
 		dir := agentDir(agent)
 		if dirExists(filepath.Join(home, dir)) {
 			out = append(out, agent)
@@ -38,8 +38,8 @@ func agentDir(agent string) string {
 		return paths.ClaudeDirName
 	case "codex":
 		return paths.CodexDirName
-	case "gemini":
-		return paths.GeminiDirName
+	case "antigravity":
+		return paths.AntigravityDirName
 	}
 	return ""
 }

@@ -22,7 +22,7 @@ import (
 )
 
 // personaResolver resolves persona names via the v0.6 driver
-// registry. Stage 2 ships with the basic claude/codex/gemini
+// registry. Stage 2 ships with the basic claude/codex/antigravity
 // drivers; persona-name lookup against agents.yaml is a v0.10.x
 // follow-up that pulls in the persona registry layer.
 type personaResolver struct {
@@ -35,7 +35,7 @@ func (r *personaResolver) Resolve(ctx context.Context, name string) (eval.Target
 	// the agent wrapper. agents.For supports the v0.6 native CLIs;
 	// returns nil for personas not in the registry.
 	if agents.For(name) == nil {
-		return nil, NotFoundError(fmt.Errorf("no driver for persona %q (v0.10 Stage 2 supports claude/codex/gemini; persona-registry resolution lands in v0.10.x)", name))
+		return nil, NotFoundError(fmt.Errorf("no driver for persona %q (v0.10 Stage 2 supports claude/codex/antigravity; persona-registry resolution lands in v0.10.x)", name))
 	}
 	return &nativeCliEvalAgent{name: swarm.AgentName(name), timeout: r.timeout, budget: r.budget}, nil
 }
@@ -162,7 +162,7 @@ a baseline persona + challenger persona; both run against the same
 prompt + are graded by the same judge.
 
 v0.10 Stage 2 supports the native CLI personas (claude, codex,
-gemini); persona-registry resolution against agents.yaml ships
+antigravity); persona-registry resolution against agents.yaml ships
 v0.10.x.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runEvalSwarmShape(cmd, swarmShapeCfg{

@@ -368,7 +368,7 @@ func TestBuildDriver_CLISuccessPath(t *testing.T) {
 	}{
 		{"claude", DriverCLI},
 		{"codex", DriverCLI},
-		{"gemini", DriverCLI},
+		{"antigravity", DriverCLI},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -391,7 +391,7 @@ func TestBuildDriver_CLIRejectsUnknownName(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for unknown cli provider name; got nil")
 	}
-	if !strings.Contains(err.Error(), "claude|codex|gemini") {
+	if !strings.Contains(err.Error(), "claude|codex|antigravity") {
 		t.Errorf("error doesn't hint allowed cli names: %v", err)
 	}
 }

@@ -1,6 +1,6 @@
 ---
 name: refactor-plan
-description: Multi-agent refactor planning — files + goal in, ordered step plan with risk per step out. Wraps `jutsu swarm refactor-plan <path>... --goal "<goal>"` to run claude / codex / gemini with three angles (claude=architectural decomposition, codex=stepwise risk, gemini=pattern consistency). Designed to feed into `planning-and-task-breakdown` for execution. Use when the user says "plan this refactor", "how do I restructure", "step plan to extract X", or invokes /refactor-plan.
+description: Multi-agent refactor planning — files + goal in, ordered step plan with risk per step out. Wraps `jutsu swarm refactor-plan <path>... --goal "<goal>"` to run claude / codex / antigravity with three angles (claude=architectural decomposition, codex=stepwise risk, antigravity=pattern consistency). Designed to feed into `planning-and-task-breakdown` for execution. Use when the user says "plan this refactor", "how do I restructure", "step plan to extract X", or invokes /refactor-plan.
 ---
 
 # refactor-plan
@@ -11,7 +11,7 @@ Three angles on the same refactor:
 |---|---|---|
 | **Architectural decomposition** | claude | The right new shape — abstractions, boundaries, test seams |
 | **Stepwise risk** | codex | Order that minimizes regression — small reversible steps first |
-| **Pattern consistency** | gemini | Existing repo patterns the refactor should follow, not invent around |
+| **Pattern consistency** | antigravity | Existing repo patterns the refactor should follow, not invent around |
 
 Synthesizer takes all three step proposals, clusters by what-changes, sorts low-risk-first, surfaces ordering disagreements as callouts. Output is an ordered plan with per-step risk + files-touched.
 

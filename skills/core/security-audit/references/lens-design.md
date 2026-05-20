@@ -16,7 +16,7 @@ Best at:
 
 What claude tends to MISS in security:
 - Concrete injection payloads (codex's strength)
-- Dep CVE knowledge (gemini's strength)
+- Dep CVE knowledge (antigravity's strength)
 
 ## codex — injection + privilege escalation
 
@@ -28,9 +28,9 @@ Best at:
 
 What codex tends to MISS:
 - High-level trust boundary reasoning (claude's strength)
-- Dep CVE knowledge (gemini's strength)
+- Dep CVE knowledge (antigravity's strength)
 
-## gemini — dependency + supply-chain
+## antigravity — dependency + supply-chain
 
 Best at:
 - Known CVE awareness for popular libraries
@@ -38,7 +38,7 @@ Best at:
 - Transitive trust — does this dep pull in deps with post-install scripts or native code?
 - License compatibility (security-adjacent: a GPL dep in an MIT project is a legal risk that often surfaces alongside security findings)
 
-What gemini tends to MISS:
+What antigravity tends to MISS:
 - In-code injection vectors (codex's strength)
 - Auth-flow reasoning (claude's strength)
 
@@ -74,4 +74,4 @@ $EDITOR .claude/skills/security-audit/prompts/codex.md
 Useful for repo-specific threat model priors:
 - "Our biggest risk is multi-tenant data leak — emphasize tenant-isolation checks in claude's auth review"
 - "We use crypto/rand exclusively — flag any math/rand in security-relevant code as critical"
-- "Our deps are auto-pinned by renovate — gemini can deprioritize version-pin findings"
+- "Our deps are auto-pinned by renovate — antigravity can deprioritize version-pin findings"

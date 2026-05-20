@@ -98,7 +98,7 @@
   severityVocab: [blocker, issue, minor, info]
   mode: quick
   personas:
-    - architecture-purist-gemini
+    - architecture-purist-antigravity
     - paranoid-security-claude
     - claim-auditor-claude
   confidenceFloor: 0.30

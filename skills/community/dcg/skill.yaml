@@ -8,7 +8,7 @@ homepage: https://kaijutsu.dev/skills/dcg
 repository: https://github.com/momentmaker/kaijutsu
 tags: [safety, hooks, pre-tool-use, destructive-commands, dcg]
 
-agents: [claude, codex, gemini]
+agents: [claude, codex, antigravity]
 
 permissions:
   bash: true

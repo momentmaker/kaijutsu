@@ -9,7 +9,7 @@ repository: https://github.com/momentmaker/kaijutsu
 upstream: https://github.com/addyosmani/agent-skills/blob/main/skills/incremental-implementation
 tags: [implementation, vertical-slice, feature-flag, ship-small, addyosmani]
 
-agents: [claude, codex, gemini]
+agents: [claude, codex, antigravity]
 
 permissions:
   bash: true

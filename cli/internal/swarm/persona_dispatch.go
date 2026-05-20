@@ -33,7 +33,7 @@ type PersonaAdapter struct {
 	// ProviderName is the underlying provider (e.g. "claude", "deepseek")
 	// the persona dispatches through. Distinct from driver kind: two
 	// personas may share a driver kind (cli) but route to different
-	// providers (claude vs gemini). v0.7 recorder uses this to populate
+	// providers (claude vs antigravity). v0.7 recorder uses this to populate
 	// the `provider` column so per-tuple weight math can scope by
 	// (provider, persona) without re-resolving the registry.
 	ProviderName string

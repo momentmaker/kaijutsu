@@ -15,7 +15,7 @@ func TestFor_KnownDrivers(t *testing.T) {
 	}{
 		{"claude", DriverCLI, "claude"},
 		{"codex", DriverCLI, "codex"},
-		{"gemini", DriverCLI, "gemini"},
+		{"antigravity", DriverCLI, "antigravity"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

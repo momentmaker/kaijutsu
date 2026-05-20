@@ -384,7 +384,7 @@ func renderRoutingRecommendation(out io.Writer, stats []findings.TupleStats, all
 	}
 	// Build the persona-flag suggestion by name (not by tuple) and
 	// dedup on the way in — same persona-name across two providers
-	// (e.g. "default" on claude + on gemini) would otherwise produce
+	// (e.g. "default" on claude + on antigravity) would otherwise produce
 	// `--personas default,default`. `jutsu swarm --personas` keys on
 	// name, so the second instance is redundant + visually confusing.
 	personaList := make([]string, 0, max)

@@ -17,7 +17,7 @@ labels: skill-request
 
 - [ ] Claude Code
 - [ ] OpenAI Codex CLI
-- [ ] Google Gemini CLI
+- [ ] Google Antigravity CLI
 
 ## Existing alternatives
 

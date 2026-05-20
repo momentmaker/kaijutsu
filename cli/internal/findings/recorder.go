@@ -89,7 +89,7 @@ func RecordRun(s *Store, meta RunMeta, results []swarm.AgentResult) (int, int, e
 		// Provider lookup with fallback: persona mode populates the
 		// map with persona→provider; legacy mode usually doesn't, in
 		// which case the agent name IS the provider (claude/codex/
-		// gemini). Either way we always have a non-empty provider
+		// antigravity). Either way we always have a non-empty provider
 		// string, which the schema requires.
 		provider, ok := meta.ProviderForPersona[r.Agent]
 		if !ok || provider == "" {

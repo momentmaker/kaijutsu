@@ -1,5 +1,5 @@
 // Package swarm orchestrates parallel runs of multiple agent CLIs
-// (claude, codex, gemini) against a shared task, then synthesizes
+// (claude, codex, antigravity) against a shared task, then synthesizes
 // the results into a single output.
 //
 // Phase 1 ships one preset — pr-review. Phase 2 generalizes presets

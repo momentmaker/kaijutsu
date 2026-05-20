@@ -78,7 +78,7 @@ type Deps struct {
 
 // Hook is one entry in a skill's hooks block. The CLI translates these
 // into per-agent native hook configs (Claude settings.json, Codex
-// config.toml, Gemini settings.json) at install time.
+// config.toml, Antigravity settings.json) at install time.
 type Hook struct {
 	// ID must be unique within the skill. Used as part of the
 	// idempotency marker so re-installs update prior entries instead
@@ -91,7 +91,7 @@ type Hook struct {
 	// after-model, before-tool-selection.
 	Event string `yaml:"event"`
 	// Matcher is the per-agent filter expression — e.g. "Bash" for
-	// Claude/Gemini tool-name match, "tool_name == 'shell_command'"
+	// Claude/Antigravity tool-name match, "tool_name == 'shell_command'"
 	// for Codex. The CLI passes it through unmodified; authors should
 	// use the canonical agent-neutral form documented in SCHEMA.md.
 	Matcher string `yaml:"matcher"`
@@ -178,7 +178,7 @@ func SynthesizeFromSKILLMD(skillMDPath, repoLicensePath string) (*Skill, error) 
 		License:     license,
 		Layout:      "flat",
 		Description: description,
-		Agents:      []string{"claude", "codex", "gemini"},
+		Agents:      []string{"claude", "codex", "antigravity"},
 		Permissions: Permissions{
 			Bash:    false,
 			Network: false,

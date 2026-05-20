@@ -52,7 +52,7 @@
     },
     "agents": {
       "type": "array",
-      "items": { "enum": ["claude", "codex", "gemini"] },
+      "items": { "enum": ["claude", "codex", "antigravity"] },
       "minItems": 1,
       "uniqueItems": true,
       "description": "Which agents this skill has been authored / tested for."
@@ -77,7 +77,7 @@
           "description": "Whether the skill makes network requests."
         },
         "fs-write": {
-          "description": "false = read-only; 'scoped' = writes limited to the user's project tree and agent state dirs (.claude/, .codex/, .gemini/, .agents/); 'full' = unrestricted writes anywhere on disk.",
+          "description": "false = read-only; 'scoped' = writes limited to the user's project tree and agent state dirs (.claude/, .codex/, .agy/, .agents/); 'full' = unrestricted writes anywhere on disk.",
           "oneOf": [
             { "type": "boolean", "const": false },
             { "enum": ["scoped", "full"] }
@@ -123,19 +123,19 @@
           "description": "Per-persona ordered list of preferred providers. The dispatcher walks the list in declaration order and picks the first available provider. Persona names not listed here fall through to 'default'.",
           "additionalProperties": {
             "type": "array",
-            "items": {"enum": ["claude", "codex", "gemini"]}
+            "items": {"enum": ["claude", "codex", "antigravity"]}
           }
         },
         "default": {
           "type": "array",
           "description": "Global preferred-provider list applied when a persona isn't named under per-persona. Empty (or omitted) falls through to the persona registry's default mapping.",
-          "items": {"enum": ["claude", "codex", "gemini"]}
+          "items": {"enum": ["claude", "codex", "antigravity"]}
         }
       }
     },
     "hooks": {
       "type": "array",
-      "description": "Agent hooks that the CLI registers into the target agent's settings file at install time. Each entry is translated to the agent-native format (Claude/Gemini: JSON in settings.json; Codex: TOML in config.toml).",
+      "description": "Agent hooks that the CLI registers into the target agent's settings file at install time. Each entry is translated to the agent-native format (Claude/Antigravity: JSON in settings.json; Codex: TOML in config.toml).",
       "items": {
         "type": "object",
         "required": ["id", "event", "matcher", "script"],
@@ -162,11 +162,11 @@
               "after-model",
               "before-tool-selection"
             ],
-            "description": "Canonical kaijutsu event name. The CLI translates each per-agent: pre-tool-use → Claude PreToolUse / Codex PreToolUse / Gemini BeforeTool, etc. Events with no per-agent equivalent are skipped on that agent with a warning."
+            "description": "Canonical kaijutsu event name. The CLI translates each per-agent: pre-tool-use → Claude PreToolUse / Codex PreToolUse / Antigravity BeforeTool, etc. Events with no per-agent equivalent are skipped on that agent with a warning."
           },
           "matcher": {
             "type": "string",
-            "description": "Filter expression. Tool name (e.g. 'Bash') for Claude/Gemini; expression syntax (e.g. \"tool_name == 'shell_command'\") for Codex. Pass through unmodified to the target settings file."
+            "description": "Filter expression. Tool name (e.g. 'Bash') for Claude/Antigravity; expression syntax (e.g. \"tool_name == 'shell_command'\") for Codex. Pass through unmodified to the target settings file."
           },
           "script": {
             "type": "string",

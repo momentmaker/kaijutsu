@@ -9,10 +9,10 @@ import (
 
 func TestActiveAt(t *testing.T) {
 	home := t.TempDir()
-	mkdirs(t, home, ".claude", ".gemini")
+	mkdirs(t, home, ".claude", ".gemini/antigravity-cli")
 
 	got := ActiveAt(home)
-	want := []string{"claude", "gemini"}
+	want := []string{"claude", "antigravity"}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("ActiveAt = %v; want %v", got, want)
 	}

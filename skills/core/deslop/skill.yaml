@@ -6,7 +6,7 @@ description: "Strip AI-generated tells from a draft. Two modes: --strip edits in
 homepage: https://kaijutsu.dev/skills/deslop
 repository: https://github.com/momentmaker/kaijutsu
 tags: [primitive, writing, polish]
-agents: [claude, codex, gemini]
+agents: [claude, codex, antigravity]
 permissions:
   bash: false
   network: false

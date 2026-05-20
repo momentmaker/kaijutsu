@@ -6,20 +6,20 @@ import (
 	"strings"
 )
 
-// geminiSettingsPath returns the absolute path to the Gemini settings
+// antigravitySettingsPath returns the absolute path to the Antigravity settings
 // file at the given install root.
-func geminiSettingsPath(installRoot string) string {
-	return filepath.Join(installRoot, ".gemini", "settings.json")
+func antigravitySettingsPath(installRoot string) string {
+	return filepath.Join(installRoot, ".gemini/antigravity-cli", "settings.json")
 }
 
-// InstallGemini registers all hooks in entries into the Gemini settings
-// file at installRoot/.gemini/settings.json. Idempotent: existing
+// InstallAntigravity registers all hooks in entries into the Antigravity settings
+// file at installRoot/.gemini/antigravity-cli/settings.json. Idempotent: existing
 // kaijutsu-tagged entries with the same skill+id are replaced.
 //
-// Gemini's hook entries are flat (not nested under a matcher wrapper)
+// Antigravity's hook entries are flat (not nested under a matcher wrapper)
 // and use millisecond timeouts.
-func InstallGemini(installRoot string, entries []Entry) error {
-	path := geminiSettingsPath(installRoot)
+func InstallAntigravity(installRoot string, entries []Entry) error {
+	path := antigravitySettingsPath(installRoot)
 	settings, err := loadJSONSettings(path)
 	if err != nil {
 		return err
@@ -32,7 +32,7 @@ func InstallGemini(installRoot string, entries []Entry) error {
 	}
 
 	for _, e := range entries {
-		nativeEvent, _ := Translate(e.Hook.Event, Gemini)
+		nativeEvent, _ := Translate(e.Hook.Event, Antigravity)
 		if nativeEvent == "" {
 			continue
 		}
@@ -42,10 +42,10 @@ func InstallGemini(installRoot string, entries []Entry) error {
 			"name":      "kaijutsu:" + e.SkillName + ":" + e.Hook.ID,
 			"type":      "command",
 			"command":   e.ScriptPath,
-			"timeout":   TimeoutSeconds(e.Hook) * 1000, // Gemini uses ms
+			"timeout":   TimeoutSeconds(e.Hook) * 1000, // Antigravity uses ms
 			"_kaijutsu": MarkerFor(e.SkillName, e.Hook.ID),
 		}
-		// Pass through matcher when supported (Gemini's BeforeTool etc
+		// Pass through matcher when supported (Antigravity's BeforeTool etc
 		// accept a matcher field for tool-name filtering).
 		if e.Hook.Matcher != "" {
 			entry["matcher"] = e.Hook.Matcher
@@ -56,10 +56,10 @@ func InstallGemini(installRoot string, entries []Entry) error {
 	return writeJSONSettings(path, settings)
 }
 
-// RemoveGemini drops all kaijutsu-tagged hook entries belonging to
-// skillName from the Gemini settings file.
-func RemoveGemini(installRoot, skillName string) error {
-	path := geminiSettingsPath(installRoot)
+// RemoveAntigravity drops all kaijutsu-tagged hook entries belonging to
+// skillName from the Antigravity settings file.
+func RemoveAntigravity(installRoot, skillName string) error {
+	path := antigravitySettingsPath(installRoot)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return nil
 	}
@@ -83,7 +83,7 @@ func RemoveGemini(installRoot, skillName string) error {
 }
 
 // filterOutFlatMarker drops entries whose top-level _kaijutsu marker
-// matches one of the given markers. Used for Gemini's flat entry shape.
+// matches one of the given markers. Used for Antigravity's flat entry shape.
 func filterOutFlatMarker(arr []interface{}, markers map[string]bool) []interface{} {
 	out := make([]interface{}, 0, len(arr))
 	for _, item := range arr {

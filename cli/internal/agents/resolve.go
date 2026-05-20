@@ -57,7 +57,7 @@ type Resolved struct {
 //
 // When project.Enabled is empty AND no provider catalog exists in
 // either layer, the legacy v0.5 mix is synthesized (`[claude, codex,
-// gemini]`) so users who never wrote agents.yaml get byte-identical
+// antigravity]`) so users who never wrote agents.yaml get byte-identical
 // v0.5 behavior.
 func Resolve(global *GlobalConfig, project *ProjectConfig) (*Resolved, error) {
 	if global == nil {

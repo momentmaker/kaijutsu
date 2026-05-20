@@ -193,7 +193,7 @@ side-by-side so the user can investigate which reviewer is right:
 | reviewer | category | evidence |
 |---|---|---|
 | claude | workaround | "commit abc123 says fix-for-mobile-bug" |
-| gemini | perf-opt | "the loop unroll pattern matches era-X SIMD" |
+| antigravity | perf-opt | "the loop unroll pattern matches era-X SIMD" |
 
 If reviewers found no theories, output:
 

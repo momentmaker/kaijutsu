@@ -28,7 +28,7 @@ func perKTokenRate(agent AgentName) float64 {
 		return 0.005 // ~$5 / 1M tokens, blended sonnet-ish
 	case AgentCodex:
 		return 0.005 // ~$5 / 1M tokens, blended
-	case AgentGemini:
+	case AgentAntigravity:
 		return 0.002 // ~$2 / 1M tokens, blended flash-ish
 	}
 	return 0.005

@@ -135,9 +135,9 @@ func stdinIsTTY() bool {
 // for the consent prompt.
 func providerLabels(agents []AgentName) []string {
 	labels := map[AgentName]string{
-		AgentClaude: "Anthropic (claude)",
-		AgentCodex:  "OpenAI (codex)",
-		AgentGemini: "Google (gemini)",
+		AgentClaude:      "Anthropic (claude)",
+		AgentCodex:       "OpenAI (codex)",
+		AgentAntigravity: "Google (Antigravity / agy)",
 	}
 	var out []string
 	seen := map[string]bool{}
