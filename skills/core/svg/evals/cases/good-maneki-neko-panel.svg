@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img">
+  <title>maneki-neko</title>
+  <defs>
+    <linearGradient id="fur" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="hsl(40 45% 97%)"/>
+      <stop offset="1" stop-color="hsl(36 30% 84%)"/>
+    </linearGradient>
+    <filter id="goo" x="-25%" y="-25%" width="150%" height="150%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="0.9" result="b"/>
+      <feColorMatrix in="b" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 24 -11"/>
+    </filter>
+  </defs>
+  <rect x="0.8" y="0.8" width="22.4" height="22.4" rx="4.5" fill="hsl(250 35% 90%)"/>
+
+  <!-- raised beckoning paw (behind body, rises beside the head, distinct against panel) -->
+  <g fill="url(#fur)" stroke="hsl(34 26% 77%)" stroke-width="0.25">
+    <path d="M15.5 14 C15 11.5 15.6 9 17.6 8 C19.4 7.1 20.4 9.2 19.4 10.8 C18.6 12.1 18 13.4 18 14.6 Z"/>
+  </g>
+
+  <!-- one fused silhouette: body + head + cheeks merged by the goo filter -->
+  <g filter="url(#goo)" fill="url(#fur)">
+    <ellipse cx="11.6" cy="15.4" rx="6.5" ry="6"/>
+    <circle cx="11.6" cy="8.3" r="4.6"/>
+    <circle cx="8.2" cy="11.3" r="3"/>
+    <circle cx="15" cy="11.3" r="3"/>
+  </g>
+
+  <!-- feet -->
+  <g fill="url(#fur)" stroke="hsl(34 26% 77%)" stroke-width="0.25">
+    <ellipse cx="9.4" cy="20.9" rx="1.9" ry="1.4"/>
+    <ellipse cx="13.8" cy="20.9" rx="1.9" ry="1.4"/>
+  </g>
+
+  <!-- ears -->
+  <g fill="url(#fur)">
+    <path d="M6.9 5.6 L7.9 1.4 L11 4.4 Z"/>
+    <path d="M16.3 5.6 L15.3 1.4 L12.2 4.4 Z"/>
+  </g>
+  <path d="M8.1 5 L8.6 2.6 L10.2 4.4 Z" fill="hsl(350 65% 86%)"/>
+  <path d="M15.1 5 L14.6 2.6 L13 4.4 Z" fill="hsl(350 65% 86%)"/>
+
+  <!-- face -->
+  <ellipse cx="9.7" cy="8" rx="0.78" ry="1.1" fill="hsl(250 22% 22%)"/>
+  <ellipse cx="13.5" cy="8" rx="0.78" ry="1.1" fill="hsl(250 22% 22%)"/>
+  <circle cx="9.45" cy="7.6" r="0.22" fill="#fff"/>
+  <circle cx="13.25" cy="7.6" r="0.22" fill="#fff"/>
+  <path d="M11 9.5 h1.2 l-0.6 0.7 z" fill="hsl(350 70% 70%)"/>
+  <g stroke="hsl(36 22% 68%)" stroke-width="0.32" stroke-linecap="round">
+    <path d="M8.7 9.7 L6 9.2"/><path d="M8.7 10.3 L6.2 10.7"/>
+    <path d="M14.5 9.7 L17.2 9.2"/><path d="M14.5 10.3 L17 10.7"/>
+  </g>
+
+  <!-- collar + bell -->
+  <path d="M7.2 12.4 Q11.6 14.8 16 12.4 L16 13.5 Q11.6 15.9 7.2 13.5 Z" fill="hsl(8 76% 52%)"/>
+  <circle cx="11.6" cy="14.2" r="1.15" fill="hsl(44 90% 58%)"/>
+  <circle cx="11.6" cy="14.2" r="0.32" fill="hsl(36 70% 38%)"/>
+</svg>

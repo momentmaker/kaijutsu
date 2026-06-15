@@ -17,6 +17,8 @@ A good calibration set covers every weight as a PASS and at least two distinct F
 | `cases/good-bell-dimensional.svg` | bell, `dimensional` | **PASS** | Body gradient, off-center radial highlight, soft drop shadow, light bevel edge — the full depth-stack reads. |
 | `cases/good-shield-soft.svg` | shield, `soft` | **PASS** | Body gradient + soft drop shadow, no bevel/gloss — correct reduced depth-stack for `soft`. Confirms the rubric accepts soft as its own weight. |
 | `cases/good-gear-flat.svg` | gear, `flat` | **PASS** | Recognizable toothed gear (ring + 8 teeth + center hole), clean flat fill on the grid, correct palette, no depth artifacts. Confirms the rubric is weight-aware (flat is not "failed dimensional"). |
+| `cases/good-torii-dimensional.svg` | torii gate, `dimensional` | **PASS** | Recognizable torii (pillars + swept top beam + plaque), vermilion gradient + drop shadow + highlight, fills the frame. A constructible cultural subject done well. |
+| `cases/good-maneki-neko-panel.svg` | maneki-neko, `panel` | **PASS** | Cohesive lucky-cat: body+head fused into one flowing silhouette via the goo filter (not stacked circles), distinct beckoning paw, collar + bell, filling a soft panel. Organic-ish subject done right — fused, not assembled. |
 | `cases/flawed-bell-flat.svg` | bell, `dimensional` | **FAIL** | Flat solid fill at dimensional weight — no gradient, no shadow, no highlight. The "flat/generic" failure mode. |
 | `cases/flawed-gear-unrecognizable.svg` | gear, `flat` | **FAIL** | A 12-point sunburst with a center circle — reads as a star/sun, not a gear. Fails the **subject-recognizable** box even though it's clean and on-grid. (Authored blind as a "gear" and only caught on render — exactly why the loop exists.) |
 
