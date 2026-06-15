@@ -7,6 +7,7 @@ The numbers below are research-grounded defaults (Material 3 / Apple HIG / Micro
 ## 1. Geometry — the cohesion backbone
 
 - Build on a **24-unit keyline grid** (`viewBox="0 0 24 24"`), inside a **20-unit live area** (2-unit margin).
+- **Fill the live area.** The subject spans the full live area (~4→20 on both axes), optically sized — it should not float small in the center. If it occupies much less than ~70% of the frame, scale it up. Undersized output is the most common "looks cheap" failure.
 - Snap primary forms to shared **keyline shapes** (square, circle, vertical/horizontal rectangle) so unrelated icons still feel related.
 - **Corner radius 2** by default (0 only for intentionally sharp marks). **Stroke width 2** (drop to 1.5 for fine interior detail). Both constant across the set.
 - Align **optically, not mathematically** — nudge by eye so the mark looks centered (a triangle centered by bounding box looks left-heavy).
@@ -57,6 +58,17 @@ A house style enforces consistency but does not, by itself, prevent every icon l
 - Give the family a **signature element** — a consistent perspective angle, a recurring negative-space cut, or a shared accent shape.
 - **Uniform shadow + gloss + bevel applied identically to every icon is itself the slop signature.** Vary subject composition while holding the style tokens constant.
 - Name a concrete *premium reference* for the brief (what specifically makes the target look premium beyond "dimensional" — restraint, optical correctness, tasteful depth) and steer the loop toward it, not toward maximal gloss.
+
+## 7. Framing — transparent vs panel
+
+Output is **transparent** by default (the subject on no background — correct for UI icons that sit on arbitrary surfaces). For a **sticker / logo / app-icon** look (what most "premium" reference sets use), use **panel** framing: a rounded-rect background filling the canvas (inset ~0.8, radius ~4.5 on the 24 grid) in a soft tint that contrasts the subject — a desaturated tint of the lane, a neutral, or a complementary hue. On a panel the subject still **fills the live area**; the panel frames it, it does not replace sizing. Driven by the brief's `background` field and `tokens.json` `framing`.
+
+## 8. Fusing organic forms (the goo filter)
+
+Composed primitives **alone** read as *assembled shapes* for organic subjects — a head-circle stacked on a body-ellipse shows its seam and a snowman pinch. To get a *flowing, designed* silhouette, fuse the rounded mass with a gooey filter: `feGaussianBlur` (stdDeviation ~0.9 on the 24 grid) → `feColorMatrix` that sharpens alpha (`… 0 0 0 24 -11`). Overlapping same-fill shapes merge into one smooth contour, dissolving the seams.
+
+- Fuse only the rounded mass (body, head, cheeks). Keep sharp or distinct features (ears, a raised paw, a tail) **out** of the goo so they stay crisp — overlap them onto the fused silhouette, or place them against the background so they read as separate.
+- This is the bridge between "recognizable" and "designed" for organic-ish subjects (a maneki-neko, a chick, a blob mascot). It does **not** rescue freehand profile silhouettes that need accurate contours (a bear in profile) — fusing circles still yields a blobby, not anatomical, outline. For those, defer to a purpose-trained model.
 
 ## Sources
 

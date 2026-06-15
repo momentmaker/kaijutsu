@@ -10,7 +10,7 @@ A brief is how the human (or calling agent) expresses intent. Resolve it into a 
 | `weight` | no | `dimensional` | `flat` \| `soft` \| `dimensional`. Controls only the depth-stack (see `house-style.md` §5). |
 | `base_hue` | no | token default lane | A hue (HSL degrees) or a named semantic (`brand-primary`, `success`, `danger`, …). Feeds the palette lane (`house-style.md` §2). |
 | `size` | no | 24 | Target render size in px; the `viewBox` stays `0 0 24 24` regardless. |
-| `background` | no | `light` | Intended background lightness (`light` \| `dark`) — affects shadow/contrast choices. |
+| `background` | no | `transparent` | `transparent` (default, UI icon, no panel) \| `panel` (framed sticker/logo on a soft rounded panel) \| `dark` (panel on a dark tint). Panel framing + colors come from `tokens.json` `framing`; also affects shadow/contrast choices. |
 | `intent` | no | `semantic` | `semantic` \| `decorative`. Drives accessibility output (see SKILL.md "Finalize output"). |
 
 **Named semantics:** a `base_hue` like `success` / `brand-primary` / `danger` / `warning` / `info` resolves to a hue via `assets/tokens.json` `palette.semantics`; each builds its lane the same way (`house-style.md` §2).

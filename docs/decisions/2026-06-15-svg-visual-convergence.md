@@ -28,9 +28,13 @@ But the two pains are not generation-horsepower problems. "Flat/generic" is a mi
 
 6. **Mechanics.** Rich layout (`references/`, `assets/`, `scripts/`); permissions `{bash: true, network: false, fs-write: scoped}` (same triple as `convergence-detect`); composes `convergence-detect@^0.2`; `trust.expected-signer: kaijutsu-core@github` (CI signs on tag). Single agent-agnostic `SKILL.md`, no swarm.
 
-## Scope boundary (benchmark-backed)
+## Scope: try anything, gate on the render (benchmark-backed)
 
-Benchmarked against 5 Quiver/Arrow reference outputs (2026-06-15): the skill matches a purpose-trained model on **constructible** marks (geometric icons; compositional/filter effects like metaball typography via the gooey filter) but produces only a generic blob on **freehand-organic** illustration (a bear silhouette stalled at "generic quadruped" after two render-loop rounds). The render-see-fix loop worked as designed — it surfaced the failure on render — but the binding constraint is generation, not the loop. Scope is therefore **icons + compositional/effect-driven marks**; bespoke organic illustration (animal/figure silhouettes, mascots, detailed figural logos) is out of scope and defers to a trained generator. This is the kill-criterion firing for that class, as planned, and it sharpens the skill's identity rather than weakening it.
+Benchmarked against Quiver/Arrow references plus our own probes (2026-06-15): the skill matched a trained model on a torii gate, a ramen bowl, a metaball-typography mark, and — against prediction — a maneki-neko, but produced only a generic blob on a freehand bear *silhouette*. The lesson: upfront predictions about what's drawable are unreliable (we predicted the cat would fail; it was the best result), so category gating like "no animals" would wrongly refuse subjects the skill actually nails.
+
+Decision: **no upfront scope blocklist.** The skill attempts any subject; the render-see-fix loop is the quality gate. It is strongest on constructible subjects (geometric, compositional/filter, stylized frontal/iconographic forms with recognizable attributes) and weakest on freehand profile silhouettes and intricate figural illustration. The kill-criterion fires **per attempt** — at the iteration cap, via the rubric — not as a static category rule: if a render can't reach quality, the skill says so and points the user to a purpose-trained model rather than shipping a blob. This keeps the honest boundary (don't pretend to match a trained model on freehand artistry) without gatekeeping subjects we might nail.
+
+A house-style fix from the same session: subjects must **fill the live area** (under-drawn icons that float small in the frame were the most common "looks cheap" failure), and an optional **panel** framing matches the reference sets' framed look.
 
 ## Why these together
 

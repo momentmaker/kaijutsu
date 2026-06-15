@@ -9,6 +9,7 @@ An icon **satisfies the brief** only when ALL of these hold:
 **Always (every weight):**
 - [ ] The subject is **recognizable** as what the brief asked for.
 - [ ] It sits on the **keyline grid** and is **optically centered** (not bounding-box centered).
+- [ ] The subject **fills the live area** (~4→20 on both axes, optically sized) — it does not float small in the center of the frame.
 - [ ] Stroke width and corner radius match the set's tokens (consistent with siblings).
 - [ ] Palette is from the resolved lane — no off-lane or arbitrary hues.
 - [ ] No rasterization artifacts: no clipped edges, no banding in gradients, no stray paths.
