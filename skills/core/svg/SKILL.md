@@ -34,9 +34,42 @@ Resolve the brief into one token source before generating. The full schema is in
 
 For a **set**, take the list of subjects sharing one `base_hue` and `weight`, resolve the shared token source **once**, then generate each subject against it. Deriving the source before the first icon is what makes the set cohere.
 
-<!-- LOOP-SECTION -->
+## 2. The render-see-fix loop
 
-<!-- OUTPUT-SECTION -->
+Generate, then *look*, then fix — never ship a render the agent hasn't seen. One icon per loop (a set runs this loop per subject against the shared token source).
+
+1. **Generate** a candidate SVG by applying the resolved tokens (`assets/tokens.json`) through the recipe in `references/house-style.md` at the brief's weight. Use `viewBox="0 0 24 24"`.
+2. **Rasterize** with `scripts/render.sh <candidate.svg> <out.png> [size]`.
+   - It prints `engine=<family>` to stderr — confirm that family matches where the SVG will ship (filter/gradient rendering diverges across engines; an approved render only predicts the browser when the engines match).
+   - **If it exits `3` (`RASTERIZER_ABSENT`):** take the degrade path — emit the current style-system SVG, tell the user the visual-verification loop was skipped, and go straight to step "Finalize output." Do not error.
+3. **Inspect** the rendered PNG against `references/inspection-rubric.md` for the brief's weight.
+4. **Branch (a) — satisfied?** If every applicable rubric box passes, the icon is done — go to "Finalize output." This can fire on round 1; it is not subject to any minimum-rounds rule.
+5. **Branch (b) — not satisfied?** Patch the SVG to fix the specific failed boxes, then re-render (back to step 2). Keep each round's SVG so the patch-set can be compared.
+   - Once **3+ rounds** have run without branch (a) firing, invoke `convergence-detect` on the **patch-set** (treat each round's SVG as the "item" — are successive patches just restating each other?). If it returns CONVERGED, stop: the loop is no longer improving the render, so emit the best round and note it converged-without-satisfying. `convergence-detect` governs only this branch and only its own 3-round floor — it cannot judge whether the render satisfies the brief (that is branch (a)).
+6. **Iteration cap.** Never exceed a hard cap (default **6** rounds) regardless of branch. At the cap, emit the best render so far and report `capped`.
+
+**Loop-state sidecar.** Emit loop telemetry as a JSON sidecar (markdown on a TTY, JSON when piped), `lower_snake_case` per `SCHEMA.md`:
+
+```json
+{"skill": "svg", "schema_version": "0.1.0", "round": 3, "verdict": "converged", "stop_branch": "a"}
+```
+
+`verdict` ∈ `converged` | `capped` | `skipped` (no rasterizer); `stop_branch` ∈ `a` (satisfied) | `b` (patch-set converged) | `none` (capped/skipped).
+
+## 3. Finalize output
+
+Run once, on the converged (or best/degraded) SVG:
+
+1. **Optimize** — `scripts/optimize.sh <converged.svg> <final.svg>`. It runs svgo when present and falls back to the unoptimized SVG otherwise (and refuses to ship an SVG whose `viewBox` or `<title>` it stripped). Never run this mid-loop.
+2. **Accessibility — driven by the brief's `intent`:**
+   - `semantic` (default): include a `<title>` whose text is the subject, and set `role="img"` on the root `<svg>`.
+   - `decorative`: set `aria-hidden="true"` on the root and **omit** the `<title>`.
+3. **Validate** before handing back:
+   - Vector **paths only** — no `<image>` elements and no base64-embedded rasters.
+   - `viewBox="0 0 24 24"` present.
+   - Well-formed XML.
+
+Emit the final SVG (and, for a set, the family of SVGs). If the loop ran degraded (no rasterizer) or hit the cap, say so alongside the output so the user knows the visual gate did not fully fire.
 
 ## Hard rules
 
