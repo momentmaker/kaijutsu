@@ -28,6 +28,10 @@ But the two pains are not generation-horsepower problems. "Flat/generic" is a mi
 
 6. **Mechanics.** Rich layout (`references/`, `assets/`, `scripts/`); permissions `{bash: true, network: false, fs-write: scoped}` (same triple as `convergence-detect`); composes `convergence-detect@^0.2`; `trust.expected-signer: kaijutsu-core@github` (CI signs on tag). Single agent-agnostic `SKILL.md`, no swarm.
 
+## Scope boundary (benchmark-backed)
+
+Benchmarked against 5 Quiver/Arrow reference outputs (2026-06-15): the skill matches a purpose-trained model on **constructible** marks (geometric icons; compositional/filter effects like metaball typography via the gooey filter) but produces only a generic blob on **freehand-organic** illustration (a bear silhouette stalled at "generic quadruped" after two render-loop rounds). The render-see-fix loop worked as designed — it surfaced the failure on render — but the binding constraint is generation, not the loop. Scope is therefore **icons + compositional/effect-driven marks**; bespoke organic illustration (animal/figure silhouettes, mascots, detailed figural logos) is out of scope and defers to a trained generator. This is the kill-criterion firing for that class, as planned, and it sharpens the skill's identity rather than weakening it.
+
 ## Why these together
 
 - **Concrete-over-generic** keeps v1 honest to the stated goal (kill flat/generic + several tries) and avoids designing an interface from one example. Factorability preserves the upside without paying the abstraction cost now.

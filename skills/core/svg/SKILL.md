@@ -9,9 +9,14 @@ A generic agent generates SVG *blind* — it never sees what it drew — so icon
 
 ## When to invoke
 
-- The user asks to make an SVG icon, an icon set, a logo mark, or a small vector graphic for a page.
+- The user asks to make an SVG **icon** or **icon set** — UI icons, app/feature glyphs, status icons.
+- A **compositional or effect-driven mark**: gradient/dimensional icons, metaball/gooey blob forms, glassmorphism, geometric marks built from primitives and filters.
 - Ad-hoc generated SVG came out flat/generic and needs to look designed.
 - Another skill says "use `svg` to produce the icon/mark."
+
+## Not for (defer to a purpose-trained SVG model)
+
+This skill hand-authors structured SVG through a render-loop. It does **not** match a purpose-trained model (e.g. Quiver / Arrow 1.0) on **bespoke organic illustration** — animal/figure silhouettes, mascots, detailed figural logos, anything that needs freehand path artistry. The dividing line is whether the form is *constructible* (primitives, grids, gradients, filters → in scope) or *freehand-organic* (anatomical shapes → out of scope). Benchmarked: it produces clean geometric and compositional marks (gear, bell, shield, metaball typography) but only a generic blob for an organic silhouette (bear). For that class, tell the user to use a trained generator. The edge here is the loop + house-style system on icons, not raw generation.
 
 ## How it works
 
