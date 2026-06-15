@@ -47,8 +47,9 @@ fi
 
 [ -z "$svgo_cmd" ] && fallback "svgo not found"
 
-tmp_out="$(mktemp -t svgo-out.XXXXXX).svg"
-trap 'rm -f "$tmp_out"' EXIT
+tmp_dir="$(mktemp -d)"
+trap 'rm -rf "$tmp_dir"' EXIT
+tmp_out="$tmp_dir/out.svg"
 
 if ! $svgo_cmd --multipass -i "$in_svg" -o "$tmp_out" >/dev/null 2>&1; then
   fallback "svgo exited non-zero"

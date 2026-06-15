@@ -46,19 +46,24 @@ if command -v rsvg-convert >/dev/null 2>&1; then
   exit 0
 fi
 
+# chromium is a best-effort fallback: it screenshots the SVG file sized by the
+# window, so a 24-viewBox SVG with no intrinsic width/height won't scale to fill
+# the frame. Prefer resvg/librsvg/cairosvg above; use chromium only when it's all
+# that's available, and treat its render as approximate.
 for chrome in chromium chromium-browser "google-chrome" "google-chrome-stable"; do
   if command -v "$chrome" >/dev/null 2>&1; then
     echo "engine=chromium" >&2
+    abs_svg="$(cd "$(dirname "$in_svg")" && pwd)/$(basename "$in_svg")"
     "$chrome" --headless --disable-gpu --force-device-scale-factor=1 \
       --screenshot="$out_png" --window-size="${size},${size}" \
-      --default-background-color=00000000 "file://$(cd "$(dirname "$in_svg")" && pwd)/$(basename "$in_svg")"
+      --default-background-color=00000000 "file://${abs_svg}"
     exit 0
   fi
 done
 
 if command -v cairosvg >/dev/null 2>&1; then
   echo "engine=cairosvg" >&2
-  cairosvg "$in_svg" -o "$out_png" -W "$size" -H "$size"
+  cairosvg "$in_svg" -o "$out_png" --output-width "$size" --output-height "$size"
   exit 0
 fi
 
