@@ -1,7 +1,7 @@
 ---
 title: "feat: SVG icon generation via a render-see-fix loop (svg skill)"
 type: feat
-status: active
+status: completed
 date: 2026-06-14
 origin: docs/brainstorms/2026-06-14-svg-icon-visual-convergence-primitive-requirements.md
 ---
