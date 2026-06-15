@@ -1,0 +1,23 @@
+name: svg
+version: 0.1.0
+license: MIT
+layout: rich
+description: "Generate premium, dimensional SVG icons via a render-see-fix loop — generate, rasterize, inspect the render against a quality rubric, patch, converge — driven by a data-driven house-style token system with a flat→dimensional weight dial. Use when asked to make an SVG icon, an icon set, or a logo mark, or when ad-hoc generated SVG comes out flat/generic. Degrades to style-system-only output when no rasterizer is present."
+homepage: https://kaijutsu.dev/skills/svg
+repository: https://github.com/momentmaker/kaijutsu
+tags: [svg, icons, generation, render-loop]
+agents: [claude, codex, antigravity]
+
+shared: [references, assets, scripts]
+
+permissions:
+  bash: true
+  network: false
+  fs-write: scoped
+
+deps:
+  skills:
+    - convergence-detect@^0.2
+
+trust:
+  expected-signer: kaijutsu-core@github
