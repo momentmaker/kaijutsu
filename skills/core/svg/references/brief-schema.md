@@ -13,7 +13,9 @@ A brief is how the human (or calling agent) expresses intent. Resolve it into a 
 | `background` | no | `light` | Intended background lightness (`light` \| `dark`) — affects shadow/contrast choices. |
 | `intent` | no | `semantic` | `semantic` \| `decorative`. Drives accessibility output (see SKILL.md "Finalize output"). |
 
-**Missing `base_hue`:** apply the documented default lane from `assets/tokens.json` (`palette.base_hue`). Never invent a different hue per icon — that breaks set cohesion. *(AE7)*
+**Named semantics:** a `base_hue` like `success` / `brand-primary` / `danger` / `warning` / `info` resolves to a hue via `assets/tokens.json` `palette.semantics`; each builds its lane the same way (`house-style.md` §2).
+
+**Missing or unknown `base_hue`:** apply the documented default lane from `assets/tokens.json` (`palette.base_hue`). A named semantic not in `palette.semantics` also falls back to the default lane. Never invent a different hue per icon — that breaks set cohesion. *(AE7)*
 
 ## Set brief
 
