@@ -33,3 +33,6 @@ Thumbs.db
 # Local secrets
 .env
 .env.local
+
+# svg skill: local-only quiver benchmark references (commercial product output, not redistributed)
+skills/core/svg/evals/benchmark/quiver-refs/
