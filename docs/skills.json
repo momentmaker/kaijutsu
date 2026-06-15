@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "total": 47,
+  "total": 48,
   "skills": [
     {
       "name": "api-and-interface-design",
@@ -973,6 +973,33 @@
         "bash": false,
         "network": false,
         "fs_write": null
+      }
+    },
+    {
+      "name": "svg",
+      "version": "0.1.0",
+      "license": "MIT",
+      "description": "Generate premium, dimensional SVG icons via a render-see-fix loop — generate, rasterize, inspect the render against a quality rubric, patch, converge — driven by a data-driven house-style token system with a flat→dimensional weight dial. Use when asked to make an SVG icon, an icon set, or a logo mark, or when ad-hoc generated SVG comes out flat/generic. Degrades to style-system-only output when no rasterizer is present.",
+      "agents": [
+        "claude",
+        "codex",
+        "antigravity"
+      ],
+      "tags": [
+        "svg",
+        "icons",
+        "generation",
+        "render-loop"
+      ],
+      "source": "core",
+      "repo": "momentmaker/kaijutsu",
+      "path": "skills/core/svg",
+      "homepage": "https://kaijutsu.dev/skills/svg",
+      "has_hooks": false,
+      "permissions": {
+        "bash": true,
+        "network": false,
+        "fs_write": "scoped"
       }
     },
     {
