@@ -4,7 +4,7 @@ license: MIT
 layout: flat
 description: "Destructive command guard. Pre-tool-use hook that blocks rm -rf /, git reset --hard, git clean -fd, rm of .env / credentials, and other unrecoverable shell commands before the agent executes them."
 author: "kaijutsu-core <gh@fz.ax>"
-homepage: https://kaijutsu.dev/skills/dcg
+homepage: https://github.com/momentmaker/kaijutsu/tree/main/skills/community/dcg
 repository: https://github.com/momentmaker/kaijutsu
 tags: [safety, hooks, pre-tool-use, destructive-commands, dcg]
 

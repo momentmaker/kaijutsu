@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://kaijutsu.dev/schemas/lockfile.schema.json",
+  "$id": "https://momentmaker.github.io/kaijutsu/schemas/lockfile.schema.json",
   "title": "kaijutsu Lockfile",
   "description": "Schema for kaijutsu.lock.json — pinned, reproducible resolution of kaijutsu.json. Updated by `jutsu install` and `jutsu upgrade`.",
   "type": "object",

@@ -4,7 +4,7 @@ license: MIT
 layout: flat
 description: "Implement features as thin vertical slices behind feature flags, each shippable on green CI. Per-slice two-stage review chain: fresh-context spec-compliance subagent, then code-quality via polish (with verification-before-completion gate). Continuous execution between independent slices — no pause-to-check-in. Composes scope-check + polish."
 author: "Addy Osmani (originally) — adapted by kaijutsu maintainers"
-homepage: https://kaijutsu.dev/skills/incremental-implementation
+homepage: https://github.com/momentmaker/kaijutsu/tree/main/skills/core/incremental-implementation
 repository: https://github.com/momentmaker/kaijutsu
 upstream: https://github.com/addyosmani/agent-skills/blob/main/skills/incremental-implementation
 tags: [implementation, vertical-slice, feature-flag, ship-small, addyosmani]

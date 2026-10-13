@@ -3,7 +3,7 @@ version: 0.3.0
 license: MIT
 layout: flat
 description: "End-of-session retrospective. Mines the current conversation for learnings; cross-session pattern detection across recent retros; writes to project-memory; optional auto-apply mode."
-homepage: https://kaijutsu.dev/skills/session-retro
+homepage: https://github.com/momentmaker/kaijutsu/tree/main/skills/community/session-retro
 repository: https://github.com/momentmaker/kaijutsu
 tags: [retrospective, memory, learning]
 agents: [claude, codex, antigravity]

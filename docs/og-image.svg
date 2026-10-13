@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  kaijutsu.dev social-share open-graph image (1200×630).
+  kaijutsu social-share open-graph image (1200×630).
   Compose: sumi-e brand mark (kanji 術 + ink-brush accent) on the left;
   hi-res chibi mascot on the right; quiet skill-name shelf in the
   middle gutter; swarm/persona line under the shelf; symmetric margins.
@@ -88,7 +88,7 @@
   <text x="100" y="582"
         font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace"
         font-size="20"
-        fill="#1A1A1A">kaijutsu.dev</text>
+        fill="#1A1A1A">momentmaker.github.io/kaijutsu</text>
 
   <!-- chibi mascot — right-side hero presence, hi-res 2048×2048 source -->
   <image x="780" y="105" width="380" height="380"

@@ -4,7 +4,7 @@ license: MIT
 layout: flat
 description: "Multi-pass editorial review for long-form essays + articles. Structural / line-level / AI-tells / resonance passes. Voice-configurable (literary-intelligent-general | terse-technical | conversational | journalistic). Composes jutsu swarm doc-review for multi-agent prose review on top."
 author: "kaijutsu maintainers (generalized from a project-specific version)"
-homepage: https://kaijutsu.dev/skills/editorial-review
+homepage: https://github.com/momentmaker/kaijutsu/tree/main/skills/community/editorial-review
 repository: https://github.com/momentmaker/kaijutsu
 tags: [editorial, writing, essay, prose, review, ai-tells, voice]
 

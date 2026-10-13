@@ -3,7 +3,7 @@ version: 0.2.0
 license: MIT
 layout: flat
 description: "Mid-task scope mirror with cost-tier classification (plan/bead/code = 1x/5x/25x). Surfaces when work has drifted from cheap planning into expensive code-space rework, and identifies natural split-points where a PR could become two."
-homepage: https://kaijutsu.dev/skills/scope-check
+homepage: https://github.com/momentmaker/kaijutsu/tree/main/skills/core/scope-check
 repository: https://github.com/momentmaker/kaijutsu
 tags: [workflow, focus, planning]
 agents: [claude, codex, antigravity]

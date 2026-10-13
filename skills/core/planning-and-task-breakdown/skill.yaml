@@ -4,7 +4,7 @@ license: MIT
 layout: flat
 description: "Decompose a spec into a verifiable task list — header (goal + architecture + tech-stack), file-structure-up-front, vertical slices with explicit dependencies and acceptance criteria, AND bite-sized 2-5-minute checkbox steps inside each slice for direct subagent-driven execution. Final review via jutsu swarm doc-review; cost-tier classification via scope-check."
 author: "Addy Osmani (originally) — adapted by kaijutsu maintainers"
-homepage: https://kaijutsu.dev/skills/planning-and-task-breakdown
+homepage: https://github.com/momentmaker/kaijutsu/tree/main/skills/core/planning-and-task-breakdown
 repository: https://github.com/momentmaker/kaijutsu
 upstream: https://github.com/addyosmani/agent-skills/blob/main/skills/planning-and-task-breakdown
 tags: [planning, tasks, breakdown, plan, addyosmani]

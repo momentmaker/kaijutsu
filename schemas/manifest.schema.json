@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://kaijutsu.dev/schemas/manifest.schema.json",
+  "$id": "https://momentmaker.github.io/kaijutsu/schemas/manifest.schema.json",
   "title": "kaijutsu Project Manifest",
   "description": "Schema for kaijutsu.json — declares which skills a project depends on. Created by `jutsu init`.",
   "type": "object",

@@ -8,14 +8,14 @@ kaijutsu is an MIT-licensed, agent-agnostic registry and CLI for AI coding agent
 
 - **Local checkout**: `~/GitHub/momentmaker/kaijutsu/`
 - **Remote**: `git@github.com:momentmaker/kaijutsu.git`
-- **Public site**: https://kaijutsu.dev (live; sitegen-driven catalog)
+- **Public site**: https://momentmaker.github.io/kaijutsu (live; sitegen-driven catalog)
 - **Authoritative spec**: see [`SCHEMA.md`](./SCHEMA.md) and [`docs/multi-agent.md`](./docs/multi-agent.md)
 - **Roadmap**: [`ROADMAP.md`](./ROADMAP.md) (current state, deferrals, what's next)
 - **Recent specs / decisions**: [`docs/specs/`](./docs/specs/) + [`docs/decisions/`](./docs/decisions/)
 
 ## Current state (as of v0.8.1)
 
-- 17 core skills + 6 community + 8 third-party registry pointers (~46 catalog entries on kaijutsu.dev).
+- 17 core skills + 6 community + 8 third-party registry pointers (~46 catalog entries on the site).
 - 6 swarm presets shipping: pr-review, doc-review, brainstorm, refactor-plan, security-audit, dream.
 - v0.6 multi-provider swarm (driver abstraction + agents.yaml + personas) — claude/codex/antigravity cli + http (deepseek/glm/kimi/ollama-local) + cli-compat + mcp.
 - v0.7 quality fingerprinting (local SQLite store at `~/.kaijutsu/findings.db`) + confidence-weighted synthesizer.

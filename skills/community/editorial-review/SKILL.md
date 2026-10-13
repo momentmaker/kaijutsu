@@ -182,7 +182,7 @@ Fix any deficiencies found. This pass is not optional polish — it is the diffe
 - Run word count.
 - Confirm formatting follows the publication's conventions (the user's CLAUDE.md / AGENTS.md or the project's house style — read both before this step).
 - Read the first and last paragraphs back-to-back — do they rhyme?
-- Run [`deslop`](https://kaijutsu.dev/skills/deslop) (composed dep) on the full essay as a final user-facing-prose pass. Stops fresh slop from sneaking past the editorial layer.
+- Run [`deslop`](https://github.com/momentmaker/kaijutsu/tree/main/skills/core/deslop) (composed dep) on the full essay as a final user-facing-prose pass. Stops fresh slop from sneaking past the editorial layer.
 
 Report:
 
@@ -264,7 +264,7 @@ News / longform reporting. The New Yorker / Atlantic / Atavist. Clear, neutral, 
 
 ## Composes
 
-- [`deslop`](https://kaijutsu.dev/skills/deslop) — final user-facing-prose pass at Step 4
+- [`deslop`](https://github.com/momentmaker/kaijutsu/tree/main/skills/core/deslop) — final user-facing-prose pass at Step 4
 - `jutsu swarm doc-review --personas claim-auditor-deepseek,architecture-purist-antigravity` — optional multi-agent review on the same essay after this skill completes its passes
 
 ## When NOT to use

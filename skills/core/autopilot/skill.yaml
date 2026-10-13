@@ -4,7 +4,7 @@ license: MIT
 layout: rich
 description: "Intent-to-PR pipeline. Multi-agent adversarial review at every artifact stage; cost-capped; reverse-drift gate. Replaces the v1 autopilot skill."
 author: "rubberduck <zendosoul@gmail.com>"
-homepage: https://kaijutsu.dev/skills/autopilot
+homepage: https://github.com/momentmaker/kaijutsu/tree/main/skills/core/autopilot
 repository: https://github.com/momentmaker/kaijutsu
 
 agents: [claude, codex, antigravity]

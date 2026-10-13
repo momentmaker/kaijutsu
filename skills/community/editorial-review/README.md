@@ -1,6 +1,6 @@
 # editorial-review
 
-Multi-pass editorial review for long-form essays + articles. Four passes (structural / line-level / AI-tells & voice / resonance). Voice-configurable. Composes [`deslop`](https://kaijutsu.dev/skills/deslop) as the final pass.
+Multi-pass editorial review for long-form essays + articles. Four passes (structural / line-level / AI-tells & voice / resonance). Voice-configurable. Composes [`deslop`](https://github.com/momentmaker/kaijutsu/tree/main/skills/core/deslop) as the final pass.
 
 ## Install
 
@@ -40,7 +40,7 @@ Each voice tunes thresholds for em-dash density, hedge tolerance, cliché reject
 
 ## Composes
 
-- [`deslop`](https://kaijutsu.dev/skills/deslop) — final user-facing-prose pass (runs at Step 4)
+- [`deslop`](https://github.com/momentmaker/kaijutsu/tree/main/skills/core/deslop) — final user-facing-prose pass (runs at Step 4)
 - `jutsu swarm doc-review` — optional multi-agent prose review layered on top
 
 ## Signal not verdict

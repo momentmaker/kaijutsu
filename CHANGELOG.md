@@ -4,6 +4,10 @@ All notable changes to kaijutsu (the registry + skills) and `jutsu` (the CLI). T
 
 ## [Unreleased]
 
+### Changed
+
+- **`kaijutsu.dev` domain retired.** The site now serves from GitHub Pages at https://momentmaker.github.io/kaijutsu (`docs/CNAME` removed). Install one-liner is `curl -fsSL https://momentmaker.github.io/kaijutsu/install.sh | sh`; Homebrew tap homepage, landing page, og-image, and JSON schema `$id`s updated to match. Skill `homepage:` fields now point at each skill's source directory on GitHub (the old `kaijutsu.dev/skills/<name>` pages never existed).
+
 ## [0.17.0] — 2026-05-20
 
 Breaking: gemini → antigravity provider migration ahead of Google's gemini-cli sunset (2026-06-18). kaijutsu's third native CLI slot is now `antigravity` (binary `agy`) instead of `gemini`. Pre-alpha + no live users at cut time, so no compat shim. See "Verified" subsection for live smoke evidence + "Unverified" follow-ups for known unknowns (Antigravity hooks format, sandbox flag necessity, large-prompt stdin behavior).

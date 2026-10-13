@@ -2,13 +2,13 @@
 # kaijutsu uninstaller — removes the jutsu binary.
 #
 # Usage:
-#   curl -fsSL https://kaijutsu.dev/uninstall.sh | sh
+#   curl -fsSL https://momentmaker.github.io/kaijutsu/uninstall.sh | sh
 #
 # Override the binary location:
-#   curl -fsSL https://kaijutsu.dev/uninstall.sh | KAIJUTSU_BIN=/usr/local/bin/jutsu sh
+#   curl -fsSL https://momentmaker.github.io/kaijutsu/uninstall.sh | KAIJUTSU_BIN=/usr/local/bin/jutsu sh
 #
 # Also nuke ~/.kaijutsu/ (global manifest + lockfile + cache):
-#   curl -fsSL https://kaijutsu.dev/uninstall.sh | KAIJUTSU_PURGE=1 sh
+#   curl -fsSL https://momentmaker.github.io/kaijutsu/uninstall.sh | KAIJUTSU_PURGE=1 sh
 #
 # Globally-installed skills under ~/.claude/skills/ and ~/.agents/skills/
 # are left in place. Use `jutsu remove -g <skill>` before uninstalling

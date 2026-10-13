@@ -8,14 +8,14 @@
   <meta property="og:title" content="kaijutsu — Open arts for AI agents">
   <meta property="og:description" content="MIT-licensed registry of skills &#43; a multi-model review CLI. Compose pipelines once; run them on Claude, Codex, Antigravity, DeepSeek — or any provider you add to agents.yaml.">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://kaijutsu.dev">
-  <meta property="og:image" content="https://kaijutsu.dev/og-image.png">
+  <meta property="og:url" content="https://momentmaker.github.io/kaijutsu">
+  <meta property="og:image" content="https://momentmaker.github.io/kaijutsu/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="kaijutsu — Open arts for AI agents">
   <meta name="twitter:description" content="MIT-licensed registry of skills &#43; a multi-model review CLI. Compose pipelines once; run them on Claude, Codex, Antigravity, DeepSeek — or any provider you add to agents.yaml.">
-  <meta name="twitter:image" content="https://kaijutsu.dev/og-image.png">
+  <meta name="twitter:image" content="https://momentmaker.github.io/kaijutsu/og-image.png">
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
@@ -573,8 +573,8 @@
   <ul class="tagline">
     <li>開 &#43; 術 — open &#43; skill.</li><li>Agent-first: your AI coding agent installs and runs jutsu.</li><li>Local-first. No telemetry. No registry lock-in.</li>
   </ul>
-  <div class="install-box" onclick="navigator.clipboard.writeText('curl -fsSL https:\/\/kaijutsu.dev\/install.sh | sh')" title="Click to copy">
-    <code>curl -fsSL https://kaijutsu.dev/install.sh | sh</code>
+  <div class="install-box" onclick="navigator.clipboard.writeText('curl -fsSL https:\/\/momentmaker.github.io\/kaijutsu\/install.sh | sh')" title="Click to copy">
+    <code>curl -fsSL https://momentmaker.github.io/kaijutsu/install.sh | sh</code>
     <span class="copy-hint">copy</span>
   </div>
   <div class="quick-links">
@@ -619,16 +619,16 @@
 
 <section id="quickstart" class="container">
   <h2>Quickstart — agent-first</h2>
-  <p>kaijutsu is agent-first: jutsu is meant to be invoked BY your AI coding agent on your behalf. The first time, point your agent at kaijutsu.dev — after that, jutsu init writes a fragment into AGENTS.md / CLAUDE.md so future agent sessions already know what the tool is.</p>
+  <p>kaijutsu is agent-first: jutsu is meant to be invoked BY your AI coding agent on your behalf. The first time, point your agent at momentmaker.github.io/kaijutsu — after that, jutsu init writes a fragment into AGENTS.md / CLAUDE.md so future agent sessions already know what the tool is.</p>
 
   <h3>1. One-time setup (cold start)</h3>
   <p>Paste the kaijutsu URL to your coding agent (Claude Code / Codex / Antigravity CLI), or run the install yourself. Either way, jutsu init drops the persistent context fragment.</p>
   <div class="prompt-card">
     <div class="label">You say to your agent:</div>
-    <div class="prompt-body">“Set up kaijutsu from https://kaijutsu.dev in this repo. Run jutsu init. Then install the pr-review skill. Tell me which API keys I still need to export.”</div>
+    <div class="prompt-body">“Set up kaijutsu from https://momentmaker.github.io/kaijutsu in this repo. Run jutsu init. Then install the pr-review skill. Tell me which API keys I still need to export.”</div>
   </div>
   <p class="agent-does">Agent runs:</p>
-  <pre><code>curl -fsSL https://kaijutsu.dev/install.sh | sh
+  <pre><code>curl -fsSL https://momentmaker.github.io/kaijutsu/install.sh | sh
 jutsu init                              # detects active agents, writes .kaijutsu/ &#43; AGENTS.md fragment
 jutsu install pr-review                 # add the pr-review skill
 jutsu agent doctor                      # verify provider env vars &#43; reachability</code></pre>

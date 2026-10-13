@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://kaijutsu.dev/schemas/eval.schema.json",
+  "$id": "https://momentmaker.github.io/kaijutsu/schemas/eval.schema.json",
   "title": "kaijutsu eval suite (evals.json)",
   "description": "Schema for `<skill>/evals/evals.json`. Compatible with agentskills.io / darkrishabh/agent-skills-eval upstream; kaijutsu-specific extension blocks live under `kaijutsu.*` and are ignored by upstream parsers.",
   "type": "object",

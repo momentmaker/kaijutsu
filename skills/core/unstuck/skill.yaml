@@ -3,7 +3,7 @@ version: 0.3.0
 license: MIT
 layout: flat
 description: "Guided problem articulation when you're stuck — agent-side evidence gathering BEFORE the human-side articulation questions, then structured pivots, blunder-hunt escalation, and walk-away if needed."
-homepage: https://kaijutsu.dev/skills/unstuck
+homepage: https://github.com/momentmaker/kaijutsu/tree/main/skills/core/unstuck
 repository: https://github.com/momentmaker/kaijutsu
 tags: [debugging, problem-solving, workflow]
 agents: [claude, codex, antigravity]

@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://kaijutsu.dev">kaijutsu.dev</a> ·
+  <a href="https://momentmaker.github.io/kaijutsu">Website</a> ·
   <a href="./SCHEMA.md">Schema</a> ·
   <a href="./docs/multi-agent.md">Multi-agent</a> ·
   <a href="./ROADMAP.md">Roadmap</a> ·
@@ -26,7 +26,7 @@
 
 ```sh
 brew install momentmaker/tap/jutsu       # macOS / Linux
-curl -fsSL https://kaijutsu.dev/install.sh | sh
+curl -fsSL https://momentmaker.github.io/kaijutsu/install.sh | sh
 jutsu init && jutsu install pr-review    # try it
 ```
 
@@ -79,7 +79,7 @@ Three pieces, one feedback loop. No vendor in the path. No telemetry leaving dis
 
 ```sh
 # 1. Install
-brew install momentmaker/tap/jutsu       # or: curl -fsSL https://kaijutsu.dev/install.sh | sh
+brew install momentmaker/tap/jutsu       # or: curl -fsSL https://momentmaker.github.io/kaijutsu/install.sh | sh
 
 # 2. Wire your project
 cd your-repo
@@ -92,7 +92,7 @@ jutsu swarm pr-review --diff-from-branch main --post-comment
 
 Want the agent to do the setup for you instead? Paste this into Claude / Codex / Antigravity:
 
-> "Set up kaijutsu from https://kaijutsu.dev in this repo. Run `jutsu init`, install `pr-review`, and tell me which API keys I still need."
+> "Set up kaijutsu from https://momentmaker.github.io/kaijutsu in this repo. Run `jutsu init`, install `pr-review`, and tell me which API keys I still need."
 
 After `jutsu init`, future agent sessions read the AGENTS.md fragment and already know the tool.
 
@@ -100,7 +100,7 @@ After `jutsu init`, future agent sessions read the AGENTS.md fragment and alread
 
 ### A skill registry (28+ skills, MIT)
 
-Browse at **[kaijutsu.dev](https://kaijutsu.dev)**. Three categories:
+Browse at **[momentmaker.github.io/kaijutsu](https://momentmaker.github.io/kaijutsu)**. Three categories:
 
 - **Workflow** — `pr-review`, `doc-review`, `polish`, `dream`, `spec-driven-development`, `planning-and-task-breakdown`, `autopilot`, `editorial-review`, `journal`, `readme-update`, `session-retro`, `scope-check`
 - **Primitives** — `blunder-hunt`, `convergence-detect`, `dispatch-parallel`, `deslop`, `verification-before-completion`, `lie-to-them`, `multi-model-synth`, `project-memory`
@@ -260,7 +260,7 @@ Security disclosure: [`SECURITY.md`](./SECURITY.md).
 brew install momentmaker/tap/jutsu
 
 # Any POSIX — shell installer
-curl -fsSL https://kaijutsu.dev/install.sh | sh
+curl -fsSL https://momentmaker.github.io/kaijutsu/install.sh | sh
 
 # Authenticate GitHub API for higher rate limits (optional but recommended)
 export GITHUB_TOKEN=$(gh auth token)
@@ -268,7 +268,7 @@ export GITHUB_TOKEN=$(gh auth token)
 # Uninstall
 brew uninstall jutsu
 # or
-curl -fsSL https://kaijutsu.dev/uninstall.sh | sh
+curl -fsSL https://momentmaker.github.io/kaijutsu/uninstall.sh | sh
 ```
 
 Pre-built binaries for `darwin/{amd64,arm64}` and `linux/{amd64,arm64}` on every release: [Releases](https://github.com/momentmaker/kaijutsu/releases).

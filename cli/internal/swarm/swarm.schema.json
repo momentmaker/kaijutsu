@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://kaijutsu.dev/schemas/swarm.schema.json",
+  "$id": "https://momentmaker.github.io/kaijutsu/schemas/swarm.schema.json",
   "title": "kaijutsu swarm.yaml (user-defined preset SDK)",
   "description": "Schema for .kaijutsu/swarm.yaml (per-project) and ~/.kaijutsu/swarm.yaml (per-user). Each entry defines a custom swarm preset that becomes a `jutsu swarm <name>` cobra subcommand at root construction. v0.13.0+. Spec: docs/specs/2026-05-08-v0.13.0-preset-sdk.md.",
   "type": "array",

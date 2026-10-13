@@ -3,7 +3,7 @@ version: 0.2.0
 license: MIT
 layout: flat
 description: "Detect when an iterative loop has stopped producing new signal. Quantitative scoring (token deltas, jaccard similarity, new-item ratio) plus optional persistence of round-by-round signals to .claude/convergence-log/ for post-hoc tuning."
-homepage: https://kaijutsu.dev/skills/convergence-detect
+homepage: https://github.com/momentmaker/kaijutsu/tree/main/skills/core/convergence-detect
 repository: https://github.com/momentmaker/kaijutsu
 tags: [primitive, iteration, signal]
 agents: [claude, codex, antigravity]

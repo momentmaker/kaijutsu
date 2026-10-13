@@ -68,7 +68,7 @@ license: MIT                             # required, SPDX identifier
 layout: flat                             # required, "flat" | "rich"
 description: "Reviews a PR with confidence-filtered feedback."
 author: "Jane Smith <jane@example.com>"  # optional
-homepage: https://kaijutsu.dev/skills/pr-review     # optional
+homepage: https://github.com/momentmaker/kaijutsu/tree/main/skills/core/pr-review  # optional
 repository: https://github.com/momentmaker/kaijutsu # optional
 tags: [git, review, pull-request]                   # optional, used by `jutsu search`
 

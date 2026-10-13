@@ -8,7 +8,7 @@
       "Agent-first: your AI coding agent installs and runs jutsu.",
       "Local-first. No telemetry. No registry lock-in."
     ],
-    "install_oneliner": "curl -fsSL https://kaijutsu.dev/install.sh | sh"
+    "install_oneliner": "curl -fsSL https://momentmaker.github.io/kaijutsu/install.sh | sh"
   },
   "failure_demo": {
     "intro": "Single-agent review is sycophancy by default. Same prompt, same model, run twice — you usually get the same \"LGTM.\" Adversarial review needs structural disagreement, not rerolls.",
@@ -21,13 +21,13 @@
     "artifact_label": "Full disagreement-table run → commit 83476ef"
   },
   "quickstart": {
-    "intro": "kaijutsu is agent-first: jutsu is meant to be invoked BY your AI coding agent on your behalf. The first time, point your agent at kaijutsu.dev — after that, jutsu init writes a fragment into AGENTS.md / CLAUDE.md so future agent sessions already know what the tool is.",
+    "intro": "kaijutsu is agent-first: jutsu is meant to be invoked BY your AI coding agent on your behalf. The first time, point your agent at momentmaker.github.io/kaijutsu — after that, jutsu init writes a fragment into AGENTS.md / CLAUDE.md so future agent sessions already know what the tool is.",
     "step1_label": "1. One-time setup (cold start)",
     "step1_intro": "Paste the kaijutsu URL to your coding agent (Claude Code / Codex / Antigravity CLI), or run the install yourself. Either way, jutsu init drops the persistent context fragment.",
     "user_says_label": "You say to your agent:",
-    "user_says": "Set up kaijutsu from https://kaijutsu.dev in this repo. Run jutsu init. Then install the pr-review skill. Tell me which API keys I still need to export.",
+    "user_says": "Set up kaijutsu from https://momentmaker.github.io/kaijutsu in this repo. Run jutsu init. Then install the pr-review skill. Tell me which API keys I still need to export.",
     "agent_does_label": "Agent runs:",
-    "snippet_install": "curl -fsSL https://kaijutsu.dev/install.sh | sh\njutsu init                              # detects active agents, writes .kaijutsu/ + AGENTS.md fragment\njutsu install pr-review                 # add the pr-review skill\njutsu agent doctor                      # verify provider env vars + reachability",
+    "snippet_install": "curl -fsSL https://momentmaker.github.io/kaijutsu/install.sh | sh\njutsu init                              # detects active agents, writes .kaijutsu/ + AGENTS.md fragment\njutsu install pr-review                 # add the pr-review skill\njutsu agent doctor                      # verify provider env vars + reachability",
     "step2_label": "2. After setup",
     "step2_intro": "Future agent sessions read the AGENTS.md fragment and already know what jutsu does — no URL re-paste needed.",
     "user_says_2": "Run a multi-agent pr-review on my current branch and post as a PR comment.",

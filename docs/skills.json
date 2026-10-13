@@ -33,7 +33,7 @@
       "source": "core",
       "repo": "momentmaker/kaijutsu",
       "path": "skills/core/autopilot",
-      "homepage": "https://kaijutsu.dev/skills/autopilot",
+      "homepage": "https://github.com/momentmaker/kaijutsu/tree/main/skills/core/autopilot",
       "author": "rubberduck \u003czendosoul@gmail.com\u003e",
       "has_hooks": false,
       "permissions": {
@@ -60,7 +60,7 @@
       "source": "core",
       "repo": "momentmaker/kaijutsu",
       "path": "skills/core/blunder-hunt",
-      "homepage": "https://kaijutsu.dev/skills/blunder-hunt",
+      "homepage": "https://github.com/momentmaker/kaijutsu/tree/main/skills/core/blunder-hunt",
       "has_hooks": false,
       "permissions": {
         "bash": false,
@@ -87,7 +87,7 @@
       "source": "core",
       "repo": "momentmaker/kaijutsu",
       "path": "skills/core/brainstorm",
-      "homepage": "https://kaijutsu.dev/skills/brainstorm",
+      "homepage": "https://github.com/momentmaker/kaijutsu/tree/main/skills/core/brainstorm",
       "has_hooks": false,
       "permissions": {
         "bash": true,
@@ -169,7 +169,7 @@
       "source": "community",
       "repo": "momentmaker/kaijutsu",
       "path": "skills/community/code-simplification",
-      "homepage": "https://kaijutsu.dev/skills/code-simplification",
+      "homepage": "https://github.com/momentmaker/kaijutsu/tree/main/skills/community/code-simplification",
       "upstream": "https://github.com/addyosmani/agent-skills/blob/main/skills/code-simplification",
       "author": "Addy Osmani (originally) — adapted by kaijutsu maintainers",
       "has_hooks": false,
@@ -215,7 +215,7 @@
       "source": "core",
       "repo": "momentmaker/kaijutsu",
       "path": "skills/core/convergence-detect",
-      "homepage": "https://kaijutsu.dev/skills/convergence-detect",
+      "homepage": "https://github.com/momentmaker/kaijutsu/tree/main/skills/core/convergence-detect",
       "has_hooks": false,
       "permissions": {
         "bash": true,
@@ -243,7 +243,7 @@
       "source": "community",
       "repo": "momentmaker/kaijutsu",
       "path": "skills/community/dcg",
-      "homepage": "https://kaijutsu.dev/skills/dcg",
+      "homepage": "https://github.com/momentmaker/kaijutsu/tree/main/skills/community/dcg",
       "author": "kaijutsu-core \u003cgh@fz.ax\u003e",
       "has_hooks": true,
       "permissions": {
@@ -306,7 +306,7 @@
       "source": "core",
       "repo": "momentmaker/kaijutsu",
       "path": "skills/core/deslop",
-      "homepage": "https://kaijutsu.dev/skills/deslop",
+      "homepage": "https://github.com/momentmaker/kaijutsu/tree/main/skills/core/deslop",
       "has_hooks": false,
       "permissions": {
         "bash": false,
@@ -332,7 +332,7 @@
       "source": "core",
       "repo": "momentmaker/kaijutsu",
       "path": "skills/core/dispatch-parallel",
-      "homepage": "https://kaijutsu.dev/skills/dispatch-parallel",
+      "homepage": "https://github.com/momentmaker/kaijutsu/tree/main/skills/core/dispatch-parallel",
       "has_hooks": false,
       "permissions": {
         "bash": false,
@@ -360,7 +360,7 @@
       "source": "core",
       "repo": "momentmaker/kaijutsu",
       "path": "skills/core/doc-review",
-      "homepage": "https://kaijutsu.dev/skills/doc-review",
+      "homepage": "https://github.com/momentmaker/kaijutsu/tree/main/skills/core/doc-review",
       "has_hooks": false,
       "permissions": {
         "bash": true,
@@ -405,7 +405,7 @@
       "source": "core",
       "repo": "momentmaker/kaijutsu",
       "path": "skills/core/dream",
-      "homepage": "https://kaijutsu.dev/skills/dream",
+      "homepage": "https://github.com/momentmaker/kaijutsu/tree/main/skills/core/dream",
       "has_hooks": false,
       "permissions": {
         "bash": true,
@@ -435,7 +435,7 @@
       "source": "community",
       "repo": "momentmaker/kaijutsu",
       "path": "skills/community/editorial-review",
-      "homepage": "https://kaijutsu.dev/skills/editorial-review",
+      "homepage": "https://github.com/momentmaker/kaijutsu/tree/main/skills/community/editorial-review",
       "author": "kaijutsu maintainers (generalized from a project-specific version)",
       "has_hooks": false,
       "permissions": {
@@ -554,7 +554,7 @@
       "source": "core",
       "repo": "momentmaker/kaijutsu",
       "path": "skills/core/incremental-implementation",
-      "homepage": "https://kaijutsu.dev/skills/incremental-implementation",
+      "homepage": "https://github.com/momentmaker/kaijutsu/tree/main/skills/core/incremental-implementation",
       "upstream": "https://github.com/addyosmani/agent-skills/blob/main/skills/incremental-implementation",
       "author": "Addy Osmani (originally) — adapted by kaijutsu maintainers",
       "has_hooks": false,
@@ -582,7 +582,7 @@
       "source": "community",
       "repo": "momentmaker/kaijutsu",
       "path": "skills/community/journal",
-      "homepage": "https://kaijutsu.dev/skills/journal",
+      "homepage": "https://github.com/momentmaker/kaijutsu/tree/main/skills/community/journal",
       "has_hooks": false,
       "permissions": {
         "bash": true,
@@ -646,7 +646,7 @@
       "source": "core",
       "repo": "momentmaker/kaijutsu",
       "path": "skills/core/planning-and-task-breakdown",
-      "homepage": "https://kaijutsu.dev/skills/planning-and-task-breakdown",
+      "homepage": "https://github.com/momentmaker/kaijutsu/tree/main/skills/core/planning-and-task-breakdown",
       "upstream": "https://github.com/addyosmani/agent-skills/blob/main/skills/planning-and-task-breakdown",
       "author": "Addy Osmani (originally) — adapted by kaijutsu maintainers",
       "has_hooks": false,
@@ -674,7 +674,7 @@
       "source": "core",
       "repo": "momentmaker/kaijutsu",
       "path": "skills/core/polish",
-      "homepage": "https://kaijutsu.dev/skills/polish",
+      "homepage": "https://github.com/momentmaker/kaijutsu/tree/main/skills/core/polish",
       "has_hooks": false,
       "permissions": {
         "bash": true,
@@ -702,7 +702,7 @@
       "source": "core",
       "repo": "momentmaker/kaijutsu",
       "path": "skills/core/pr-review",
-      "homepage": "https://kaijutsu.dev/skills/pr-review",
+      "homepage": "https://github.com/momentmaker/kaijutsu/tree/main/skills/core/pr-review",
       "has_hooks": false,
       "permissions": {
         "bash": true,
@@ -728,7 +728,7 @@
       "source": "community",
       "repo": "momentmaker/kaijutsu",
       "path": "skills/community/readme-update",
-      "homepage": "https://kaijutsu.dev/skills/readme-update",
+      "homepage": "https://github.com/momentmaker/kaijutsu/tree/main/skills/community/readme-update",
       "has_hooks": false,
       "permissions": {
         "bash": true,
@@ -755,7 +755,7 @@
       "source": "core",
       "repo": "momentmaker/kaijutsu",
       "path": "skills/core/refactor-plan",
-      "homepage": "https://kaijutsu.dev/skills/refactor-plan",
+      "homepage": "https://github.com/momentmaker/kaijutsu/tree/main/skills/core/refactor-plan",
       "has_hooks": false,
       "permissions": {
         "bash": true,
@@ -781,7 +781,7 @@
       "source": "core",
       "repo": "momentmaker/kaijutsu",
       "path": "skills/core/scope-check",
-      "homepage": "https://kaijutsu.dev/skills/scope-check",
+      "homepage": "https://github.com/momentmaker/kaijutsu/tree/main/skills/core/scope-check",
       "has_hooks": false,
       "permissions": {
         "bash": true,
@@ -809,7 +809,7 @@
       "source": "community",
       "repo": "momentmaker/kaijutsu",
       "path": "skills/community/security-and-hardening",
-      "homepage": "https://kaijutsu.dev/skills/security-and-hardening",
+      "homepage": "https://github.com/momentmaker/kaijutsu/tree/main/skills/community/security-and-hardening",
       "upstream": "https://github.com/addyosmani/agent-skills/blob/main/skills/security-and-hardening",
       "author": "Addy Osmani (originally) — adapted by kaijutsu maintainers",
       "has_hooks": false,
@@ -839,7 +839,7 @@
       "source": "core",
       "repo": "momentmaker/kaijutsu",
       "path": "skills/core/security-audit",
-      "homepage": "https://kaijutsu.dev/skills/security-audit",
+      "homepage": "https://github.com/momentmaker/kaijutsu/tree/main/skills/core/security-audit",
       "has_hooks": false,
       "permissions": {
         "bash": true,
@@ -865,7 +865,7 @@
       "source": "community",
       "repo": "momentmaker/kaijutsu",
       "path": "skills/community/session-retro",
-      "homepage": "https://kaijutsu.dev/skills/session-retro",
+      "homepage": "https://github.com/momentmaker/kaijutsu/tree/main/skills/community/session-retro",
       "has_hooks": false,
       "permissions": {
         "bash": true,
@@ -947,7 +947,7 @@
       "source": "core",
       "repo": "momentmaker/kaijutsu",
       "path": "skills/core/spec-driven-development",
-      "homepage": "https://kaijutsu.dev/skills/spec-driven-development",
+      "homepage": "https://github.com/momentmaker/kaijutsu/tree/main/skills/core/spec-driven-development",
       "upstream": "https://github.com/addyosmani/agent-skills/blob/main/skills/spec-driven-development",
       "author": "Addy Osmani (originally) — adapted by kaijutsu maintainers",
       "has_hooks": false,
@@ -1029,7 +1029,7 @@
       "source": "core",
       "repo": "momentmaker/kaijutsu",
       "path": "skills/core/unstuck",
-      "homepage": "https://kaijutsu.dev/skills/unstuck",
+      "homepage": "https://github.com/momentmaker/kaijutsu/tree/main/skills/core/unstuck",
       "has_hooks": false,
       "permissions": {
         "bash": true,
@@ -1073,7 +1073,7 @@
       "source": "core",
       "repo": "momentmaker/kaijutsu",
       "path": "skills/core/verification-before-completion",
-      "homepage": "https://kaijutsu.dev/skills/verification-before-completion",
+      "homepage": "https://github.com/momentmaker/kaijutsu/tree/main/skills/core/verification-before-completion",
       "has_hooks": false,
       "permissions": {
         "bash": true,

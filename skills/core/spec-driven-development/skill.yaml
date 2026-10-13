@@ -4,7 +4,7 @@ license: MIT
 layout: flat
 description: "Author a PRD-style spec before writing implementation. Produce a written, reviewable artifact (problem statement, scope, non-goals, acceptance criteria, open questions) that survives the agent session and gets reviewed by `jutsu swarm doc-review` before unblocking implementation."
 author: "Addy Osmani (originally) — adapted by kaijutsu maintainers"
-homepage: https://kaijutsu.dev/skills/spec-driven-development
+homepage: https://github.com/momentmaker/kaijutsu/tree/main/skills/core/spec-driven-development
 repository: https://github.com/momentmaker/kaijutsu
 upstream: https://github.com/addyosmani/agent-skills/blob/main/skills/spec-driven-development
 tags: [planning, spec, prd, define, addyosmani]

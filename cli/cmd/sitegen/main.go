@@ -2,7 +2,7 @@
 // repo root and writes:
 //
 //   docs/skills.json — machine-readable catalog for downstream tools
-//   docs/index.html  — human-facing catalog page served at kaijutsu.dev
+//   docs/index.html  — human-facing catalog page served via GitHub Pages
 //
 // The landing page (hero, failure-mode demo, quickstart, etc.) is
 // generated from docs/landing-content.json — a hand-edited content
@@ -52,7 +52,7 @@ type catalogEntry struct {
 }
 
 // LandingContent is the v0.14.0 hand-edited content schema for the
-// kaijutsu.dev landing page. Lives in docs/landing-content.json so a
+// kaijutsu landing page. Lives in docs/landing-content.json so a
 // copy edit is a JSON edit, not a Go rebuild.
 //
 // Spec: docs/specs/2026-05-09-landing-page-content.md
@@ -334,14 +334,14 @@ const htmlTemplate = `<!DOCTYPE html>
   <meta property="og:title" content="kaijutsu — {{.Landing.Hero.Headline}}">
   <meta property="og:description" content="{{.Landing.Hero.SubCopy}}">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://kaijutsu.dev">
-  <meta property="og:image" content="https://kaijutsu.dev/og-image.png">
+  <meta property="og:url" content="https://momentmaker.github.io/kaijutsu">
+  <meta property="og:image" content="https://momentmaker.github.io/kaijutsu/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="kaijutsu — {{.Landing.Hero.Headline}}">
   <meta name="twitter:description" content="{{.Landing.Hero.SubCopy}}">
-  <meta name="twitter:image" content="https://kaijutsu.dev/og-image.png">
+  <meta name="twitter:image" content="https://momentmaker.github.io/kaijutsu/og-image.png">
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">

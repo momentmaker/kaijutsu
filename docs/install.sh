@@ -4,13 +4,13 @@
 # preferred bin directory.
 #
 # Usage:
-#   curl -fsSL https://kaijutsu.dev/install.sh | sh
+#   curl -fsSL https://momentmaker.github.io/kaijutsu/install.sh | sh
 #
 # Override the install dir:
-#   curl -fsSL https://kaijutsu.dev/install.sh | KAIJUTSU_INSTALL_DIR=/usr/local/bin sh
+#   curl -fsSL https://momentmaker.github.io/kaijutsu/install.sh | KAIJUTSU_INSTALL_DIR=/usr/local/bin sh
 #
 # If you hit a GitHub API rate limit (60 req/hr unauth), set GITHUB_TOKEN:
-#   curl -fsSL https://kaijutsu.dev/install.sh | GITHUB_TOKEN=ghp_... sh
+#   curl -fsSL https://momentmaker.github.io/kaijutsu/install.sh | GITHUB_TOKEN=ghp_... sh
 
 set -eu
 

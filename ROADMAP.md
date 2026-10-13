@@ -44,7 +44,7 @@ Working consume-and-author loop. No bells, no eval gate, no static site.
 - [x] **Trigger-conflict lint**: `jutsu lint` reports cross-skill overlaps in trigger phrases (slash commands + quoted phrases) extracted from descriptions. `jutsu list --conflicts` checks installed skills.
 - [x] **Reconcile skill version vs registry tag display + lockfile schema**: lockfile gains a `tag` field separate from `version`. `jutsu list` shows skill internal version + tag side-by-side; `jutsu info` adds a `tag:` row. `recordInstall` now stores the skill's `skill.yaml` version as `Version` (not the resolved tag's semver). `loadByLockEntry` plumbs the tag back through so sync-time sigstore verify can fire. Forward-compat: older lockfiles with no `tag` field still load; verify gracefully no-ops with a warning.
 - [ ] **GitHub API rate-limit handling**: surface a clearer error + `GITHUB_TOKEN` hint when 403-rate-limited. install.sh already supports `GITHUB_TOKEN`; the `jutsu` CLI should too.
-- [ ] **Static skill catalog at `kaijutsu.dev`**: searchable index, agent-compat matrix, install copy-buttons; auto-built from the registry on every release
+- [ ] **Static skill catalog at `momentmaker.github.io/kaijutsu`**: searchable index, agent-compat matrix, install copy-buttons; auto-built from the registry on every release
 
 ## v0.4 — multi-agent flagship + community + telemetry
 
